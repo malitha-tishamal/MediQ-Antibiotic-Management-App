@@ -1,100 +1,17 @@
-import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for FilteringTextInputFormatter
-import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
-// --- Global Firebase Configuration (Mandatory) ---
-const String __app_id = 'default-app-id';
-const String __firebase_config = '{}';
-const String __initial_auth_token = '';
+import 'main.dart';
+import 'admin_drawer.dart';
+import 'login_page.dart';
 
-// --- Color Palette ---
-class AppColors {
-  static const Color primaryPurple = Color(0xFF9F7AEA); // Light Purple for accents
-  static const Color lightPurpleBackground = Color(0xFFF3F0FF); // Very light background
-  static const Color headerPurple = Color(0xFFE6D6F7); // Header gradient start
-  static const Color darkText = Color(0xFF333333);
-  static const Color success = Color(0xFF4CAF50);
-  static const Color error = Color(0xFFF44336);
-  static const Color shadowColor = Color(0xFF9F7AEA);
-  static const Color inputBorder = Color(0xFFDCDCDC);
-}
-
-// --- User Profile Model ---
-class UserProfile {
-  final String userId;
-  final String fullName;
-  final String email;
-  final String nic;
-  final String mobileNumber;
-  final String role;
-  final String profileImageUrl;
-  final DateTime? createdAt;
-
-  UserProfile({
-    required this.userId,
-    required this.fullName,
-    required this.email,
-    required this.nic,
-    required this.mobileNumber,
-    required this.role,
-    required this.profileImageUrl,
-    this.createdAt,
-  });
-
-  factory UserProfile.fromFirestore(String id, Map<String, dynamic> data) {
-    return UserProfile(
-      userId: id,
-      fullName: data['fullName'] ?? 'N/A',
-      email: data['email'] ?? 'N/A',
-      nic: data['nic'] ?? 'N/A',
-      mobileNumber: data['mobileNumber'] ?? 'N/A',
-      role: data['role'] ?? 'Administrator',
-      profileImageUrl: data['profileImageUrl'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'fullName': fullName,
-      'email': email,
-      'nic': nic,
-      'mobileNumber': mobileNumber,
-      'role': role,
-      'profileImageUrl': profileImageUrl,
-    };
-  }
-
-  UserProfile copyWith({
-    String? fullName,
-    String? email,
-    String? nic,
-    String? mobileNumber,
-    String? role,
-    String? profileImageUrl,
-  }) {
-    return UserProfile(
-      userId: userId,
-      fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
-      nic: nic ?? this.nic,
-      mobileNumber: mobileNumber ?? this.mobileNumber,
-      role: role ?? this.role,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      createdAt: createdAt,
-    );
-  }
-}
-
-// --- Main Screen Widget ---
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
@@ -103,554 +20,737 @@ class AdminProfileScreen extends StatefulWidget {
 }
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
-  // --- Firebase Variables ---
-  late final FirebaseApp _app;
-  late final FirebaseAuth _auth;
-  late final FirebaseFirestore _db;
-  late final FirebaseStorage _storage;
+  // --- Firebase Instances ---
+  final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final _storage = FirebaseStorage.instance;
 
-  String? _userId;
-  bool _isInitialized = false;
+  // --- Controllers for Form Fields ---
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nicController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
 
-  // --- Profile Data & Controllers ---
-  UserProfile? _userProfile;
-  late TextEditingController _fullNameController;
-  late TextEditingController _emailController;
-  late TextEditingController _nicController;
-  late TextEditingController _mobileNumberController;
+  // --- State Variables ---
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+  String? _profileImageUrl;
+  DateTime? _createdAt;
+  String _role = '';
+  
+  // Email change state
+  User? _currentUser;
+  late StreamSubscription<User?> _authStateSubscription;
+  bool _showEmailChangePopup = false;
+  bool _showVerificationSuccessPopup = false;
 
-  File? _newProfileImage;
-  bool _isUpdating = false;
+  // Local picked image file
+  File? _pickedImageFile;
 
   @override
   void initState() {
     super.initState();
-    _fullNameController = TextEditingController();
-    _emailController = TextEditingController();
-    _nicController = TextEditingController();
-    _mobileNumberController = TextEditingController();
-    _initializeFirebase();
+    
+    _authStateSubscription = _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        user.reload().then((_) {
+          if (mounted) {
+            final reloadedUser = _auth.currentUser;
+            
+            // Check if verification just completed
+            if (reloadedUser != null && reloadedUser.emailVerified && _currentUser?.emailVerified == false) {
+              // Show success popup
+              setState(() {
+                _showVerificationSuccessPopup = true;
+              });
+              
+              // Auto hide success popup after 4 seconds
+              Future.delayed(const Duration(seconds: 4), () {
+                if (mounted) {
+                  setState(() {
+                    _showVerificationSuccessPopup = false;
+                  });
+                }
+              });
+              
+              _loadUserProfile();
+            }
+
+            setState(() {
+              _currentUser = reloadedUser;
+            });
+          }
+        });
+      }
+    });
+
+    _loadUserProfile();
   }
 
   @override
   void dispose() {
+    _authStateSubscription.cancel();
     _fullNameController.dispose();
     _emailController.dispose();
     _nicController.dispose();
-    _mobileNumberController.dispose();
+    _mobileController.dispose();
     super.dispose();
   }
 
-  // --- Firebase Initialization and Auth ---
+  // --- Data Loading and Initialization ---
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
-  Future<void> _initializeFirebase() async {
-    // Prevent duplicate app initialization
-    if (Firebase.apps.isNotEmpty) {
-      _app = Firebase.apps.first;
-    } else {
-      try {
-        final firebaseConfig = jsonDecode(__firebase_config) as Map<String, dynamic>;
-        final appId = __app_id;
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() {
+        _error = 'No authenticated user found.';
+        _loading = false;
+      });
+      return;
+    }
 
-        _app = await Firebase.initializeApp(
-          options: FirebaseOptions(
-            apiKey: firebaseConfig['apiKey'] ?? '',
-            appId: firebaseConfig['appId'] ?? appId,
-            messagingSenderId: firebaseConfig['messagingSenderId'] ?? '',
-            projectId: firebaseConfig['projectId'] ?? 'default-project',
-            storageBucket: firebaseConfig['storageBucket'],
-          ),
-        );
-      } catch (e) {
-        debugPrint("Firebase Initialization Error: $e");
-        if (mounted) {
-          _showSnackBar('Firebase Initialization Error: ${e.toString()}', isError: true);
-        }
+    try {
+      _currentUser = user;
+      
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) {
+        setState(() {
+          _error = 'User profile not found in Firestore.';
+          _loading = false;
+        });
         return;
       }
-    }
 
-    _auth = FirebaseAuth.instanceFor(app: _app);
-    _db = FirebaseFirestore.instanceFor(app: _app);
-    _storage = FirebaseStorage.instanceFor(app: _app);
+      final data = doc.data()!;
+      _fullNameController.text = (data['fullName'] ?? '') as String;
+      _emailController.text = (user.email ?? data['email'] ?? '') as String;
+      _nicController.text = (data['nic'] ?? '') as String;
+      _mobileController.text = (data['mobileNumber'] ?? '') as String;
+      _profileImageUrl = (data['profileImage'] ?? '') as String?;
+      _role = (data['role'] ?? '') as String;
 
-    User? user = _auth.currentUser;
-    if (user == null) {
-      try {
-        if (__initial_auth_token.isNotEmpty) {
-          await _auth.signInWithCustomToken(__initial_auth_token);
-        } else {
-          await _auth.signInAnonymously();
-        }
-        user = _auth.currentUser;
-      } catch (e) {
-        debugPrint("Authentication Error: $e");
+      final ts = data['createdAt'];
+      if (ts is Timestamp) {
+        _createdAt = ts.toDate();
+      } else if (ts is DateTime) {
+        _createdAt = ts;
+      } else {
+        _createdAt = null;
       }
-    }
-    
-    if (user != null && mounted) {
-      setState(() {
-        _userId = user!.uid;
-        _isInitialized = true;
-      });
-      _fetchUserProfile();
-    }
-  }
-
-  // --- Firestore Data Fetching (Real-time) ---
-
-  void _fetchUserProfile() {
-    if (_userId == null) return;
-
-    final docRef = _db
-        .collection('artifacts')
-        .doc(__app_id)
-        .collection('users')
-        .doc(_userId)
-        .collection('user_profiles')
-        .doc('profile');
-
-    docRef.snapshots().listen((snapshot) {
-      if (snapshot.exists && mounted) {
-        final profile = UserProfile.fromFirestore(snapshot.id, snapshot.data()!);
-        setState(() {
-          _userProfile = profile;
-          _fullNameController.text = profile.fullName == 'N/A' ? '' : profile.fullName;
-          _emailController.text = profile.email == 'N/A' ? '' : profile.email;
-          _nicController.text = profile.nic == 'N/A' ? '' : profile.nic;
-          _mobileNumberController.text = profile.mobileNumber == 'N/A' ? '' : profile.mobileNumber;
-        });
-      } else if (mounted && _userId != null) {
-        // Only create default profile if authentication succeeded
-        _createDefaultProfile();
-      }
-    }, onError: (error) {
-      debugPrint("Error fetching profile: $error");
+    } catch (e) {
+      _error = 'Failed to load profile: ${e.toString()}';
+    } finally {
       if (mounted) {
-        if (error.toString().contains('PERMISSION_DENIED')) {
-           _showSnackBar('Profile access denied. Check Firestore security rules.', isError: true);
-        } else {
-          _showSnackBar('Error fetching profile: $error', isError: true);
-        }
-      }
-    });
-  }
-
-  // --- Default Profile Creation ---
-
-  Future<void> _createDefaultProfile() async {
-    if (_userId == null) return;
-    final defaultData = {
-      'fullName': 'Admin User',
-      'email': _auth.currentUser?.email ?? 'admin.user@example.com',
-      'nic': '999999999V',
-      'mobileNumber': '0710000000',
-      'role': 'Administrator',
-      'profileImageUrl': '',
-      'createdAt': FieldValue.serverTimestamp(),
-    };
-
-    try {
-      await _db
-          .collection('artifacts')
-          .doc(__app_id)
-          .collection('users')
-          .doc(_userId)
-          .collection('user_profiles')
-          .doc('profile')
-          .set(defaultData, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint("Error creating default profile: $e");
-    }
-  }
-
-  // --- Image Picking and Uploading ---
-
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
-
-    if (pickedFile != null) {
-      setState(() {
-        _newProfileImage = File(pickedFile.path);
-        _isUpdating = true; // Set uploading state
-      });
-
-      try {
-        final imageUrl = await _uploadImageToStorage(_newProfileImage!);
-        if (imageUrl != null) {
-          await _updateFirestoreImageUrl(imageUrl);
-          _showSnackBar('Profile Picture Upload Successful.');
-        }
-      } catch (e) {
-        debugPrint("Image Workflow Error: $e");
-        _showSnackBar('Profile Picture Upload Failed.', isError: true);
-      } finally {
         setState(() {
-          _isUpdating = false;
-          _newProfileImage = null;
+          _loading = false;
         });
       }
     }
   }
 
-  Future<String?> _uploadImageToStorage(File image) async {
-    if (_userId == null) return null;
-    try {
-      final fileName = 'profile_pic_${_userId!}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storageRef = _storage
-          .ref()
-          .child('artifacts')
-          .child(__app_id)
-          .child('profile_pictures')
-          .child(fileName);
+  // --- Image Handling ---
+  void _openImageOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: Color(0xFF8D78F9)),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFF8D78F9)),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    await _removeProfileImage();
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.close, color: Color(0xFF8D78F9)),
+                title: const Text('Cancel'),
+                onTap: () => Navigator.of(ctx).pop(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-      final uploadTask = storageRef.putFile(image);
-      final snapshot = await uploadTask.whenComplete(() {});
-      return await snapshot.ref.getDownloadURL();
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+
+      setState(() {
+        _pickedImageFile = File(picked.path);
+      });
     } catch (e) {
-      debugPrint("Image Upload Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Image pick failed: ${e.toString()}')),
+      );
+    }
+  }
+
+  Future<String?> _uploadProfileImage(String uid, File file) async {
+    try {
+      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
+      final uploadTask = ref.putFile(file);
+      final snapshot = await uploadTask;
+      final url = await snapshot.ref.getDownloadURL();
+      return url;
+    } catch (e) {
+      debugPrint('Upload error: $e');
       return null;
     }
   }
 
-  // --- Profile Data Update ---
+  Future<void> _removeProfileImage() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
 
-  Future<void> _updateFirestoreImageUrl(String imageUrl) async {
-    if (_userId == null) return;
+    setState(() {
+      _profileImageUrl = null;
+      _pickedImageFile = null;
+    });
+
     try {
-      await _db
-          .collection('artifacts')
-          .doc(__app_id)
-          .collection('users')
-          .doc(_userId)
-          .collection('user_profiles')
-          .doc('profile')
-          .update({'profileImageUrl': imageUrl});
+      final ref = _storage.ref().child('profile_images').child('${user.uid}.jpg');
+      await ref.delete().catchError((e) {
+        if (e is! FirebaseException || e.code != 'object-not-found') {
+          debugPrint('Storage deletion error: $e');
+        }
+      });
+
+      await _firestore.collection('users').doc(user.uid).update({
+        'profileImage': FieldValue.delete(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo removed')),
+      );
     } catch (e) {
-      debugPrint("Firestore URL Update Error: $e");
-      _showSnackBar('Error saving profile picture URL.', isError: true);
+      await _loadUserProfile();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to remove photo: ${e.toString()}')),
+      );
     }
   }
 
-  Future<void> _updateProfileData() async {
-    if (_userId == null || _userProfile == null || _isUpdating) return;
+  // --- Profile Save Logic ---
+  Future<void> _saveProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() {
+        _error = 'No authenticated user found.';
+      });
+      return;
+    }
 
-    // Basic validation
-    if (_fullNameController.text.trim().isEmpty) {
-      _showSnackBar('Full Name cannot be empty.', isError: true);
+    final fullName = _fullNameController.text.trim();
+    final newEmail = _emailController.text.trim();
+    final nic = _nicController.text.trim();
+    final mobile = _mobileController.text.trim();
+
+    if (fullName.isEmpty || newEmail.isEmpty) {
+      setState(() {
+        _error = 'Full name and email are required.';
+      });
       return;
     }
 
     setState(() {
-      _isUpdating = true;
+      _saving = true;
+      _error = null;
     });
 
-    final updatedProfile = _userProfile!.copyWith(
-      fullName: _fullNameController.text.trim(),
-      email: _emailController.text.trim(),
-      nic: _nicController.text.trim(),
-      mobileNumber: _mobileNumberController.text.trim(),
-    );
-
     try {
-      await _db
-          .collection('artifacts')
-          .doc(__app_id)
-          .collection('users')
-          .doc(_userId)
-          .collection('user_profiles')
-          .doc('profile')
-          .update(updatedProfile.toFirestore());
+      String? uploadedUrl = _profileImageUrl;
+      if (_pickedImageFile != null) {
+        final url = await _uploadProfileImage(user.uid, _pickedImageFile!);
+        if (url != null) uploadedUrl = url;
+      }
 
-      _showSnackBar('Profile Data Updated Successfully!');
-    } catch (e) {
-      debugPrint("Profile Data Update Error: $e");
-      _showSnackBar('Profile Data Update Failed.', isError: true);
-    } finally {
+      final updateData = <String, dynamic>{
+        'fullName': fullName,
+        'email': newEmail,
+        'nic': nic,
+        'mobileNumber': mobile,
+      };
+      
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        updateData['profileImage'] = uploadedUrl;
+      } else if (_profileImageUrl == null && _pickedImageFile == null) {
+        updateData['profileImage'] = FieldValue.delete();
+      }
+
+      await _firestore.collection('users').doc(user.uid).update(updateData);
+
+      // Show email change popup if email is changed
+      if (newEmail != user.email) {
+        try {
+          await user.verifyBeforeUpdateEmail(newEmail);
+          
+          // Show email change popup
+          setState(() {
+            _showEmailChangePopup = true;
+          });
+          
+          // Auto hide popup after 6 seconds
+          Future.delayed(const Duration(seconds: 6), () {
+            if (mounted) {
+              setState(() {
+                _showEmailChangePopup = false;
+              });
+            }
+          });
+
+        } on FirebaseAuthException catch (e) {
+          debugPrint('Auth email update failed: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Profile updated but email change failed: ${e.code}'),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully')),
+        );
+      }
+
+      await _loadUserProfile();
       setState(() {
-        _isUpdating = false;
+        _pickedImageFile = null;
       });
+
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to save profile: ${e.toString()}';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 
-  // --- UI Utility ---
+  // --- Popup Widgets ---
+  Widget _buildEmailChangePopup() {
+    if (!_showEmailChangePopup) return const SizedBox.shrink();
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: isError ? AppColors.error : AppColors.success,
-          duration: const Duration(seconds: 3),
+    return Container(
+      color: Colors.black54,
+      child: Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.email_outlined, size: 50, color: Color(0xFF8D78F9)),
+              const SizedBox(height: 16),
+              const Text(
+                'Email Change Initiated',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Please check your inbox to verify the new email. All profile actions are temporarily disabled until verification is complete.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _showEmailChangePopup = false;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8D78F9),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                ),
+                child: const Text('OK', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
+
+  Widget _buildVerificationSuccessPopup() {
+    if (!_showVerificationSuccessPopup) return const SizedBox.shrink();
+
+    return Container(
+      color: Colors.black54,
+      child: Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.verified, size: 50, color: Colors.green),
+              const SizedBox(height: 16),
+              const Text(
+                'Email Verified Successfully!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Your email has been verified successfully. All profile actions are now re-enabled.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Helper: Styled Text Field Widget ---
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      enabled: enabled,
+      style: TextStyle(color: enabled ? AppColors.darkText : Colors.grey.shade600),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF8D78F9), width: 2)),
+        disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade200)),
+      ),
+    );
+  }
+  
+  // --- Helper: Verification Status Widget ---
+  Widget _buildVerificationStatusWidget(bool isPending) {
+    if (!isPending) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEEEE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Action Disabled: Email Verification Pending',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Please check your inbox for the verification link. All profile editing actions are temporarily locked until the email is confirmed.',
+                  style: TextStyle(color: Colors.red, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // --- Logout Function ---
+  Future<void> _handleLogout() async {
+    try {
+      await _auth.signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logout failed: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  // --- Build Methods ---
+  // --- Helper: Format Account Creation Date ---
+  String _formatCreatedAt() {
+    if (_createdAt == null) return '-';
+    return DateFormat('yyyy-MM-dd • hh:mm a').format(_createdAt!);
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized || _userProfile == null) {
-      return const Scaffold(
-        backgroundColor: AppColors.lightPurpleBackground,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primaryPurple),
-        ),
-      );
-    }
+    final user = _auth.currentUser;
+    final displayName = _fullNameController.text.isNotEmpty
+        ? _fullNameController.text
+        : (user?.displayName ?? 'Administrator');
 
-    // Profile Screen Layout
+    final bool isVerificationPending = _currentUser?.emailVerified == false && user != null;
+    final bool disableFieldsAndButton = isVerificationPending || _saving;
+
     return Scaffold(
-      backgroundColor: AppColors.lightPurpleBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildHeader(context),
-              _buildBody(),
-              const SizedBox(height: 20),
-              Text(
-                'Developed By Malitha Tishamal',
-                style: TextStyle(color: AppColors.darkText.withOpacity(0.6), fontSize: 12),
-              ),
-              const SizedBox(height: 10),
-            ],
+      backgroundColor: AppColors.lightBackground,
+      appBar: AppBar(
+        backgroundColor: AppColors.lightBackground,
+        elevation: 0,
+        leading: Builder(builder: (context) {
+          return IconButton(
+            icon: const Icon(Icons.menu, color: AppColors.darkText, size: 28),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          );
+        }),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.darkText),
+            onPressed: _handleLogout,
+            tooltip: 'Logout',
           ),
-        ),
-      ),
-    );
-  }
-
-  // Header Section (Profile Picture, Name, Role)
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerPurple, Color(0xFFE9D7FD)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowColor, blurRadius: 10, offset: Offset(0, 4)),
+          const SizedBox(width: 6),
         ],
       ),
-      child: Column(
+      drawer: AdminDrawer(
+        userName: displayName,
+        userRole: _role.isNotEmpty ? _role : 'Administrator',
+        onNavTap: (title) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$title tapped')));
+        },
+        onLogout: _handleLogout,
+      ),
+      body: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Functional Back Button
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.darkText, size: 28),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    _showSnackBar('Cannot go back from this screen.');
-                  }
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.notifications_none, color: AppColors.darkText, size: 28),
-                onPressed: () {
-                  _showSnackBar('Notifications Tapped');
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildProfileAvatar(),
-          const SizedBox(height: 15),
-          Text(
-            _userProfile!.fullName,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkText),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _userProfile!.role,
-            style: TextStyle(fontSize: 16, color: AppColors.darkText.withOpacity(0.7)),
-          ),
-        ],
-      ),
-    );
-  }
+          SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF8D78F9)))
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // --- Header Card ---
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)], 
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF8D78F9).withOpacity(0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: isVerificationPending ? null : _openImageOptions,
+                                child: Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 36,
+                                      backgroundColor: Colors.white,
+                                      backgroundImage: _pickedImageFile != null
+                                          ? FileImage(_pickedImageFile!) as ImageProvider
+                                          : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
+                                              ? NetworkImage(_profileImageUrl!)
+                                              : null,
+                                      child: (_pickedImageFile == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
+                                          ? const Icon(Icons.person, size: 40, color: Color(0xFF8D78F9))
+                                          : null,
+                                    ),
+                                    if (!isVerificationPending)
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        padding: const EdgeInsets.all(4),
+                                        child: const Icon(Icons.camera_alt, size: 18, color: Color(0xFF8D78F9)),
+                                      )
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Welcome Back, ${displayName.isNotEmpty ? displayName : 'Admin'}',
+                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText)),
+                                    const SizedBox(height: 4),
+                                    Text(_role.isNotEmpty ? _role : 'Administrator', style: TextStyle(fontSize: 13.5, color: AppColors.darkText.withOpacity(0.7))),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
+                            ],
+                          ),
+                        ),
 
-  // Profile Avatar (Image Display)
-  Widget _buildProfileAvatar() {
-    final imageUrl = _userProfile!.profileImageUrl;
+                        const SizedBox(height: 18),
+                        _buildVerificationStatusWidget(isVerificationPending), 
+                        
+                        // --- Profile Details Section ---
+                        const Text('Manage Profile Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 18),
 
-    return GestureDetector(
-      onTap: _isUpdating ? null : _pickAndUploadImage,
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 4),
-          boxShadow: [
-            BoxShadow(color: AppColors.shadowColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            ClipOval(
-              child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      width: 120,
-                      height: 120,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppColors.primaryPurple.withOpacity(0.6),
-                          child: const Icon(Icons.person, size: 70, color: Colors.white),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: AppColors.primaryPurple.withOpacity(0.6),
-                      child: const Icon(Icons.person, size: 70, color: Colors.white),
+                        const Text('Profile Picture', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF8D78F9))),
+                        const SizedBox(height: 8),
+
+                        GestureDetector(
+                          onTap: isVerificationPending ? null : _openImageOptions,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isVerificationPending ? Colors.grey.shade100 : const Color(0xFF8D78F9),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(color: isVerificationPending ? Colors.grey.shade300 : const Color(0xFF8D78F9)),
+                            ),
+                            child: Center(
+                              child: Text(
+                                isVerificationPending ? 'Image Change Disabled (Verification Pending)' : (_pickedImageFile != null ? 'Image Selected (Tap to Change)' : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? 'Change Image (Tap to Change)' : 'Click To Choose Image..')),
+                                style: TextStyle(fontSize: 14, color: isVerificationPending ? Colors.grey.shade500 : Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+                        const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        _buildTextField(controller: _fullNameController, hint: 'Full Name', enabled: !isVerificationPending),
+
+                        const SizedBox(height: 12),
+                        const Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        _buildTextField(controller: _emailController, hint: 'Email', keyboardType: TextInputType.emailAddress, enabled: !isVerificationPending),
+
+                        const SizedBox(height: 12),
+                        const Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        _buildTextField(controller: _nicController, hint: 'NIC', enabled: !isVerificationPending),
+
+                        const SizedBox(height: 12),
+                        const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        _buildTextField(controller: _mobileController, hint: 'Mobile Number', keyboardType: TextInputType.phone, enabled: !isVerificationPending),
+
+                        const SizedBox(height: 24),
+                        Center(
+                          child: SizedBox(
+                            width: 140,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                                backgroundColor: const Color(0xFF8D78F9),
+                                elevation: 4,
+                                shadowColor: const Color(0xFF8D78F9).withOpacity(0.3),
+                              ),
+                              onPressed: disableFieldsAndButton ? null : _saveProfile,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: _saving
+                                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                      : const Text('Update', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6.0),
+                          child: Text(
+                              'Account CreatedAt : ${_formatCreatedAt()}',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkText)),
+                        ),
+
+                        const SizedBox(height: 30),
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Text('Error: $_error', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10.0),
+                            child: Text('Developed By Malitha Tishamal', style: TextStyle(color: AppColors.darkText.withOpacity(0.6), fontSize: 12)),
+                          ),
+                        ),
+                      ],
                     ),
-            ),
-            if (_isUpdating)
-              const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-            
-            // Camera icon overlay
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryPurple,
-                  shape: BoxShape.circle,
-                  border: Border.fromBorderSide(BorderSide(color: Colors.white, width: 2)),
-                ),
-                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Body Section (Input Fields and Update Button)
-  Widget _buildBody() {
-    final createdAt = _userProfile!.createdAt;
-    final formattedDate = createdAt != null ? DateFormat('yyyy-MM-dd HH:mm').format(createdAt) : 'N/A';
-
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Manage Profile Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText)),
-          const Divider(color: AppColors.primaryPurple),
-
-          // We integrate the image picker into the avatar now, so we remove the tile here.
-          
-          _buildInputField('Full Name', _fullNameController, icon: Icons.person_outline),
-          _buildInputField('Email', _emailController, icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress, isReadOnly: true),
-          _buildInputField('NIC (National Identity Card)', _nicController, icon: Icons.credit_card_outlined),
-          _buildInputField('Mobile Number', _mobileNumberController, icon: Icons.phone_outlined, keyboardType: TextInputType.phone, maxLength: 10,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
           ),
 
-          const SizedBox(height: 40),
-
-          Center(
-            child: SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: _isUpdating ? null : _updateProfileData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryPurple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 8,
-                  shadowColor: AppColors.shadowColor,
-                ),
-                child: _isUpdating
-                    ? const SizedBox(width: 25, height: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                    : const Text('UPDATE PROFILE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 30),
-
-          Center(
-            child: Text(
-              'Account Created: $formattedDate (User ID: ${_userId ?? 'N/A'})',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.darkText.withOpacity(0.6), fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Generic Input Field
-  Widget _buildInputField(
-    String label,
-    TextEditingController controller, {
-    TextInputType keyboardType = TextInputType.text,
-    IconData? icon,
-    int? maxLength,
-    bool isReadOnly = false,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.darkText)),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controller,
-            keyboardType: keyboardType,
-            maxLength: maxLength,
-            readOnly: isReadOnly,
-            inputFormatters: inputFormatters,
-            style: TextStyle(color: isReadOnly ? AppColors.darkText.withOpacity(0.6) : AppColors.darkText, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              counterText: "", // Hide the default maxLength counter
-              prefixIcon: icon != null ? Icon(icon, color: AppColors.primaryPurple.withOpacity(0.7)) : null,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-              fillColor: isReadOnly ? Colors.grey.shade100 : Colors.white,
-              filled: true,
-              hintText: 'Enter $label',
-              hintStyle: TextStyle(color: AppColors.darkText.withOpacity(0.4)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.inputBorder, width: 1),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.inputBorder, width: 1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.error, width: 1),
-              ),
-            ),
-          ),
+          // Popups
+          if (_showEmailChangePopup) _buildEmailChangePopup(),
+          if (_showVerificationSuccessPopup) _buildVerificationSuccessPopup(),
         ],
       ),
     );

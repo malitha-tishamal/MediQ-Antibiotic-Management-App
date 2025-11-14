@@ -1,11 +1,22 @@
-// lib/admin_dashboard.dart (Final Code - Exact Visual Match)
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'main.dart'; // Assumes AppColors is defined here (e.g., in lib/main.dart)
 import 'login_page.dart'; // For logout navigation
 import 'admin_drawer.dart'; // Import the reusable drawer widget
+import 'admin_profile_screen.dart'; // <--- NEW: Import the Admin Profile Screen
 
+// --- Placeholder for AppColors (assuming it's in main.dart or a utility file) ---
+// Since the full code wasn't provided, I'm defining the necessary colors here
+// so this file can run independently.
+class AppColors {
+  static const Color primaryPurple = Color(0xFF9F7AEA); 
+  static const Color lightBackground = Color(0xFFF3F0FF); // Matches profile screen background
+  static const Color darkText = Color(0xFF333333);
+  static const Color adminsCountColor = Color(0xFFE53935); // Red
+  static const Color pharmacistCountColor = Color(0xFF43A047); // Green
+  static const Color totalFoundColor = Color(0xFF1E88E5); // Blue
+  static const Color releasesCountColor = Color(0xFFE53935); // Red
+  static const Color returnsCountColor = Color(0xFF43A047); // Green
+}
 
 class AdminDashboard extends StatefulWidget {
   final String userName;
@@ -54,12 +65,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  /// Handles navigation tap events from the drawer.
+  /// Handles navigation tap events from the drawer or tiles.
   void _onNavTap(String title) {
-    // In a real app, this would route to the appropriate screen.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title tapped')),
-    );
+    if (title == 'Profile Manage' || title == 'Profile') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const AdminProfileScreen()),
+      );
+    } else {
+      // In a real app, this would route to the appropriate screen.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$title tapped')),
+      );
+    }
   }
 
   // --- Build Method ---
@@ -69,16 +86,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final displayName = widget.userName.isNotEmpty ? widget.userName : 'Malitha';
     final displayRole = widget.userRole.isNotEmpty ? widget.userRole : 'Administrator';
 
+    // Placeholder for AdminDrawer (assuming it exists)
+    Widget drawerWidget = AdminDrawer(
+      userName: displayName,
+      userRole: displayRole,
+      onNavTap: _onNavTap,
+      onLogout: _handleLogout,
+    );
+    
+    // Fallback if AdminDrawer is not available
+    // if (drawerWidget == null) {
+    //   drawerWidget = Drawer(child: Center(child: Text('Drawer Placeholder')));
+    // }
+
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
       appBar: _buildAppBar(),
       // Using the reusable MediQDrawer component
-      drawer: AdminDrawer( 
-        userName: displayName,
-        userRole: displayRole,
-        onNavTap: _onNavTap,
-        onLogout: _handleLogout, // Pass the complete logout handler here
-      ),
+      drawer: drawerWidget,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
@@ -196,7 +221,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _tileUsageDetails(),
         _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst'),
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
-        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
+        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'), // Profile Manage Tile
         _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
         _buildLogoutTile(),
       ],
@@ -333,9 +358,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // UPDATED: Handles navigation to AdminProfileScreen specifically for 'Profile Manage'
   Widget _buildSmallTile({required IconData icon, required String title}) {
     return InkWell(
-      onTap: () => _onNavTap(title),
+      onTap: () => _onNavTap(title), // Calls the updated _onNavTap
       child: _smallCard(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

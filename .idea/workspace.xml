@@ -5,7 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a97fdbfe-b65f-4a0f-9a9c-04d68230e950" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/MediQ-Antibiotic-Management-App.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/MediQ-Antibiotic-Management-App.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mediq/lib/admin_dashboard.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mediq/lib/admin_dashboard.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mediq/lib/admin_profile_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mediq/lib/admin_profile_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mediq/lib/login_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mediq/lib/login_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mediq/lib/signup_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/mediq/lib/signup_page.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,6 +37,7 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
@@ -38,6 +45,7 @@
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
     "settings.editor.selected.configurable": "AndroidSdkUpdater",
     "show.migrate.to.gradle.popup": "false"
   }
