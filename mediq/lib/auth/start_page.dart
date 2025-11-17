@@ -1,7 +1,7 @@
 // start_page.dart
 
 import 'package:flutter/material.dart';
-import 'main.dart';
+import '../main.dart';
 import 'login_page.dart';
 
 class StartPage extends StatelessWidget {

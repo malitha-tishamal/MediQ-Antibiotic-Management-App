@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'admin_dashboard.dart';
-import 'pharmacist_dashboard.dart';
-import 'login_page.dart';
+import '../admin/admin_dashboard.dart';
+import '../pharmacist/pharmacist_dashboard.dart';
+import '../auth/login_page.dart';
 
 class DashboardWrapper extends StatelessWidget {
   const DashboardWrapper({super.key});

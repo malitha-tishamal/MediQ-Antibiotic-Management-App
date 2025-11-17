@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // FIX: Hiding AuthWrapper from main.dart to resolve the ambiguous import error.
 // We only need AppColors from main.dart here.
-import 'main.dart' hide AuthWrapper; 
+import '../main.dart' hide AuthWrapper; 
 import 'auth_wrapper.dart'; // The standard starting point after onboarding
 import 'start_page.dart'; // The onboarding page
 

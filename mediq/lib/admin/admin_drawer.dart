@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mediq/main.dart' as main_app; // Prefixed import to avoid AppColors conflict
+import '../core/main.dart' as main_app; // Prefixed import to avoid AppColors conflict
 import 'admin_profile_screen.dart'; // Profile screen
 
 class AdminDrawer extends StatelessWidget {

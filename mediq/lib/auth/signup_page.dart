@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'main.dart'; // Import AppColors
+import '../main.dart'; // Import AppColors
 
 // Define the available roles for the dropdown
 enum UserRole { Admin, Pharmacist }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'login_page.dart'; // For logout navigation
+import '../auth/login_page.dart'; // For logout navigation
 import 'admin_drawer.dart'; // Import the reusable drawer widget
 import 'admin_profile_screen.dart'; // <--- NEW: Import the Admin Profile Screen
 

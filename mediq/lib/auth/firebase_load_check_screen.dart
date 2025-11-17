@@ -1,7 +1,7 @@
 // firebase_load_check_screen.dart
 
 import 'package:flutter/material.dart';
-import 'main.dart'; // Import to access AppColors
+import '../main.dart'; // Import to access AppColors
 
 class FirebaseLoadCheckScreen extends StatelessWidget {
   const FirebaseLoadCheckScreen({super.key});

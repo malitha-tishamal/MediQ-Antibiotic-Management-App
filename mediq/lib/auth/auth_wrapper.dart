@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 // Note: These imports must exist in your project for AuthWrapper to function.
 import 'firebase_load_check_screen.dart'; // Your loading/splash screen
 import 'login_page.dart'; 
-import 'dashboard_wrapper.dart'; // Checks the user's role and redirects
+import '../core/dashboard_wrapper.dart'; // Checks the user's role and redirects
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});

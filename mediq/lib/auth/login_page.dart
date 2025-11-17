@@ -2,9 +2,9 @@ import 'dart:async'; // Added for Timer functionality
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'main.dart'; // Assumed to contain AppColors
+import '../main.dart'; // Assumed to contain AppColors
 import 'signup_page.dart';
-import 'dashboard_wrapper.dart';
+import '../core/dashboard_wrapper.dart';
 
 // NOTE: For a real app, persistent storage (like SharedPreferences) should be used
 // for failedAttempts and lockoutEndTime to survive app restarts.

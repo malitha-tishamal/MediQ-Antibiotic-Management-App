@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // Assuming AppColors is defined in main.dart or a similar utility file
-import 'main.dart'; 
+import '../main.dart'; 
 
 class AdminDeveloperAboutScreen extends StatelessWidget {
   const AdminDeveloperAboutScreen({super.key});

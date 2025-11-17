@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // Import AppColors
+import '../main.dart'; // Import AppColors
 
 class PharmacistDrawer extends StatelessWidget {
   final String userName;
