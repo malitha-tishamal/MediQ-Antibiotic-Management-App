@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../main.dart';
-import 'login_page.dart';
+import 'user_agreement_page.dart'; // Import the UserAgreementPage
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
@@ -99,8 +99,8 @@ class StartPage extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              // Add slight scale animation on tap
-              _navigateToLogin(context);
+              // Navigate to User Agreement Page instead of Login Page
+              _navigateToUserAgreement(context);
             },
             onTapDown: (_) {},
             borderRadius: BorderRadius.circular(15),
@@ -137,11 +137,11 @@ class StartPage extends StatelessWidget {
     );
   }
 
-  void _navigateToLogin(BuildContext context) {
+  void _navigateToUserAgreement(BuildContext context) {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const LoginPage(),
+        pageBuilder: (context, animation, secondaryAnimation) => const UserAgreementPage(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           const begin = Offset(1.0, 0.0);
           const end = Offset.zero;

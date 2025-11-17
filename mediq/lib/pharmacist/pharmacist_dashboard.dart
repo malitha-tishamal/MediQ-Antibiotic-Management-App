@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../core/main.dart'; // Assumes AppColors is defined here
+import '../main.dart'; // Assumes AppColors is defined here
 import '../auth/login_page.dart'; // For logout navigation
-import 'pharmacist_drawer.dart'; // Import the reusable drawer widget (The class name is PharmacistDrawer)
+import '../core/dashboard_screen.dart'; // Import the reusable drawer widget (The class name is PharmacistDrawer)
 
 class PharmacistDashboard extends StatefulWidget {
   final String userName;
