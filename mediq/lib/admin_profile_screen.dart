@@ -24,6 +24,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
   final _storage = FirebaseStorage.instance;
+  final _imagePicker = ImagePicker();
 
   // --- Controllers for Form Fields ---
   final TextEditingController _fullNameController = TextEditingController();
@@ -39,52 +40,21 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   DateTime? _createdAt;
   String _role = '';
   
-  // Email change state
+  // Auth state management
   User? _currentUser;
   late StreamSubscription<User?> _authStateSubscription;
   bool _showEmailChangePopup = false;
   bool _showVerificationSuccessPopup = false;
 
-  // Local picked image file
+  // Image handling
   File? _pickedImageFile;
+  bool _uploadingImage = false;
+  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
     super.initState();
-    
-    _authStateSubscription = _auth.authStateChanges().listen((user) {
-      if (user != null) {
-        user.reload().then((_) {
-          if (mounted) {
-            final reloadedUser = _auth.currentUser;
-            
-            // Check if verification just completed
-            if (reloadedUser != null && reloadedUser.emailVerified && _currentUser?.emailVerified == false) {
-              // Show success popup
-              setState(() {
-                _showVerificationSuccessPopup = true;
-              });
-              
-              // Auto hide success popup after 4 seconds
-              Future.delayed(const Duration(seconds: 4), () {
-                if (mounted) {
-                  setState(() {
-                    _showVerificationSuccessPopup = false;
-                  });
-                }
-              });
-              
-              _loadUserProfile();
-            }
-
-            setState(() {
-              _currentUser = reloadedUser;
-            });
-          }
-        });
-      }
-    });
-
+    _initializeAuthListener();
     _loadUserProfile();
   }
 
@@ -98,7 +68,48 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     super.dispose();
   }
 
-  // --- Data Loading and Initialization ---
+  // --- Initialization Methods ---
+  void _initializeAuthListener() {
+    _authStateSubscription = _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        user.reload().then((_) {
+          if (!mounted) return;
+          
+          final reloadedUser = _auth.currentUser;
+          _handleAuthStateChange(reloadedUser);
+        });
+      }
+    });
+  }
+
+  void _handleAuthStateChange(User? reloadedUser) {
+    // Check if verification just completed
+    final justVerified = reloadedUser != null && 
+                        reloadedUser.emailVerified && 
+                        _currentUser?.emailVerified == false;
+    
+    setState(() {
+      _currentUser = reloadedUser;
+    });
+
+    if (justVerified) {
+      setState(() {
+        _showVerificationSuccessPopup = true;
+      });
+      
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            _showVerificationSuccessPopup = false;
+          });
+        }
+      });
+      
+      _loadUserProfile();
+    }
+  }
+
+  // --- Data Loading Methods ---
   Future<void> _loadUserProfile() async {
     setState(() {
       _loading = true;
@@ -107,10 +118,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
     final user = _auth.currentUser;
     if (user == null) {
-      setState(() {
-        _error = 'No authenticated user found.';
-        _loading = false;
-      });
+      _setError('No authenticated user found.');
       return;
     }
 
@@ -119,31 +127,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        setState(() {
-          _error = 'User profile not found in Firestore.';
-          _loading = false;
-        });
+        _setError('User profile not found in Firestore.');
         return;
       }
 
-      final data = doc.data()!;
-      _fullNameController.text = (data['fullName'] ?? '') as String;
-      _emailController.text = (user.email ?? data['email'] ?? '') as String;
-      _nicController.text = (data['nic'] ?? '') as String;
-      _mobileController.text = (data['mobileNumber'] ?? '') as String;
-      _profileImageUrl = (data['profileImage'] ?? '') as String?;
-      _role = (data['role'] ?? '') as String;
-
-      final ts = data['createdAt'];
-      if (ts is Timestamp) {
-        _createdAt = ts.toDate();
-      } else if (ts is DateTime) {
-        _createdAt = ts;
-      } else {
-        _createdAt = null;
-      }
+      await _updateLocalStateFromDocument(doc);
     } catch (e) {
-      _error = 'Failed to load profile: ${e.toString()}';
+      _setError('Failed to load profile: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
@@ -153,42 +143,83 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
-  // --- Image Handling ---
+  void _setError(String error) {
+    if (mounted) {
+      setState(() {
+        _error = error;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _updateLocalStateFromDocument(DocumentSnapshot doc) async {
+    final data = doc.data()! as Map<String, dynamic>;
+    
+    _fullNameController.text = (data['fullName'] ?? '') as String;
+    _emailController.text = (_currentUser?.email ?? data['email'] ?? '') as String;
+    _nicController.text = (data['nic'] ?? '') as String;
+    _mobileController.text = (data['mobileNumber'] ?? '') as String;
+    _profileImageUrl = (data['profileImage'] ?? '') as String?;
+    _role = (data['role'] ?? '') as String;
+
+    final ts = data['createdAt'];
+    if (ts is Timestamp) {
+      _createdAt = ts.toDate();
+    } else if (ts is DateTime) {
+      _createdAt = ts;
+    } else {
+      _createdAt = null;
+    }
+
+    // Initialize change tracking
+    _initializeChangeTracking();
+  }
+
+  void _initializeChangeTracking() {
+    _fullNameController.addListener(_onFieldChanged);
+    _emailController.addListener(_onFieldChanged);
+    _nicController.addListener(_onFieldChanged);
+    _mobileController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    if (!_hasUnsavedChanges) {
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  // --- Image Handling Methods ---
   void _openImageOptions() {
+    if (_isVerificationPending) return;
+
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
         return SafeArea(
           child: Wrap(
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera, color: Color(0xFF8D78F9)),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
+              _buildImageOptionTile(
+                icon: Icons.photo_camera,
+                title: 'Take Photo',
+                onTap: () => _pickImage(ImageSource.camera),
               ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFF8D78F9)),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
+              _buildImageOptionTile(
+                icon: Icons.photo_library,
+                title: 'Choose from Gallery',
+                onTap: () => _pickImage(ImageSource.gallery),
               ),
-              if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Current Photo', style: TextStyle(color: Colors.red)),
-                  onTap: () async {
-                    Navigator.of(ctx).pop();
-                    await _removeProfileImage();
-                  },
+              if (_hasExistingImage)
+                _buildImageOptionTile(
+                  icon: Icons.delete_outline,
+                  title: 'Remove Current Photo',
+                  isDestructive: true,
+                  onTap: _confirmRemoveImage,
                 ),
-              ListTile(
-                leading: const Icon(Icons.close, color: Color(0xFF8D78F9)),
-                title: const Text('Cancel'),
+              _buildImageOptionTile(
+                icon: Icons.close,
+                title: 'Cancel',
                 onTap: () => Navigator.of(ctx).pop(),
               ),
             ],
@@ -198,10 +229,25 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
+  Widget _buildImageOptionTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: isDestructive ? Colors.red : const Color(0xFF8D78F9)),
+      title: Text(title, style: TextStyle(color: isDestructive ? Colors.red : null)),
+      onTap: () {
+        Navigator.of(context).pop();
+        onTap();
+      },
+    );
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
+      final picked = await _imagePicker.pickImage(
         source: source,
         maxWidth: 800,
         maxHeight: 800,
@@ -211,24 +257,36 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
       setState(() {
         _pickedImageFile = File(picked.path);
+        _hasUnsavedChanges = true;
       });
+
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image pick failed: ${e.toString()}')),
-      );
+      _showSnackBar('Image pick failed: ${e.toString()}');
     }
   }
 
-  Future<String?> _uploadProfileImage(String uid, File file) async {
-    try {
-      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
-      final uploadTask = ref.putFile(file);
-      final snapshot = await uploadTask;
-      final url = await snapshot.ref.getDownloadURL();
-      return url;
-    } catch (e) {
-      debugPrint('Upload error: $e');
-      return null;
+  Future<void> _confirmRemoveImage() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Profile Photo'),
+        content: const Text('Are you sure you want to remove your profile photo?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _removeProfileImage();
     }
   }
 
@@ -237,30 +295,102 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     if (user == null) return;
 
     setState(() {
-      _profileImageUrl = null;
-      _pickedImageFile = null;
+      _uploadingImage = true;
     });
 
     try {
+      // Delete from Storage
       final ref = _storage.ref().child('profile_images').child('${user.uid}.jpg');
       await ref.delete().catchError((e) {
+        // Ignore "object-not-found" errors
         if (e is! FirebaseException || e.code != 'object-not-found') {
           debugPrint('Storage deletion error: $e');
         }
       });
 
+      // Remove from Firestore
       await _firestore.collection('users').doc(user.uid).update({
         'profileImage': FieldValue.delete(),
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo removed')),
-      );
+      // Update local state
+      setState(() {
+        _profileImageUrl = null;
+        _pickedImageFile = null;
+        _uploadingImage = false;
+        _hasUnsavedChanges = true;
+      });
+
+      _showSnackBar('Profile photo removed');
     } catch (e) {
-      await _loadUserProfile();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to remove photo: ${e.toString()}')),
+      setState(() {
+        _uploadingImage = false;
+      });
+      _showSnackBar('Failed to remove photo: ${e.toString()}');
+    }
+  }
+
+  Future<String?> _uploadProfileImage(String uid, File file) async {
+    try {
+      debugPrint('Starting image upload for user: $uid');
+      debugPrint('File path: ${file.path}');
+      debugPrint('File exists: ${await file.exists()}');
+
+      // Check if file exists and is readable
+      if (!await file.exists()) {
+        debugPrint('File does not exist at path: ${file.path}');
+        return null;
+      }
+
+      final fileSize = await file.length();
+      debugPrint('File size: $fileSize bytes');
+
+      if (fileSize == 0) {
+        debugPrint('File is empty');
+        return null;
+      }
+
+      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
+      
+      // Add metadata for better handling
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uploadedBy': uid,
+          'uploadedAt': DateTime.now().toIso8601String(),
+        },
       );
+
+      debugPrint('Starting upload to Firebase Storage...');
+      final uploadTask = ref.putFile(file, metadata);
+      
+      // Monitor upload progress
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        debugPrint('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      });
+
+      // Wait for upload to complete
+      final snapshot = await uploadTask.whenComplete(() {});
+      debugPrint('Upload completed. State: ${snapshot.state}');
+
+      if (snapshot.state == TaskState.success) {
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+        debugPrint('Download URL obtained: $downloadUrl');
+        return downloadUrl;
+      } else {
+        debugPrint('Upload failed with state: ${snapshot.state}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Upload error: $e');
+      debugPrint('Error type: ${e.runtimeType}');
+      
+      if (e is FirebaseException) {
+        debugPrint('Firebase error code: ${e.code}');
+        debugPrint('Firebase error message: ${e.message}');
+      }
+      
+      return null;
     }
   }
 
@@ -268,9 +398,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Future<void> _saveProfile() async {
     final user = _auth.currentUser;
     if (user == null) {
-      setState(() {
-        _error = 'No authenticated user found.';
-      });
+      _setError('No authenticated user found.');
       return;
     }
 
@@ -280,22 +408,30 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final mobile = _mobileController.text.trim();
 
     if (fullName.isEmpty || newEmail.isEmpty) {
-      setState(() {
-        _error = 'Full name and email are required.';
-      });
+      _setError('Full name and email are required.');
       return;
     }
 
     setState(() {
       _saving = true;
+      _uploadingImage = true;
       _error = null;
     });
 
     try {
+      // Upload image if new one is picked
       String? uploadedUrl = _profileImageUrl;
       if (_pickedImageFile != null) {
+        debugPrint('New image detected, starting upload process...');
         final url = await _uploadProfileImage(user.uid, _pickedImageFile!);
-        if (url != null) uploadedUrl = url;
+        if (url != null) {
+          uploadedUrl = url;
+          debugPrint('Image upload successful, URL: $uploadedUrl');
+        } else {
+          debugPrint('Image upload failed, keeping existing image');
+          _showSnackBar('Image upload failed. Please try again.', duration: const Duration(seconds: 4));
+          // Continue with existing image URL
+        }
       }
 
       final updateData = <String, dynamic>{
@@ -311,61 +447,75 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         updateData['profileImage'] = FieldValue.delete();
       }
 
+      debugPrint('Updating Firestore with data: $updateData');
       await _firestore.collection('users').doc(user.uid).update(updateData);
+      debugPrint('Firestore update successful');
 
-      // Show email change popup if email is changed
+      // Handle email change if needed
       if (newEmail != user.email) {
-        try {
-          await user.verifyBeforeUpdateEmail(newEmail);
-          
-          // Show email change popup
-          setState(() {
-            _showEmailChangePopup = true;
-          });
-          
-          // Auto hide popup after 6 seconds
-          Future.delayed(const Duration(seconds: 6), () {
-            if (mounted) {
-              setState(() {
-                _showEmailChangePopup = false;
-              });
-            }
-          });
-
-        } on FirebaseAuthException catch (e) {
-          debugPrint('Auth email update failed: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Profile updated but email change failed: ${e.code}'),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
+        await _handleEmailChange(user, newEmail);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
+        _showSnackBar('Profile updated successfully');
       }
 
       await _loadUserProfile();
       setState(() {
         _pickedImageFile = null;
+        _hasUnsavedChanges = false;
       });
 
     } catch (e) {
-      setState(() {
-        _error = 'Failed to save profile: ${e.toString()}';
-      });
+      debugPrint('Save profile error: $e');
+      _setError('Failed to save profile: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
           _saving = false;
+          _uploadingImage = false;
         });
       }
     }
   }
 
-  // --- Popup Widgets ---
+  Future<void> _handleEmailChange(User user, String newEmail) async {
+    try {
+      await user.verifyBeforeUpdateEmail(newEmail);
+      
+      setState(() {
+        _showEmailChangePopup = true;
+      });
+      
+      Future.delayed(const Duration(seconds: 6), () {
+        if (mounted) {
+          setState(() {
+            _showEmailChangePopup = false;
+          });
+        }
+      });
+
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Auth email update failed: $e');
+      _showSnackBar(
+        'Profile updated but email change failed: ${e.code}',
+        duration: const Duration(seconds: 4),
+      );
+    }
+  }
+
+  // --- Email Verification Methods ---
+  Future<void> _resendVerificationEmail() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await user.sendEmailVerification();
+      _showSnackBar('Verification email sent to ${user.email}');
+    } catch (e) {
+      _showSnackBar('Failed to send verification email: ${e.toString()}');
+    }
+  }
+
+  // --- UI Helper Methods ---
   Widget _buildEmailChangePopup() {
     if (!_showEmailChangePopup) return const SizedBox.shrink();
 
@@ -444,7 +594,65 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  // --- Helper: Styled Text Field Widget ---
+  Widget _buildVerificationStatusWidget(bool isPending) {
+    if (!isPending) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEEEE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Action Disabled: Email Verification Pending',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Please check your inbox for the verification link.',
+                      style: TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: _resendVerificationEmail,
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.red.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Resend Verification Email',
+                style: TextStyle(color: Colors.red.shade700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -463,52 +671,135 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         fillColor: enabled ? Colors.white : Colors.grey.shade100,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF8D78F9), width: 2)),
-        disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade200)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15), 
+          borderSide: BorderSide(color: Colors.grey.shade300)
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15), 
+          borderSide: const BorderSide(color: Color(0xFF8D78F9), width: 2)
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15), 
+          borderSide: BorderSide(color: Colors.grey.shade200)
+        ),
       ),
     );
   }
-  
-  // --- Helper: Verification Status Widget ---
-  Widget _buildVerificationStatusWidget(bool isPending) {
-    if (!isPending) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFEEEE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade300),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Action Disabled: Email Verification Pending',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+  Widget _buildProfileImage() {
+    return Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        // Profile Image with loading state
+        _uploadingImage
+            ? Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  shape: BoxShape.circle,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Please check your inbox for the verification link. All profile editing actions are temporarily locked until the email is confirmed.',
-                  style: TextStyle(color: Colors.red, fontSize: 13),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8D78F9)),
+                  ),
+                ),
+              )
+            : CircleAvatar(
+                radius: 36,
+                backgroundColor: Colors.white,
+                backgroundImage: _getProfileImage(),
+                child: _getProfileImage() == null
+                    ? Icon(Icons.person, size: 40, color: Color(0xFF8D78F9))
+                    : null,
+              ),
+        
+        // Camera icon overlay (only show if not uploading and not pending verification)
+        if (!_uploadingImage && !_isVerificationPending)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
                 ),
               ],
             ),
+            padding: const EdgeInsets.all(6),
+            child: Icon(Icons.camera_alt, size: 16, color: Color(0xFF8D78F9)),
           ),
-        ],
+      ],
+    );
+  }
+
+  Widget _buildSaveButton(bool isDisabled) {
+    return SizedBox(
+      width: 140,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          backgroundColor: isDisabled ? Colors.grey.shade400 : const Color(0xFF8D78F9),
+          elevation: 4,
+          shadowColor: const Color(0xFF8D78F9).withOpacity(0.3),
+        ),
+        onPressed: isDisabled ? null : _saveProfile,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Center(
+            child: _saving
+                ? SizedBox(
+                    height: 18, 
+                    width: 18, 
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_hasUnsavedChanges) 
+                        Icon(Icons.save, size: 18, color: Colors.white),
+                      if (_hasUnsavedChanges) SizedBox(width: 6),
+                      Text(
+                        _hasUnsavedChanges ? 'Save' : 'Update',
+                        style: TextStyle(
+                          color: Colors.white, 
+                          fontSize: 16, 
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
       ),
     );
   }
-  
-  // --- Logout Function ---
+
+  // --- Helper Methods ---
+  ImageProvider? _getProfileImage() {
+    if (_pickedImageFile != null) {
+      return FileImage(_pickedImageFile!);
+    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return NetworkImage(_profileImageUrl!);
+    }
+    return null;
+  }
+
+  void _showSnackBar(String message, {Duration duration = const Duration(seconds: 3)}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _handleLogout() async {
     try {
       await _auth.signOut();
@@ -520,29 +811,26 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logout failed: ${e.toString()}')),
-        );
+        _showSnackBar('Logout failed: ${e.toString()}');
       }
     }
   }
 
-  // --- Helper: Format Account Creation Date ---
   String _formatCreatedAt() {
     if (_createdAt == null) return '-';
     return DateFormat('yyyy-MM-dd • hh:mm a').format(_createdAt!);
   }
 
+  // --- Computed Properties ---
+  bool get _isVerificationPending => _currentUser?.emailVerified == false && _currentUser != null;
+  bool get _hasExistingImage => _profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null;
+  bool get _disableFieldsAndButton => _isVerificationPending || _saving;
+  String get _displayName => _fullNameController.text.isNotEmpty 
+      ? _fullNameController.text 
+      : (_currentUser?.displayName ?? 'Administrator');
+
   @override
   Widget build(BuildContext context) {
-    final user = _auth.currentUser;
-    final displayName = _fullNameController.text.isNotEmpty
-        ? _fullNameController.text
-        : (user?.displayName ?? 'Administrator');
-
-    final bool isVerificationPending = _currentUser?.emailVerified == false && user != null;
-    final bool disableFieldsAndButton = isVerificationPending || _saving;
-
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
       appBar: AppBar(
@@ -550,24 +838,49 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         elevation: 0,
         leading: Builder(builder: (context) {
           return IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.darkText, size: 28),
+            icon: Icon(Icons.menu, color: Color(0xFF8D78F9), size: 28),
             onPressed: () => Scaffold.of(context).openDrawer(),
           );
         }),
         actions: [
+          if (_hasUnsavedChanges)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info, size: 16, color: Colors.orange.shade800),
+                    SizedBox(width: 4),
+                    Text(
+                      'Unsaved changes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade800,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.darkText),
+            icon: Icon(Icons.logout, color: Color(0xFF8D78F9)),
             onPressed: _handleLogout,
             tooltip: 'Logout',
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
         ],
       ),
       drawer: AdminDrawer(
-        userName: displayName,
+        userName: _displayName,
         userRole: _role.isNotEmpty ? _role : 'Administrator',
         onNavTap: (title) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$title tapped')));
+          _showSnackBar('$title tapped');
         },
         onLogout: _handleLogout,
       ),
@@ -575,7 +888,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         children: [
           SafeArea(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF8D78F9)))
+                ? Center(child: CircularProgressIndicator(color: Color(0xFF8D78F9)))
                 : SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
                     child: Column(
@@ -601,146 +914,182 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                           ),
                           child: Row(
                             children: [
+                              // Profile Picture area
                               GestureDetector(
-                                onTap: isVerificationPending ? null : _openImageOptions,
-                                child: Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 36,
-                                      backgroundColor: Colors.white,
-                                      backgroundImage: _pickedImageFile != null
-                                          ? FileImage(_pickedImageFile!) as ImageProvider
-                                          : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
-                                              ? NetworkImage(_profileImageUrl!)
-                                              : null,
-                                      child: (_pickedImageFile == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
-                                          ? const Icon(Icons.person, size: 40, color: Color(0xFF8D78F9))
-                                          : null,
-                                    ),
-                                    if (!isVerificationPending)
-                                      Container(
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        padding: const EdgeInsets.all(4),
-                                        child: const Icon(Icons.camera_alt, size: 18, color: Color(0xFF8D78F9)),
-                                      )
-                                  ],
-                                ),
+                                onTap: _isVerificationPending ? null : _openImageOptions,
+                                child: _buildProfileImage(),
                               ),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Welcome Back, ${displayName.isNotEmpty ? displayName : 'Admin'}',
-                                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText)),
-                                    const SizedBox(height: 4),
-                                    Text(_role.isNotEmpty ? _role : 'Administrator', style: TextStyle(fontSize: 13.5, color: AppColors.darkText.withOpacity(0.7))),
+                                    Text(
+                                      'Welcome Back, $_displayName',
+                                      style: TextStyle(
+                                        fontSize: 18, 
+                                        fontWeight: FontWeight.bold, 
+                                        color: AppColors.darkText
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      _role.isNotEmpty ? _role : 'Administrator', 
+                                      style: TextStyle(
+                                        fontSize: 13.5, 
+                                        color: AppColors.darkText.withOpacity(0.7)
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
+                              Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
                             ],
                           ),
                         ),
 
-                        const SizedBox(height: 18),
-                        _buildVerificationStatusWidget(isVerificationPending), 
+                        SizedBox(height: 18),
+                        _buildVerificationStatusWidget(_isVerificationPending), 
                         
                         // --- Profile Details Section ---
-                        const Text('Manage Profile Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 18),
+                        Text(
+                          'Manage Profile Details', 
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
+                        ),
+                        SizedBox(height: 18),
 
-                        const Text('Profile Picture', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF8D78F9))),
-                        const SizedBox(height: 8),
+                        Text(
+                          'Profile Picture', 
+                          style: TextStyle(
+                            fontSize: 15, 
+                            fontWeight: FontWeight.w600, 
+                            color: Color(0xFF8D78F9)
+                          ),
+                        ),
+                        SizedBox(height: 8),
 
                         GestureDetector(
-                          onTap: isVerificationPending ? null : _openImageOptions,
+                          onTap: _isVerificationPending ? null : _openImageOptions,
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isVerificationPending ? Colors.grey.shade100 : const Color(0xFF8D78F9),
+                              color: _isVerificationPending ? Colors.grey.shade100 : Color(0xFF8D78F9),
                               borderRadius: BorderRadius.circular(15),
-                              border: Border.all(color: isVerificationPending ? Colors.grey.shade300 : const Color(0xFF8D78F9)),
+                              border: Border.all(
+                                color: _isVerificationPending ? Colors.grey.shade300 : Color(0xFF8D78F9)
+                              ),
                             ),
                             child: Center(
-                              child: Text(
-                                isVerificationPending ? 'Image Change Disabled (Verification Pending)' : (_pickedImageFile != null ? 'Image Selected (Tap to Change)' : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? 'Change Image (Tap to Change)' : 'Click To Choose Image..')),
-                                style: TextStyle(fontSize: 14, color: isVerificationPending ? Colors.grey.shade500 : Colors.white),
-                              ),
+                              child: _uploadingImage
+                                  ? Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Uploading Image...', style: TextStyle(color: Colors.white, fontSize: 14)),
+                                      ],
+                                    )
+                                  : Text(
+                                      _isVerificationPending 
+                                          ? 'Image Change Disabled (Verification Pending)' 
+                                          : (_pickedImageFile != null 
+                                              ? 'Image Selected (Tap to Change)' 
+                                              : (_hasExistingImage
+                                                  ? 'Change Image (Tap to Change)' 
+                                                  : 'Click To Choose Image..')),
+                                      style: TextStyle(
+                                        fontSize: 14, 
+                                        color: _isVerificationPending ? Colors.grey.shade500 : Colors.white
+                                      ),
+                                    ),
                             ),
                           ),
                         ),
 
-                        const SizedBox(height: 18),
-                        const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        const SizedBox(height: 8),
-                        _buildTextField(controller: _fullNameController, hint: 'Full Name', enabled: !isVerificationPending),
+                        SizedBox(height: 18),
+                        Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _fullNameController, 
+                          hint: 'Full Name', 
+                          enabled: !_isVerificationPending
+                        ),
 
-                        const SizedBox(height: 12),
-                        const Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        const SizedBox(height: 8),
-                        _buildTextField(controller: _emailController, hint: 'Email', keyboardType: TextInputType.emailAddress, enabled: !isVerificationPending),
+                        SizedBox(height: 12),
+                        Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _emailController, 
+                          hint: 'Email', 
+                          keyboardType: TextInputType.emailAddress, 
+                          enabled: !_isVerificationPending
+                        ),
 
-                        const SizedBox(height: 12),
-                        const Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        const SizedBox(height: 8),
-                        _buildTextField(controller: _nicController, hint: 'NIC', enabled: !isVerificationPending),
+                        SizedBox(height: 12),
+                        Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _nicController, 
+                          hint: 'NIC', 
+                          enabled: !_isVerificationPending
+                        ),
 
-                        const SizedBox(height: 12),
-                        const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        const SizedBox(height: 8),
-                        _buildTextField(controller: _mobileController, hint: 'Mobile Number', keyboardType: TextInputType.phone, enabled: !isVerificationPending),
+                        SizedBox(height: 12),
+                        Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        SizedBox(height: 8),
+                        _buildTextField(
+                          controller: _mobileController, 
+                          hint: 'Mobile Number', 
+                          keyboardType: TextInputType.phone, 
+                          enabled: !_isVerificationPending
+                        ),
 
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24),
                         Center(
-                          child: SizedBox(
-                            width: 140,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                                backgroundColor: const Color(0xFF8D78F9),
-                                elevation: 4,
-                                shadowColor: const Color(0xFF8D78F9).withOpacity(0.3),
-                              ),
-                              onPressed: disableFieldsAndButton ? null : _saveProfile,
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                child: Center(
-                                  child: _saving
-                                      ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                      : const Text('Update', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ),
-                          ),
+                          child: _buildSaveButton(_disableFieldsAndButton),
                         ),
 
-                        const SizedBox(height: 18),
+                        SizedBox(height: 18),
                         Padding(
                           padding: const EdgeInsets.only(left: 6.0),
                           child: Text(
-                              'Account CreatedAt : ${_formatCreatedAt()}',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.darkText)),
+                            'Account Created: ${_formatCreatedAt()}',
+                            style: TextStyle(
+                              fontSize: 13, 
+                              fontWeight: FontWeight.w600, 
+                              color: AppColors.darkText
+                            ),
+                          ),
                         ),
 
-                        const SizedBox(height: 30),
+                        SizedBox(height: 30),
                         if (_error != null)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text('Error: $_error', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                            child: Text(
+                              'Error: $_error', 
+                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+                            ),
                           ),
 
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 10.0),
-                            child: Text('Developed By Malitha Tishamal', style: TextStyle(color: AppColors.darkText.withOpacity(0.6), fontSize: 12)),
+                            child: Text(
+                              'Developed By Malitha Tishamal', 
+                              style: TextStyle(
+                                color: AppColors.darkText.withOpacity(0.6), 
+                                fontSize: 12
+                              ),
+                            ),
                           ),
                         ),
                       ],

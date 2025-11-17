@@ -1,287 +1,142 @@
-// lib/admin_profile_screen.dart
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // for formatting createdAt
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
+import 'main.dart'; // Import AppColors
 
-import 'main.dart'; // AppColors
-import 'admin_drawer.dart'; // your reusable drawer
-import 'login_page.dart'; // for fallback logout
+// Define the available roles for the dropdown
+enum UserRole { Admin, Pharmacist }
 
-class AdminProfileScreen extends StatefulWidget {
-  const AdminProfileScreen({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<AdminProfileScreen> createState() => _AdminProfileScreenState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _AdminProfileScreenState extends State<AdminProfileScreen> {
+class _SignUpPageState extends State<SignUpPage> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
-  final _storage = FirebaseStorage.instance;
+  final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nicController = TextEditingController();
-  final TextEditingController _mobileController = TextEditingController();
+  // State variables for all required fields
+  String _email = '';
+  String _password = '';
+  String _confirmPassword = '';
+  String _nic = '';
+  String _fullName = '';
+  String _mobileNumber = '';
+  UserRole _selectedRole = UserRole.Pharmacist; // Default role
+  bool _isLoading = false;
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+  String? _errorMessage;
 
-  bool _loading = true;
-  bool _saving = false;
-  String? _error;
-  String? _profileImageUrl;
-  DateTime? _createdAt;
-  String _role = '';
+  // Function to handle the sign-up process
+  void _handleSignUp() async {
+    FocusManager.instance.primaryFocus?.unfocus();
 
-  // Local picked image file
-  File? _pickedImageFile;
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-  }
-
-  @override
-  void dispose() {
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _nicController.dispose();
-    _mobileController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadUserProfile() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    final user = _auth.currentUser;
-    if (user == null) {
+    if (_password != _confirmPassword) {
       setState(() {
-        _error = 'No authenticated user found.';
-        _loading = false;
+        _errorMessage = 'Passwords do not match.';
       });
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (!doc.exists) {
-        setState(() {
-          _error = 'User profile not found in Firestore.';
-          _loading = false;
+      // 1. Create User with Email and Password
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: _email,
+        password: _password,
+      );
+
+      // 2. Save User Profile Data and Role to Firestore
+      // IMPORTANT: Added 'status' field and set it to 'Pending'.
+      // Added 'profileImage' field with empty string as default value
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+        'email': _email,
+        'role': _selectedRole.name,
+        'fullName': _fullName,
+        'nic': _nic,
+        'mobileNumber': _mobileNumber,
+        'status': 'Pending', // <-- New default status
+        'profileImage': '', // <-- Add this line for profile image (empty by default)
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 3. Show Success Message and Navigate back to Login
+      if (mounted) {
+        _showSuccessDialog();
+
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            Navigator.of(context).pop(); // Close dialog
+            Navigator.pop(context); // Go back to LoginPage
+          }
         });
-        return;
       }
-
-      final data = doc.data()!;
-      _fullNameController.text = (data['fullName'] ?? '') as String;
-      _emailController.text = (data['email'] ?? user.email ?? '') as String;
-      _nicController.text = (data['nic'] ?? '') as String;
-      _mobileController.text = (data['mobileNumber'] ?? '') as String;
-      _profileImageUrl = (data['profileImage'] ?? '') as String?;
-      _role = (data['role'] ?? '') as String;
-
-      final ts = data['createdAt'];
-      if (ts is Timestamp) {
-        _createdAt = ts.toDate();
-      } else if (ts is DateTime) {
-        _createdAt = ts;
+    } on FirebaseAuthException catch (e) {
+      String message;
+      if (e.code == 'weak-password') {
+        message = 'The password provided is too weak.';
+      } else if (e.code == 'email-already-in-use') {
+        message = 'The account already exists for that email.';
       } else {
-        _createdAt = null;
+        message = 'Registration Error: ${e.message}';
+      }
+      if (mounted) {
+        setState(() {
+          _errorMessage = message;
+        });
       }
     } catch (e) {
-      _error = 'Failed to load profile: ${e.toString()}';
+      if (mounted) {
+        setState(() {
+          _errorMessage =
+              'An unexpected error occurred during registration.';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
-          _loading = false;
+          _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
-
-      setState(() {
-        _pickedImageFile = File(picked.path);
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image pick failed: ${e.toString()}')),
-      );
-    }
-  }
-
-  Future<String?> _uploadProfileImage(String uid, File file) async {
-    try {
-      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
-      final uploadTask = ref.putFile(file);
-      final snapshot = await uploadTask;
-      final url = await snapshot.ref.getDownloadURL();
-      return url;
-    } catch (e) {
-      debugPrint('Upload error: $e');
-      return null;
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      setState(() {
-        _error = 'No authenticated user found.';
-      });
-      return;
-    }
-
-    final fullName = _fullNameController.text.trim();
-    final email = _emailController.text.trim();
-    final nic = _nicController.text.trim();
-    final mobile = _mobileController.text.trim();
-
-    if (fullName.isEmpty || email.isEmpty) {
-      setState(() {
-        _error = 'Full name and email are required.';
-      });
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-
-    try {
-      String? uploadedUrl = _profileImageUrl;
-      if (_pickedImageFile != null) {
-        final url = await _uploadProfileImage(user.uid, _pickedImageFile!);
-        if (url != null) uploadedUrl = url;
-      }
-
-      // Update Firestore document
-      final updateData = <String, dynamic>{
-        'fullName': fullName,
-        'email': email,
-        'nic': nic,
-        'mobileNumber': mobile,
-        // keep role/status/createdAt untouched
-      };
-
-      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-        updateData['profileImage'] = uploadedUrl;
-      }
-
-      await _firestore.collection('users').doc(user.uid).update(updateData);
-
-      // Also update FirebaseAuth email if changed
-      if (email != user.email) {
-        try {
-          await user.updateEmail(email);
-        } catch (e) {
-          // Updating user's Firebase Auth email may require re-authentication.
-          debugPrint('Auth email update failed: $e');
-          // Notify user but don't stop saving profile fields.
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Profile updated but email not changed (re-login may be required): ${e.toString()}',
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      }
-
-      // Reload profile to reflect saved data (and createdAt formatting)
-      await _loadUserProfile();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to save profile: ${e.toString()}';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _saving = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _handleLogout() async {
-    try {
-      await _auth.signOut();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logout failed: ${e.toString()}')),
-        );
-      }
-    }
-  }
-
-  void _openImageOptions() {
-    showModalBottomSheet(
+  // --- Success Dialog ---
+  void _showSuccessDialog() {
+    showDialog(
       context: context,
-      builder: (ctx) {
-        return SafeArea(
-          child: Wrap(
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-              if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline),
-                  title: const Text('Remove Current Photo'),
-                  onTap: () async {
-                    Navigator.of(ctx).pop();
-                    await _removeProfileImage();
-                  },
+              const Icon(Icons.check_circle_outline,
+                  color: Colors.green, size: 80),
+              const SizedBox(height: 20),
+              Text(
+                'Create Account\nSuccess',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText,
                 ),
-              ListTile(
-                leading: const Icon(Icons.close),
-                title: const Text('Cancel'),
-                onTap: () => Navigator.of(ctx).pop(),
               ),
             ],
           ),
@@ -290,263 +145,405 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  Future<void> _removeProfileImage() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    try {
-      // delete from storage if exists
-      final ref = _storage.ref().child('profile_images').child('${user.uid}.jpg');
-      await ref.delete().catchError((_) {}); // ignore if no file
-
-      // remove field from Firestore
-      await _firestore.collection('users').doc(user.uid).update({
-        'profileImage': FieldValue.delete(),
-      });
-
-      setState(() {
-        _profileImageUrl = null;
-        _pickedImageFile = null;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo removed')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to remove photo: ${e.toString()}')),
-      );
-    }
+  InputDecoration _inputDecoration(String hint, IconData prefixIcon,
+      {Widget? suffixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide:
+            const BorderSide(color: AppColors.inputBorder, width: 1.0),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide:
+            const BorderSide(color: AppColors.inputBorder, width: 1.0),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide:
+            const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.only(left: 15.0, right: 10.0),
+        child: Icon(prefixIcon, color: AppColors.inputBorder),
+      ),
+      suffixIcon: suffixIcon,
+      contentPadding:
+          const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+    );
   }
 
-  // small helper to format createdAt
-  String _formatCreatedAt() {
-    if (_createdAt == null) return '-';
-    return DateFormat('yyyy-MM-dd • hh:mm a').format(_createdAt!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = _auth.currentUser;
-    final displayName = _fullNameController.text.isNotEmpty
-        ? _fullNameController.text
-        : (user?.displayName ?? 'Administrator');
-
-    return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      appBar: AppBar(
-        backgroundColor: AppColors.lightBackground,
-        elevation: 0,
-        leading: Builder(builder: (context) {
-          return IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.darkText, size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          );
-        }),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.darkText),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
+  Widget _buildInputField({
+    required String label,
+    required String hint,
+    required IconData icon,
+    required TextInputType keyboardType,
+    required FormFieldSetter<String> onSaved,
+    required FormFieldValidator<String> validator,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.darkText,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(width: 6),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          keyboardType: keyboardType,
+          onSaved: onSaved,
+          validator: validator,
+          inputFormatters: inputFormatters,
+          decoration: _inputDecoration(hint, icon),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordInput({
+    required String label,
+    required String hint,
+    required FormFieldSetter<String> onSaved,
+    required FormFieldValidator<String> validator,
+    required bool isVisible,
+    required VoidCallback toggleVisibility,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.darkText,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          obscureText: !isVisible,
+          onSaved: onSaved,
+          validator: validator,
+          decoration: _inputDecoration(
+            hint,
+            Icons.lock_outline,
+            suffixIcon: IconButton(
+              icon: Icon(
+                isVisible ? Icons.visibility_off : Icons.visibility,
+                color: AppColors.primaryPurple,
+              ),
+              onPressed: toggleVisibility,
+            ),
+          ),
+          onChanged: (label == 'Enter Your Password')
+              ? (value) => _password = value
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGradientButton(
+      {required String text, required VoidCallback onPressed}) {
+    return Container(
+      width: double.infinity,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.buttonGradientStart,
+            AppColors.buttonGradientEnd
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.buttonGradientEnd.withOpacity(0.5),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
-      drawer: AdminDrawer(
-        userName: displayName,
-        userRole: _role.isNotEmpty ? _role : 'Administrator',
-        onNavTap: (title) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$title tapped')));
-        },
-        onLogout: _handleLogout,
-      ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header card (mirrors dashboard header)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryPurple.withOpacity(0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: _openImageOptions,
-                            child: Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                CircleAvatar(
-                                  radius: 36,
-                                  backgroundColor: Colors.white,
-                                  backgroundImage: _pickedImageFile != null
-                                      ? FileImage(_pickedImageFile!) as ImageProvider
-                                      : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty)
-                                          ? NetworkImage(_profileImageUrl!)
-                                          : null,
-                                  child: (_pickedImageFile == null && (_profileImageUrl == null || _profileImageUrl!.isEmpty))
-                                      ? const Icon(Icons.person, size: 40, color: AppColors.primaryPurple)
-                                      : null,
-                                ),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  padding: const EdgeInsets.all(4),
-                                  child: const Icon(Icons.camera_alt, size: 18, color: AppColors.primaryPurple),
-                                )
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Welcome Back, ${displayName.isNotEmpty ? displayName : 'Admin'}',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText)),
-                                const SizedBox(height: 4),
-                                Text(_role.isNotEmpty ? _role : 'Administrator', style: TextStyle(fontSize: 13.5, color: AppColors.darkText.withOpacity(0.7))),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
-                        ],
-                      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(15),
+          child: Center(
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
                     ),
-
-                    const SizedBox(height: 18),
-                    const Text('Manage  Profile Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 18),
-
-                    // Profile form
-                    const Text('Profile Picture', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.blue)),
-                    const SizedBox(height: 8),
-
-                    GestureDetector(
-                      onTap: _openImageOptions,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _pickedImageFile != null ? 'Image Selected' : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? 'Change Image' : 'Click To Choose Image..'),
-                            style: const TextStyle(fontSize: 14, color: Colors.black54),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-                    const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller: _fullNameController, hint: 'Full Name'),
-
-                    const SizedBox(height: 12),
-                    const Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller: _emailController, hint: 'Email', keyboardType: TextInputType.emailAddress),
-
-                    const SizedBox(height: 12),
-                    const Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller: _nicController, hint: 'NIC'),
-
-                    const SizedBox(height: 12),
-                    const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 8),
-                    _buildTextField(controller: _mobileController, hint: 'Mobile Number', keyboardType: TextInputType.phone),
-
-                    const SizedBox(height: 18),
-                    Center(
-                      child: SizedBox(
-                        width: 140,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                            backgroundColor: Colors.transparent,
-                            elevation: 0,
-                          ),
-                          onPressed: _saving ? null : _saveProfile,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(25),
-                              gradient: const LinearGradient(colors: [Color(0xffb388ff), Color(0xff7c4dff)]),
-                            ),
-                            child: Center(
-                              child: _saving
-                                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Text('Update', style: TextStyle(color: Colors.white, fontSize: 16)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 18),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6.0),
-                      child: Text('Account CreatedAt : ${_formatCreatedAt()}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    ),
-
-                    const SizedBox(height: 30),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(_error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                      ),
-
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: Text('Developed By Malitha Tishamal', style: TextStyle(color: AppColors.darkText.withOpacity(0.6), fontSize: 12)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, TextInputType keyboardType = TextInputType.text}) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2)),
+  Widget _buildRoleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Your Role',
+          style: TextStyle(
+            color: AppColors.darkText,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<UserRole>(
+          decoration: _inputDecoration('Select Your Role', Icons.group_outlined),
+          value: _selectedRole,
+          icon: const Icon(Icons.keyboard_arrow_down,
+              color: AppColors.primaryPurple),
+          style: const TextStyle(color: AppColors.darkText, fontSize: 16),
+          dropdownColor: Colors.white,
+          items: UserRole.values.map((UserRole role) {
+            return DropdownMenuItem<UserRole>(
+              value: role,
+              child: Text(role.name),
+            );
+          }).toList(),
+          onChanged: (UserRole? newValue) {
+            setState(() {
+              _selectedRole = newValue!;
+            });
+          },
+          validator: (value) {
+            if (value == null) return 'Role selection is required.';
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.lightBackground,
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  const SizedBox(height: 100),
+                  Image.asset(
+                    'assets/logo.png',
+                    height: 180,
+                  ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Register Your Account',
+                    style: TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Fill in the details to create a new user',
+                    style: TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  _buildRoleDropdown(),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    label: 'Enter Your NIC',
+                    hint: 'NIC Number (e.g., 901234567V or 202312345678)',
+                    icon: Icons.credit_card_outlined,
+                    keyboardType: TextInputType.text,
+                    onSaved: (value) => _nic = value!,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'NIC number is required.';
+                      }
+                      final nicRegex = RegExp(r'^(\d{9}[Vv]|\d{12})$');
+                      if (!nicRegex.hasMatch(value)) {
+                        return 'Enter a valid NIC (901234567V or 12 digits).';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    label: 'Enter Your Name',
+                    hint: 'Full Name',
+                    icon: Icons.person_outline,
+                    keyboardType: TextInputType.name,
+                    onSaved: (value) => _fullName = value!,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Full name is required.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    label: 'Enter Your Email',
+                    hint: 'example@email.com',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    onSaved: (value) => _email = value!,
+                    validator: (value) {
+                      if (value == null ||
+                          value.isEmpty ||
+                          !value.contains('@')) {
+                        return 'Enter a valid email.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInputField(
+                    label: 'Enter Your Mobile Number',
+                    hint: 'Mobile Number (10 digits)',
+                    icon: Icons.phone_android_outlined,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    onSaved: (value) => _mobileNumber = value!,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Mobile number is required.';
+                      }
+                      if (value.length != 10) {
+                        return 'Mobile number must be exactly 10 digits.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPasswordInput(
+                    label: 'Enter Your Password',
+                    hint: '********* (Min 6 characters)',
+                    onSaved: (value) => _password = value!,
+                    validator: (value) {
+                      if (value == null || value.length < 6) {
+                        return 'Password must be at least 6 characters.';
+                      }
+                      return null;
+                    },
+                    isVisible: _isPasswordVisible,
+                    toggleVisibility: () {
+                      setState(() => _isPasswordVisible = !_isPasswordVisible);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPasswordInput(
+                    label: 'Re-Enter Your Password',
+                    hint: '********* (Must match above)',
+                    onSaved: (value) => _confirmPassword = value!,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password.';
+                      }
+                      if (value != _password) {
+                        return 'Passwords do not match.';
+                      }
+                      return null;
+                    },
+                    isVisible: _isConfirmPasswordVisible,
+                    toggleVisibility: () {
+                      setState(() => _isConfirmPasswordVisible =
+                          !_isConfirmPasswordVisible);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20.0),
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _buildGradientButton(
+                    text: _isLoading ? 'Registering...' : 'Sign Up',
+                    onPressed: _isLoading ? () {} : _handleSignUp,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "Already Registered? ",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.primaryPurple,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.primaryPurple,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 80),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 20.0),
+                    child: Text(
+                      'Developed By Malitha Tishamal',
+                      style: TextStyle(
+                        color: AppColors.darkText,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -323,7 +323,7 @@ class _LoginPageState extends State<LoginPage> {
                       if (_isLoading || LoginThrottleManager.getLockoutMessage() != null) return;
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const AdminProfileScreen()),
+                        MaterialPageRoute(builder: (context) => const SignUpPage()),
 
                       );
                     },

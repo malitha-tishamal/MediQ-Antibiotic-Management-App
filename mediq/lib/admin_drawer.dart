@@ -16,6 +16,13 @@ class AdminDrawer extends StatelessWidget {
     required this.onLogout,
   });
 
+  // Method to get only the first part of the name
+  String get _firstName {
+    if (userName.isEmpty) return 'User';
+    // Split by space and take only the first part
+    return userName.split(' ').first;
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color textColor = main_app.AppColors.darkestText; // Fixed
@@ -81,7 +88,7 @@ class AdminDrawer extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Welcome $userName',
+                            'Welcome $_firstName', // Use _firstName instead of userName
                             style: TextStyle(
                               color: textColor,
                               fontSize: 17,
