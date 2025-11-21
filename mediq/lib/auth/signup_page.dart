@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -49,6 +51,38 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+  // UPDATED: Function to get default profile picture with correct asset paths
+  Future<String?> _getDefaultProfilePicture() async {
+    try {
+      String assetPath;
+      
+      if (_selectedRole == UserRole.Admin) {
+        assetPath = 'assets/admin-default.jpg';
+      } else {
+        assetPath = 'assets/pharmacist-default.jpg';
+      }
+
+      debugPrint('🖼️ Loading default profile picture from: $assetPath');
+
+      // Load asset as bytes
+      final ByteData data = await rootBundle.load(assetPath);
+      final Uint8List bytes = data.buffer.asUint8List();
+      
+      // Convert to base64
+      final String base64String = base64Encode(bytes);
+      
+      debugPrint('✅ Successfully loaded default profile picture for ${_selectedRole.name}');
+      debugPrint('📊 Base64 length: ${base64String.length} characters');
+      
+      return base64String;
+    } catch (e) {
+      debugPrint('❌ Failed to load default profile picture: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      // Return empty string if image loading fails
+      return '';
+    }
+  }
+
   void _validatePasswordMatch() {
     if (_confirmPasswordController.text.isNotEmpty &&
         _passwordController.text != _confirmPasswordController.text) {
@@ -68,23 +102,40 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
+      // Get default profile picture based on role
+      final String? defaultProfileImage = await _getDefaultProfilePicture();
+      
       final UserCredential userCredential = 
           await _auth.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
 
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+      // Firestore document data
+      final userData = {
         'email': _email.trim(),
         'role': _selectedRole.name,
         'fullName': _fullName.trim(),
         'nic': _nic.trim().toUpperCase(),
         'mobileNumber': _mobileNumber.trim(),
         'status': 'Pending',
-        'profileImage': '',
+        'profileImage': defaultProfileImage ?? '', // Use default image or empty string
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      debugPrint('🔥 Creating user document in Firestore...');
+      debugPrint('👤 Role: ${_selectedRole.name}');
+      debugPrint('📧 Email: ${_email.trim()}');
+      debugPrint('👤 Full Name: ${_fullName.trim()}');
+      debugPrint('🆔 NIC: ${_nic.trim().toUpperCase()}');
+      debugPrint('📱 Mobile: ${_mobileNumber.trim()}');
+      debugPrint('🖼️ Profile image set: ${defaultProfileImage != null && defaultProfileImage!.isNotEmpty}');
+
+      await _firestore.collection('users').doc(userCredential.user!.uid).set(userData);
+
+      debugPrint('✅ User document created successfully');
+      debugPrint('👤 User UID: ${userCredential.user!.uid}');
 
       if (mounted) {
         await _showSuccessDialog();
@@ -155,23 +206,30 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Show role-specific icon in success dialog
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: _selectedRole == UserRole.Admin 
+                        ? Colors.purple.withOpacity(0.1)
+                        : Colors.blue.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
+                  child: Icon(
+                    _selectedRole == UserRole.Admin 
+                        ? Icons.admin_panel_settings 
+                        : Icons.medical_services,
+                    color: _selectedRole == UserRole.Admin 
+                        ? Colors.purple 
+                        : Colors.blue,
                     size: 60,
                   ),
                 ),
                 const SizedBox(height: 25),
                 Text(
-                  'Account Created\nSuccessfully!',
+                  '${_selectedRole.name} Account Created\nSuccessfully!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
@@ -181,10 +239,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 15),
-                const Text(
-                  'Your account is pending admin approval.',
+                Text(
+                  _selectedRole == UserRole.Admin 
+                      ? 'Your admin account is pending approval.'
+                      : 'Your pharmacist account is pending approval.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.grey,
                     fontSize: 14,
                   ),

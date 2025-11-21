@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../main.dart';
@@ -23,7 +24,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   // --- Firebase Instances ---
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
-  final _storage = FirebaseStorage.instance;
   final _imagePicker = ImagePicker();
 
   // --- Controllers for Form Fields ---
@@ -36,7 +36,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _error;
-  String? _profileImageUrl;
+  String? _profileImageBase64;
   DateTime? _createdAt;
   String _role = '';
   
@@ -83,7 +83,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   void _handleAuthStateChange(User? reloadedUser) {
-    // Check if verification just completed
     final justVerified = reloadedUser != null && 
                         reloadedUser.emailVerified && 
                         _currentUser?.emailVerified == false;
@@ -159,7 +158,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     _emailController.text = (_currentUser?.email ?? data['email'] ?? '') as String;
     _nicController.text = (data['nic'] ?? '') as String;
     _mobileController.text = (data['mobileNumber'] ?? '') as String;
-    _profileImageUrl = (data['profileImage'] ?? '') as String?;
+    
+    // FIXED: Use 'profileImage' instead of 'profileImageBase64'
+    _profileImageBase64 = (data['profileImage'] ?? '') as String?;
+    
     _role = (data['role'] ?? '') as String;
 
     final ts = data['createdAt'];
@@ -171,7 +173,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       _createdAt = null;
     }
 
-    // Initialize change tracking
     _initializeChangeTracking();
   }
 
@@ -249,9 +250,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     try {
       final picked = await _imagePicker.pickImage(
         source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
+        maxWidth: 400,  // Reduced for better performance
+        maxHeight: 400, // Reduced for better performance
+        imageQuality: 60, // Reduced quality for smaller file size
       );
       if (picked == null) return;
 
@@ -299,23 +300,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
 
     try {
-      // Delete from Storage
-      final ref = _storage.ref().child('profile_images').child('${user.uid}.jpg');
-      await ref.delete().catchError((e) {
-        // Ignore "object-not-found" errors
-        if (e is! FirebaseException || e.code != 'object-not-found') {
-          debugPrint('Storage deletion error: $e');
-        }
-      });
-
-      // Remove from Firestore
+      // FIXED: Use 'profileImage' instead of 'profileImageBase64'
       await _firestore.collection('users').doc(user.uid).update({
         'profileImage': FieldValue.delete(),
       });
 
-      // Update local state
       setState(() {
-        _profileImageUrl = null;
+        _profileImageBase64 = null;
         _pickedImageFile = null;
         _uploadingImage = false;
         _hasUnsavedChanges = true;
@@ -330,66 +321,42 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
-  Future<String?> _uploadProfileImage(String uid, File file) async {
+  // FIXED: Improved Image Processing Function
+  Future<String?> _processAndEncodeImage(File file) async {
     try {
-      debugPrint('Starting image upload for user: $uid');
-      debugPrint('File path: ${file.path}');
-      debugPrint('File exists: ${await file.exists()}');
-
-      // Check if file exists and is readable
+      debugPrint('🔄 Starting image processing...');
+      
       if (!await file.exists()) {
-        debugPrint('File does not exist at path: ${file.path}');
+        debugPrint('❌ File does not exist at path: ${file.path}');
         return null;
       }
 
-      final fileSize = await file.length();
-      debugPrint('File size: $fileSize bytes');
+      // Get file info
+      final fileStat = await file.stat();
+      debugPrint('📁 File size: ${fileStat.size} bytes');
+      debugPrint('📁 File path: ${file.path}');
 
-      if (fileSize == 0) {
-        debugPrint('File is empty');
+      // Read file as bytes
+      final bytes = await file.readAsBytes();
+      debugPrint('📊 Original image size: ${bytes.length} bytes');
+
+      // Check if file is too large (max 500KB for base64)
+      if (bytes.length > 500000) {
+        debugPrint('⚠️ Image too large: ${bytes.length} bytes. Max allowed: 500000 bytes');
+        _showSnackBar('Image is too large. Please choose a smaller image.');
         return null;
       }
 
-      final ref = _storage.ref().child('profile_images').child('$uid.jpg');
-      
-      // Add metadata for better handling
-      final metadata = SettableMetadata(
-        contentType: 'image/jpeg',
-        customMetadata: {
-          'uploadedBy': uid,
-          'uploadedAt': DateTime.now().toIso8601String(),
-        },
-      );
+      // Convert to base64
+      final base64String = base64Encode(bytes);
+      debugPrint('✅ Base64 encoding successful');
+      debugPrint('📐 Base64 string length: ${base64String.length} characters');
 
-      debugPrint('Starting upload to Firebase Storage...');
-      final uploadTask = ref.putFile(file, metadata);
-      
-      // Monitor upload progress
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        debugPrint('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
-      });
-
-      // Wait for upload to complete
-      final snapshot = await uploadTask.whenComplete(() {});
-      debugPrint('Upload completed. State: ${snapshot.state}');
-
-      if (snapshot.state == TaskState.success) {
-        final downloadUrl = await snapshot.ref.getDownloadURL();
-        debugPrint('Download URL obtained: $downloadUrl');
-        return downloadUrl;
-      } else {
-        debugPrint('Upload failed with state: ${snapshot.state}');
-        return null;
-      }
+      return base64String;
     } catch (e) {
-      debugPrint('Upload error: $e');
-      debugPrint('Error type: ${e.runtimeType}');
-      
-      if (e is FirebaseException) {
-        debugPrint('Firebase error code: ${e.code}');
-        debugPrint('Firebase error message: ${e.message}');
-      }
-      
+      debugPrint('❌ Image processing error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      _showSnackBar('Failed to process image: ${e.toString()}');
       return null;
     }
   }
@@ -419,18 +386,20 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
 
     try {
-      // Upload image if new one is picked
-      String? uploadedUrl = _profileImageUrl;
+      String? encodedImage = _profileImageBase64;
+      bool imageUpdated = false;
+
+      // Process image only if a new one is picked
       if (_pickedImageFile != null) {
-        debugPrint('New image detected, starting upload process...');
-        final url = await _uploadProfileImage(user.uid, _pickedImageFile!);
-        if (url != null) {
-          uploadedUrl = url;
-          debugPrint('Image upload successful, URL: $uploadedUrl');
+        debugPrint('🖼️ New image detected, starting encoding process...');
+        final base64String = await _processAndEncodeImage(_pickedImageFile!);
+        if (base64String != null) {
+          encodedImage = base64String;
+          imageUpdated = true;
+          debugPrint('✅ Image encoding successful');
         } else {
-          debugPrint('Image upload failed, keeping existing image');
-          _showSnackBar('Image upload failed. Please try again.', duration: const Duration(seconds: 4));
-          // Continue with existing image URL
+          debugPrint('❌ Image encoding failed - keeping existing image');
+          // Continue with existing image without showing error
         }
       }
 
@@ -439,25 +408,34 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         'email': newEmail,
         'nic': nic,
         'mobileNumber': mobile,
+        'updatedAt': FieldValue.serverTimestamp(),
       };
       
-      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-        updateData['profileImage'] = uploadedUrl;
-      } else if (_profileImageUrl == null && _pickedImageFile == null) {
+      // FIXED: Use 'profileImage' instead of 'profileImageBase64'
+      if (encodedImage != null && encodedImage.isNotEmpty) {
+        updateData['profileImage'] = encodedImage;
+        debugPrint('💾 Will update profileImage field in Firestore');
+      } else if (_profileImageBase64 == null && _pickedImageFile == null) {
         updateData['profileImage'] = FieldValue.delete();
+        debugPrint('🗑️ Will remove profileImage field from Firestore');
       }
 
-      debugPrint('Updating Firestore with data: $updateData');
+      debugPrint('🔥 Updating Firestore with profile data...');
+      debugPrint('📝 Update data: $updateData');
+      
       await _firestore.collection('users').doc(user.uid).update(updateData);
-      debugPrint('Firestore update successful');
+      debugPrint('✅ Firestore update successful');
 
-      // Handle email change if needed
+      // Show appropriate success message
       if (newEmail != user.email) {
         await _handleEmailChange(user, newEmail);
+      } else if (imageUpdated) {
+        _showSnackBar('Profile updated successfully with new photo!');
       } else {
         _showSnackBar('Profile updated successfully');
       }
 
+      // Reload profile to get latest data
       await _loadUserProfile();
       setState(() {
         _pickedImageFile = null;
@@ -465,8 +443,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       });
 
     } catch (e) {
-      debugPrint('Save profile error: $e');
-      _setError('Failed to save profile: ${e.toString()}');
+      debugPrint('❌ Save profile error: $e');
+      debugPrint('❌ Error type: ${e.runtimeType}');
+      
+      // More specific error handling
+      if (e is FirebaseException) {
+        _setError('Firestore error: ${e.code} - ${e.message}');
+      } else {
+        _setError('Failed to save profile: ${e.toString()}');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -691,7 +676,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     return Stack(
       alignment: Alignment.bottomRight,
       children: [
-        // Profile Image with loading state
         _uploadingImage
             ? Container(
                 width: 72,
@@ -715,7 +699,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     : null,
               ),
         
-        // Camera icon overlay (only show if not uploading and not pending verification)
         if (!_uploadingImage && !_isVerificationPending)
           Container(
             decoration: BoxDecoration(
@@ -784,8 +767,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   ImageProvider? _getProfileImage() {
     if (_pickedImageFile != null) {
       return FileImage(_pickedImageFile!);
-    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-      return NetworkImage(_profileImageUrl!);
+    } else if (_profileImageBase64 != null && _profileImageBase64!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(_profileImageBase64!);
+        return MemoryImage(bytes);
+      } catch (e) {
+        debugPrint('Error decoding base64 image: $e');
+        return null;
+      }
     }
     return null;
   }
@@ -823,7 +812,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   // --- Computed Properties ---
   bool get _isVerificationPending => _currentUser?.emailVerified == false && _currentUser != null;
-  bool get _hasExistingImage => _profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null;
+  bool get _hasExistingImage => _profileImageBase64 != null && _profileImageBase64!.isNotEmpty || _pickedImageFile != null;
   bool get _disableFieldsAndButton => _isVerificationPending || _saving;
   String get _displayName => _fullNameController.text.isNotEmpty 
       ? _fullNameController.text 
@@ -894,7 +883,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // --- Header Card ---
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -914,7 +902,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              // Profile Picture area
                               GestureDetector(
                                 onTap: _isVerificationPending ? null : _openImageOptions,
                                 child: _buildProfileImage(),
@@ -951,7 +938,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         SizedBox(height: 18),
                         _buildVerificationStatusWidget(_isVerificationPending), 
                         
-                        // --- Profile Details Section ---
                         Text(
                           'Manage Profile Details', 
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
@@ -994,7 +980,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                           ),
                                         ),
                                         SizedBox(width: 8),
-                                        Text('Uploading Image...', style: TextStyle(color: Colors.white, fontSize: 14)),
+                                        Text('Processing Image...', style: TextStyle(color: Colors.white, fontSize: 14)),
                                       ],
                                     )
                                   : Text(
@@ -1097,7 +1083,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   ),
           ),
 
-          // Popups
           if (_showEmailChangePopup) _buildEmailChangePopup(),
           if (_showVerificationSuccessPopup) _buildVerificationSuccessPopup(),
         ],

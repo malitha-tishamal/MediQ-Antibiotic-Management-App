@@ -29,6 +29,7 @@ dependencies:
   # Image Handling & Storage (The version that resolved the conflict)
   firebase_storage: ^11.7.7 
   image_picker: ^1.2.0 
+  flutter_image_compress: ^1.1.0  # <--- ADDED: For image compression and base64 encoding
 
   # URL Launcher
   url_launcher: ^6.2.0 
@@ -41,10 +42,12 @@ dev_dependencies:
 
 # ------------------ Flutter Specifics ------------------
 flutter:
-  # CORRECTED: changed 'trues' to 'true'
   uses-material-design: true 
   
   assets:
     - assets/logo.png
     - assets/logo2.png
     - assets/developer/developer_photo.png
+
+    - assets/admin-default.jpg
+    - assets/pharmizist-default.jpg
