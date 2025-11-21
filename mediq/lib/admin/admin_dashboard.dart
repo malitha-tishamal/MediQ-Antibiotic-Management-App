@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth/login_page.dart'; // For logout navigation
-import 'admin_drawer.dart'; // Import the reusable drawer widget
-import 'admin_profile_screen.dart'; // <--- NEW: Import the Admin Profile Screen
+import 'admin_drawer.dart'; // Drawer widget
+import 'admin_profile_screen.dart'; // Profile Screen
 
-// --- Placeholder for AppColors (assuming it's in main.dart or a utility file) ---
-// Since the full code wasn't provided, I'm defining the necessary colors here
-// so this file can run independently.
+// --- AppColors placeholder ---
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA); 
-  static const Color lightBackground = Color(0xFFF3F0FF); // Matches profile screen background
+  static const Color lightBackground = Color(0xFFF3F0FF);
   static const Color darkText = Color(0xFF333333);
-  static const Color adminsCountColor = Color(0xFFE53935); // Red
-  static const Color pharmacistCountColor = Color(0xFF43A047); // Green
-  static const Color totalFoundColor = Color(0xFF1E88E5); // Blue
-  static const Color releasesCountColor = Color(0xFFE53935); // Red
-  static const Color returnsCountColor = Color(0xFF43A047); // Green
+  static const Color adminsCountColor = Color(0xFFE53935);
+  static const Color pharmacistCountColor = Color(0xFF43A047);
+  static const Color totalFoundColor = Color(0xFF1E88E5);
+  static const Color releasesCountColor = Color(0xFFE53935);
+  static const Color returnsCountColor = Color(0xFF43A047);
 }
 
 class AdminDashboard extends StatefulWidget {
@@ -33,23 +31,20 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  // Static demo values (matches the numbers and padding in the screenshot)
+  // Demo values
   final int adminsCount = 10;
-  final int pharmacistsCount = 05;
+  final int pharmacistsCount = 5;
   final int antibioticsCount = 40;
   final int wardsCount = 32;
   final int stockTypesCount = 2;
   final int todayReleases = 32;
   final int todayReturns = 16;
 
-  // --- Core Functions ---
-
-  /// Handles the Firebase sign-out process and navigates to the LoginPage.
+  /// Logout function
   Future<void> _handleLogout() async {
     try {
       await FirebaseAuth.instance.signOut();
       if (mounted) {
-        // Navigate to login and remove all previous routes from the stack
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginPage()),
           (Route<dynamic> route) => false,
@@ -65,45 +60,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  /// Handles navigation tap events from the drawer or tiles.
+  /// Handle navigation from tiles or drawer
   void _onNavTap(String title) {
-    if (title == 'Profile Manage' || title == 'Profile') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const AdminProfileScreen()),
-      );
-    } else {
-      // In a real app, this would route to the appropriate screen.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$title tapped')),
-      );
+    switch (title) {
+      case 'Profile Manage':
+      case 'Profile':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
+        );
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$title tapped')),
+        );
+        break;
     }
   }
-
-  // --- Build Method ---
 
   @override
   Widget build(BuildContext context) {
     final displayName = widget.userName.isNotEmpty ? widget.userName : 'Malitha';
     final displayRole = widget.userRole.isNotEmpty ? widget.userRole : 'Administrator';
 
-    // Placeholder for AdminDrawer (assuming it exists)
-    Widget drawerWidget = AdminDrawer(
-      userName: displayName,
-      userRole: displayRole,
-      onNavTap: _onNavTap,
-      onLogout: _handleLogout,
-    );
-    
-    // Fallback if AdminDrawer is not available
-    // if (drawerWidget == null) {
-    //   drawerWidget = Drawer(child: Center(child: Text('Drawer Placeholder')));
-    // }
-
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
       appBar: _buildAppBar(),
-      // Using the reusable MediQDrawer component
-      drawer: drawerWidget,
+      drawer: AdminDrawer(
+        userName: displayName,
+        userRole: displayRole,
+        onNavTap: _onNavTap,
+        onLogout: _handleLogout,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
@@ -114,7 +101,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 18),
               const Padding(
                 padding: EdgeInsets.only(left: 6.0, bottom: 6),
-                child: Text('Home', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText)),
+                child: Text(
+                  'Home',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText,
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               _buildTilesGrid(),
@@ -122,7 +116,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Text('Developed By Malitha Tishamal', style: TextStyle(color: AppColors.darkText.withOpacity(0.6), fontSize: 12)),
+                  child: Text(
+                    'Developed By Malitha Tishamal',
+                    style: TextStyle(
+                      color: AppColors.darkText.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -132,8 +132,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // --- App Bar ---
-
+  // --- AppBar ---
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: AppColors.lightBackground,
@@ -157,12 +156,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // --- Header Card ---
-
   Widget _buildHeaderCard(String name, String role) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        // Gradient matches screenshot
         gradient: const LinearGradient(
           colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)],
           begin: Alignment.topLeft,
@@ -170,12 +167,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: AppColors.primaryPurple.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: AppColors.primaryPurple.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Row(
         children: [
-          // Circular avatar
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -196,15 +196,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
           ),
-          // Bell icon on the card
           const Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
         ],
       ),
     );
   }
 
-  // --- Grid Layout and Tiles ---
-
+  // --- Tiles Grid ---
   Widget _buildTilesGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -212,7 +210,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       mainAxisSpacing: 10,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.50, // Aspect ratio matches the screenshot tiles
+      childAspectRatio: 1.50,
       children: [
         _tileAccountsManage(),
         _tileAntibiotics(),
@@ -221,13 +219,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _tileUsageDetails(),
         _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst'),
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
-        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'), // Profile Manage Tile
+        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
         _buildLogoutTile(),
       ],
     );
   }
 
+  // --- Small Card Helper ---
   Widget _smallCard({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -290,7 +289,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Row(
               children: [
-                const Icon(Icons.circle, color: AppColors.primaryPurple, size: 28), // Icon matches screenshot
+                const Icon(Icons.circle, color: AppColors.primaryPurple, size: 28),
                 const Spacer(),
                 const Text('Antibiotics', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14))
               ]
@@ -358,10 +357,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // UPDATED: Handles navigation to AdminProfileScreen specifically for 'Profile Manage'
+  // --- Small Tiles ---
   Widget _buildSmallTile({required IconData icon, required String title}) {
     return InkWell(
-      onTap: () => _onNavTap(title), // Calls the updated _onNavTap
+      onTap: () => _onNavTap(title),
       child: _smallCard(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -375,6 +374,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
+  // --- Logout Tile ---
   Widget _buildLogoutTile() {
     return InkWell(
       onTap: _handleLogout,

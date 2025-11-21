@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
+import 'admin_dashboard.dart';
 import 'admin_profile_screen.dart';
 import 'admin_developer_about_screen.dart';
 
@@ -55,7 +56,7 @@ class AdminDrawer extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // ---------- Enhanced Drawer Header ----------
+            // ---------- Drawer Header ----------
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               decoration: BoxDecoration(
@@ -72,24 +73,22 @@ class AdminDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Logo and Name
+                  // App Logo & Name
                   Row(
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              main_app.AppColors.buttonGradientStart,
-                              main_app.AppColors.buttonGradientEnd,
-                            ],
+                     Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            image: const DecorationImage(
+                              image: AssetImage('assets/logo2.png'), // Your image path
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(15),
                         ),
-                        child: const Icon(Icons.medication_outlined, 
-                            color: Colors.white, size: 28),
-                      ),
+
+
                       const SizedBox(width: 12),
                       const Text(
                         'MEDI-Q',
@@ -183,57 +182,68 @@ class AdminDrawer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 children: [
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
-                    onTap: () => onNavTap('Home'),
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AdminDashboard(
+                            userName: userName,
+                            userRole: userRole,
+                          ),
+                        ),
+                      );
+                    },
                     isActive: true,
                   ),
-                  
+
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.people_alt_rounded,
                     title: 'Accounts Management',
                     onTap: () => onNavTap('Accounts Manage'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.medical_services_rounded,
                     title: 'Antibiotics Management',
                     onTap: () => onNavTap('Antibiotics'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.local_hospital_rounded,
                     title: 'Wards Management',
                     onTap: () => onNavTap('Wards'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.inventory_2_rounded,
                     title: 'Stock Inventory',
                     onTap: () => onNavTap('Stocks'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.receipt_long_rounded,
                     title: 'Usage Details',
                     onTap: () => onNavTap('Usage Details'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.analytics_rounded,
                     title: 'Usage Analytics',
                     onTap: () => onNavTap('Usage Analyst'),
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.menu_book_rounded,
                     title: 'Record Books',
                     onTap: () => onNavTap('Book Numbers'),
@@ -246,9 +256,8 @@ class AdminDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // Profile and About Section
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.person_rounded,
                     title: 'My Profile',
                     onTap: () {
@@ -263,7 +272,7 @@ class AdminDrawer extends StatelessWidget {
                   ),
                   
                   _buildNavItem(
-                    context: context, // Add context here
+                    context: context,
                     icon: Icons.info_rounded,
                     title: 'About & Help',
                     onTap: () {
@@ -284,13 +293,12 @@ class AdminDrawer extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // Logout Item
                   _buildLogoutItem(context),
                 ],
               ),
             ),
 
-            // ---------- Enhanced Footer ----------
+            // ---------- Footer ----------
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -344,7 +352,7 @@ class AdminDrawer extends StatelessWidget {
   }
 
   Widget _buildNavItem({
-    required BuildContext context, // Add context parameter here
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
@@ -394,7 +402,7 @@ class AdminDrawer extends StatelessWidget {
             ? const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16)
             : null,
         onTap: () {
-          Navigator.of(context).pop(); // Now context is available here
+          Navigator.of(context).pop();
           onTap();
         },
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -448,7 +456,6 @@ class AdminDrawer extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon
                 Container(
                   width: 80,
                   height: 80,
@@ -463,29 +470,17 @@ class AdminDrawer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
-                // Title
                 const Text(
                   'Confirm Logout',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
-                
-                // Message
                 const Text(
                   'Are you sure you want to logout from your account?',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 const SizedBox(height: 25),
-                
-                // Buttons
                 Row(
                   children: [
                     Expanded(
@@ -498,10 +493,7 @@ class AdminDrawer extends StatelessWidget {
                           ),
                           side: BorderSide(color: main_app.AppColors.primaryPurple),
                         ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(color: main_app.AppColors.primaryPurple),
-                        ),
+                        child: Text('Cancel', style: TextStyle(color: main_app.AppColors.primaryPurple)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -518,10 +510,7 @@ class AdminDrawer extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Logout',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        child: const Text('Logout', style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],

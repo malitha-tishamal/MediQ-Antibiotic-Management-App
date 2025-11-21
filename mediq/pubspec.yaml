@@ -1,5 +1,5 @@
 name: mediq
-description: "A new Flutter project."
+description: "Antibiotics Usage Analysis System For Karapitiya National Hospital. Collaboration with Karapitiya National Hospital"
 
 publish_to: 'none'
 version: 1.0.0+1
@@ -12,34 +12,39 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # 👇 CORRECT LOCATION FOR font_awesome_flutter
   font_awesome_flutter: ^10.7.0 
 
   # UI/Utility Packages
   cupertino_icons: ^1.0.8
-  intl: ^0.19.0              
+  intl: ^0.19.0 
 
   # Local Storage
   shared_preferences: ^2.2.3
 
   # Firebase Core Packages (Latest successfully resolved versions)
-  firebase_core: ^2.32.0     
-  firebase_auth: ^4.20.0     
-  cloud_firestore: ^4.17.5   
+  firebase_core: ^2.32.0 
+  firebase_auth: ^4.20.0 
+  cloud_firestore: ^4.17.5 
   
   # Image Handling & Storage (The version that resolved the conflict)
-  firebase_storage: ^11.7.7  
-  image_picker: ^1.2.0       
+  firebase_storage: ^11.7.7 
+  image_picker: ^1.2.0 
+
+  # URL Launcher
+  url_launcher: ^6.2.0 
 
 # ------------------ Development Dependencies ------------------
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2      
+  flutter_lints: ^3.0.2 
 
 # ------------------ Flutter Specifics ------------------
 flutter:
-  uses-material-design: true
-
+  # CORRECTED: changed 'trues' to 'true'
+  uses-material-design: true 
+  
   assets:
     - assets/logo.png
+    - assets/logo2.png
+    - assets/developer/developer_photo.png
