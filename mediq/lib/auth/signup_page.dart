@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../main.dart';
+import 'login_page.dart'; // Make sure to import your login page
 
 enum UserRole { Admin, Pharmacist }
 
@@ -139,7 +140,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
       if (mounted) {
         await _showSuccessDialog();
-        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } on FirebaseAuthException catch (e) {
       _handleAuthError(e);
@@ -183,6 +183,7 @@ class _SignUpPageState extends State<SignUpPage> {
     debugPrint('SignUp Error: $e');
   }
 
+  // UPDATED: Success dialog that navigates to login page
   Future<void> _showSuccessDialog() async {
     await showDialog(
       context: context,
@@ -253,8 +254,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 _buildGradientButton(
                   text: 'Continue to Login',
                   onPressed: () {
+                    // Close the dialog
                     Navigator.of(context).pop();
-                    Navigator.of(context).pop();
+                    // Navigate to login page and remove all previous routes
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => LoginPage()),
+                      (Route<dynamic> route) => false,
+                    );
                   },
                   isLoading: false,
                 ),

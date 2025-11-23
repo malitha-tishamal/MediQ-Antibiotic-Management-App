@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -5,7 +6,16 @@ import 'admin_drawer.dart';
 import '../main.dart';
 
 class AdminDeveloperAboutScreen extends StatelessWidget {
-  const AdminDeveloperAboutScreen({super.key});
+  final String userName;
+  final String userRole;
+  final String? profileImageBase64;
+
+  const AdminDeveloperAboutScreen({
+    super.key,
+    required this.userName,
+    required this.userRole,
+    this.profileImageBase64,
+  });
 
   // URL Launcher Function
   Future<void> _launchUrl(String url) async {
@@ -20,32 +30,24 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
 
-      // ⭐ FIXED: AdminDrawer now includes all required parameters
       drawer: AdminDrawer(
-        userName: "Malitha Tishamal",
-        userRole: "Administrator",
-        onNavTap: (page) {
-          Navigator.pop(context);
-        },
-        onLogout: () {
-          Navigator.pop(context);
-        },
+        userName: userName,
+        userRole: userRole,
+        profileImageBase64: profileImageBase64,
+        onNavTap: (page) => Navigator.pop(context),
+        onLogout: () => Navigator.pop(context),
       ),
 
       appBar: AppBar(
         backgroundColor: AppColors.lightBackground,
         elevation: 0,
-
         leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu,
-                  color: AppColors.primaryPurple, size: 28),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu,
+                color: AppColors.primaryPurple, size: 28),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
-
         title: const Text(
           'Developer About Me',
           style: TextStyle(
@@ -83,37 +85,31 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
 
             _buildDeveloperImage(),
-
             const SizedBox(height: 40),
 
             _buildSocialIconsRow(_launchUrl),
-
             const SizedBox(height: 30),
 
-            const Text(
-              'Malitha Tishamal',
-              style: TextStyle(
+            Text(
+              userName,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkText,
               ),
             ),
-
             const SizedBox(height: 5),
-
-            const Text(
-              'Full Stack-Developer',
-              style: TextStyle(
+            Text(
+              userRole,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: AppColors.primaryPurple,
               ),
             ),
-
             const SizedBox(height: 80),
 
             const Text(
@@ -123,7 +119,6 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
-
             const SizedBox(height: 10),
           ],
         ),
@@ -131,8 +126,33 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
     );
   }
 
-  // HEADER CARD
+  // HEADER CARD WITH PROFILE IMAGE
   Widget _buildHeaderCard() {
+    Widget profileImageWidget;
+
+    if (profileImageBase64 != null && profileImageBase64!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(profileImageBase64!);
+        profileImageWidget = CircleAvatar(
+          radius: 28,
+          backgroundImage: MemoryImage(bytes),
+        );
+      } catch (e) {
+        debugPrint('Error decoding profile image: $e');
+        profileImageWidget = const CircleAvatar(
+          radius: 28,
+          backgroundColor: Colors.white,
+          child: Icon(Icons.person, size: 30, color: AppColors.primaryPurple),
+        );
+      }
+    } else {
+      profileImageWidget = const CircleAvatar(
+        radius: 28,
+        backgroundColor: Colors.white,
+        child: Icon(Icons.person, size: 30, color: AppColors.primaryPurple),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -155,30 +175,23 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person,
-                size: 30, color: AppColors.primaryPurple),
-          ),
+          profileImageWidget,
           const SizedBox(width: 14),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Malitha Tishamal',
-                  style: TextStyle(
+                Text(
+                  userName,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppColors.darkText,
                   ),
                 ),
                 const SizedBox(height: 4),
-
                 Text(
-                  'Administrator',
+                  userRole,
                   style: TextStyle(
                     fontSize: 13.5,
                     color: AppColors.darkText.withOpacity(0.7),
@@ -218,9 +231,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(height: 20),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
@@ -241,20 +252,16 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
         _buildSocialIcon(FontAwesomeIcons.instagram, Colors.purple, () {
           launcher('https://www.instagram.com/malithatishamal/');
         }),
-
         _buildSocialIcon(FontAwesomeIcons.facebookF, Colors.blue, () {
           launcher('https://www.facebook.com/malithatishamal/');
         }),
-
         _buildSocialIcon(FontAwesomeIcons.linkedinIn, Colors.blue.shade900, () {
           launcher('https://www.linkedin.com/in/malitha-tishamal/');
         }),
-
         _buildSocialIcon(Icons.email_outlined, Colors.red, () {
           launcher(
               'mailto:malithatishamal@gmail.com?subject=Inquiry from Medi-Q App');
         }),
-
         _buildSocialIcon(Icons.language, Colors.green, () {
           launcher('https://www.malithatishamal.42web.io/');
         }),

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
 import 'admin_dashboard.dart';
@@ -7,6 +8,7 @@ import 'admin_developer_about_screen.dart';
 class AdminDrawer extends StatelessWidget {
   final String userName;
   final String userRole;
+  final String? profileImageBase64;
   final Function(String) onNavTap;
   final VoidCallback onLogout;
 
@@ -14,6 +16,7 @@ class AdminDrawer extends StatelessWidget {
     super.key,
     required this.userName,
     required this.userRole,
+    this.profileImageBase64,
     required this.onNavTap,
     required this.onLogout,
   });
@@ -21,6 +24,80 @@ class AdminDrawer extends StatelessWidget {
   String get _firstName {
     if (userName.isEmpty) return 'User';
     return userName.split(' ').first;
+  }
+
+  // -------------------- PROFILE IMAGE (Base64) --------------------
+  Widget _buildProfileImage() {
+    if (profileImageBase64 != null && profileImageBase64!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(profileImageBase64!);
+        return Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withOpacity(0.6),
+            border: Border.all(
+              color: Colors.white,
+              width: 3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: main_app.AppColors.primaryPurple.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildDefaultProfileIcon();
+              },
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint("Base64 decode error: $e");
+        return _buildDefaultProfileIcon();
+      }
+    }
+    return _buildDefaultProfileIcon();
+  }
+
+  // -------------------- FALLBACK DEFAULT ICON --------------------
+  Widget _buildDefaultProfileIcon() {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [
+            main_app.AppColors.buttonGradientStart,
+            main_app.AppColors.buttonGradientEnd,
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white,
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: main_app.AppColors.primaryPurple.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.person_rounded,
+        color: Colors.white,
+        size: 30,
+      ),
+    );
   }
 
   @override
@@ -56,7 +133,7 @@ class AdminDrawer extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // ---------- Drawer Header ----------
+            // -------------------- HEADER --------------------
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               decoration: BoxDecoration(
@@ -73,22 +150,19 @@ class AdminDrawer extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // App Logo & Name
                   Row(
                     children: [
-                     Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            image: const DecorationImage(
-                              image: AssetImage('assets/logo2.png'), // Your image path
-                              fit: BoxFit.cover,
-                            ),
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          image: const DecorationImage(
+                            image: AssetImage('assets/logo2.png'),
+                            fit: BoxFit.cover,
                           ),
                         ),
-
-
+                      ),
                       const SizedBox(width: 12),
                       const Text(
                         'MEDI-Q',
@@ -102,36 +176,9 @@ class AdminDrawer extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
-                  // User Info Section
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [
-                              main_app.AppColors.buttonGradientStart,
-                              main_app.AppColors.buttonGradientEnd,
-                            ],
-                          ),
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: main_app.AppColors.primaryPurple.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(Icons.person_rounded, 
-                            color: Colors.white, size: 30),
-                      ),
+                      _buildProfileImage(),
                       const SizedBox(width: 15),
                       Expanded(
                         child: Column(
@@ -176,7 +223,7 @@ class AdminDrawer extends StatelessWidget {
               ),
             ),
 
-            // ---------- Navigation Items ----------
+            // -------------------- NAVIGATION ITEMS --------------------
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 20),
@@ -186,7 +233,7 @@ class AdminDrawer extends StatelessWidget {
                     icon: Icons.dashboard_rounded,
                     title: 'Dashboard',
                     onTap: () {
-                      Navigator.of(context).pop(); // Close drawer
+                      Navigator.of(context).pop();
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -199,63 +246,54 @@ class AdminDrawer extends StatelessWidget {
                     },
                     isActive: true,
                   ),
-
                   _buildNavItem(
                     context: context,
                     icon: Icons.people_alt_rounded,
                     title: 'Accounts Management',
                     onTap: () => onNavTap('Accounts Manage'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.medical_services_rounded,
                     title: 'Antibiotics Management',
                     onTap: () => onNavTap('Antibiotics'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.local_hospital_rounded,
                     title: 'Wards Management',
                     onTap: () => onNavTap('Wards'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.inventory_2_rounded,
                     title: 'Stock Inventory',
                     onTap: () => onNavTap('Stocks'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.receipt_long_rounded,
                     title: 'Usage Details',
                     onTap: () => onNavTap('Usage Details'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.analytics_rounded,
                     title: 'Usage Analytics',
                     onTap: () => onNavTap('Usage Analyst'),
                   ),
-                  
                   _buildNavItem(
                     context: context,
                     icon: Icons.menu_book_rounded,
                     title: 'Record Books',
                     onTap: () => onNavTap('Book Numbers'),
                   ),
-
                   const SizedBox(height: 10),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Divider(height: 1, thickness: 1),
                   ),
                   const SizedBox(height: 10),
-
                   _buildNavItem(
                     context: context,
                     icon: Icons.person_rounded,
@@ -270,7 +308,8 @@ class AdminDrawer extends StatelessWidget {
                       );
                     },
                   ),
-                  
+
+                  // ✅ FIXED: Pass required parameters here
                   _buildNavItem(
                     context: context,
                     icon: Icons.info_rounded,
@@ -280,25 +319,27 @@ class AdminDrawer extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const AdminDeveloperAboutScreen(),
+                          builder: (_) => AdminDeveloperAboutScreen(
+                            userName: userName,
+                            userRole: userRole,
+                            profileImageBase64: profileImageBase64,
+                          ),
                         ),
                       );
                     },
                   ),
-
                   const SizedBox(height: 10),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     child: Divider(height: 1, thickness: 1),
                   ),
                   const SizedBox(height: 10),
-
                   _buildLogoutItem(context),
                 ],
               ),
             ),
 
-            // ---------- Footer ----------
+            // -------------------- FOOTER --------------------
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -351,6 +392,7 @@ class AdminDrawer extends StatelessWidget {
     );
   }
 
+  // -------------------- NAV ITEM --------------------
   Widget _buildNavItem({
     required BuildContext context,
     required IconData icon,
@@ -410,6 +452,7 @@ class AdminDrawer extends StatelessWidget {
     );
   }
 
+  // -------------------- LOGOUT ITEM --------------------
   Widget _buildLogoutItem(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
