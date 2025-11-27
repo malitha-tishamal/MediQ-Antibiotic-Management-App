@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,13 +7,13 @@ import '../main.dart';
 class AdminDeveloperAboutScreen extends StatelessWidget {
   final String userName;
   final String userRole;
-  final String? profileImageBase64;
+  final String? profileImageUrl; // Changed to profileImageUrl
 
   const AdminDeveloperAboutScreen({
     super.key,
     required this.userName,
     required this.userRole,
-    this.profileImageBase64,
+    this.profileImageUrl, // Updated parameter
   });
 
   // URL Launcher Function
@@ -33,7 +32,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
       drawer: AdminDrawer(
         userName: userName,
         userRole: userRole,
-        profileImageBase64: profileImageBase64,
+        profileImageBase64: null, // You might want to update AdminDrawer too
         onNavTap: (page) => Navigator.pop(context),
         onLogout: () => Navigator.pop(context),
       ),
@@ -183,7 +182,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
     );
   }
 
-  // UPDATED HEADER CARD WITH PROFILE PICTURE - FOCUSED ON SHOWING PROFILE IMAGE
+  // UPDATED HEADER CARD WITH PROFILE PICTURE - USING profileImageUrl
   Widget _buildHeaderCardWithProfile() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -207,7 +206,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // PROFILE PICTURE - LARGER AND MORE PROMINENT
+          // PROFILE PICTURE - USING profileImageUrl
           _buildProfilePicture(),
           const SizedBox(width: 16),
           Expanded(
@@ -264,44 +263,51 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
     );
   }
 
-  // PROFILE PICTURE WIDGET - ENHANCED VISIBILITY
+  // PROFILE PICTURE WIDGET - USING profileImageUrl FROM FIRESTORE
   Widget _buildProfilePicture() {
     Widget profileImageWidget;
 
-    if (profileImageBase64 != null && profileImageBase64!.isNotEmpty) {
-      try {
-        final bytes = base64Decode(profileImageBase64!);
-        profileImageWidget = Container(
-          width: 70,  // Increased size
-          height: 70, // Increased size
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.primaryPurple.withOpacity(0.3),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
+    if (profileImageUrl != null && profileImageUrl!.isNotEmpty) {
+      // Use NetworkImage for Cloudinary URL from Firestore
+      profileImageWidget = Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.primaryPurple.withOpacity(0.3),
+            width: 2,
           ),
-          child: ClipOval(
-            child: Image.memory(
-              bytes,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildDefaultProfileIcon();
-              },
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            profileImageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: AppColors.primaryPurple,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('Error loading profile image: $error');
+              return _buildDefaultProfileIcon();
+            },
           ),
-        );
-      } catch (e) {
-        debugPrint('Error decoding profile image: $e');
-        profileImageWidget = _buildDefaultProfileIcon();
-      }
+        ),
+      );
     } else {
       profileImageWidget = _buildDefaultProfileIcon();
     }
@@ -632,7 +638,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
             Icons.phone,
             'Phone',
             '+94 78 553 0992',
-            () => _launchUrl('tel:+94753092'),
+            () => _launchUrl('tel:+94785530992'),
           ),
           const SizedBox(height: 12),
           _buildContactItem(
