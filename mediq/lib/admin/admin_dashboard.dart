@@ -177,13 +177,7 @@ PreferredSizeWidget _buildAppBar() {
   );
   },
  ),
- actions: [
-  IconButton(
-  icon: const Icon(Icons.notifications_none, color: AppColors.darkText, size: 28),
-  onPressed: () => _onNavTap('Notifications'),
-  ),
-  const SizedBox(width: 6),
- ],
+
  );
 }
 
@@ -228,7 +222,6 @@ Widget _buildHeaderCard(String name, String role) {
    ],
    ),
   ),
-  const Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
   ],
  ),
  );

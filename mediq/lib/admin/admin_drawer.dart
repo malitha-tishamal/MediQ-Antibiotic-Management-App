@@ -322,7 +322,7 @@ class AdminDrawer extends StatelessWidget {
                           builder: (_) => AdminDeveloperAboutScreen(
                             userName: userName,
                             userRole: userRole,
-                            profileImageBase64: profileImageBase64,
+                            
                           ),
                         ),
                       );

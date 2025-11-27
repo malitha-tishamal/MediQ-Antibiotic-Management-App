@@ -7,47 +7,46 @@ version: 1.0.0+1
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
-# ------------------ Dependencies ------------------
 dependencies:
   flutter:
     sdk: flutter
-  
-  font_awesome_flutter: ^10.7.0 
 
-  # UI/Utility Packages
+  font_awesome_flutter: ^10.7.0
   cupertino_icons: ^1.0.8
-  intl: ^0.19.0 
-
-  # Local Storage
+  intl: ^0.19.0
   shared_preferences: ^2.2.3
 
-  # Firebase Core Packages (Latest successfully resolved versions)
-  firebase_core: ^2.32.0 
-  firebase_auth: ^4.20.0 
-  cloud_firestore: ^4.17.5 
-  
-  # Image Handling & Storage (The version that resolved the conflict)
-  firebase_storage: ^11.7.7 
-  image_picker: ^1.2.0 
-  flutter_image_compress: ^1.1.0  # <--- ADDED: For image compression and base64 encoding
+  # Firebase Packages
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
+  firebase_storage: ^11.7.7
+
+  # Image handling
+  image_picker: ^1.2.0
+  flutter_image_compress: ^1.1.0
+
+  # HTTP for Cloudinary upload
+  http: ^1.1.1
 
   # URL Launcher
-  url_launcher: ^6.2.0 
+  url_launcher: ^6.2.0
 
-# ------------------ Development Dependencies ------------------
+  # Optional: path utils
+  path: ^1.9.1
+  fluttertoast: ^8.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2 
+  flutter_lints: ^3.0.2
 
-# ------------------ Flutter Specifics ------------------
 flutter:
-  uses-material-design: true 
-  
+  uses-material-design: true
+
   assets:
     - assets/logo.png
     - assets/logo2.png
     - assets/developer/developer_photo.png
-
     - assets/admin-default.jpg
     - assets/pharmizist-default.jpg

@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +26,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   final _firestore = FirebaseFirestore.instance;
   final _imagePicker = ImagePicker();
 
+  // --- Cloudinary Configuration ---
+  final String _cloudName = "dqeptzlsb"; // Your actual cloud name from CLOUDINARY_URL
+  final String _uploadPreset = "flutter_mediq_upload";
+
   // --- Controllers for Form Fields ---
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -36,7 +40,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _error;
-  String? _profileImageBase64;
+  String? _profileImageUrl;
   DateTime? _createdAt;
   String _role = '';
   
@@ -47,7 +51,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _showVerificationSuccessPopup = false;
 
   // Image handling
-  File? _pickedImageFile;
+  XFile? _pickedImageFile;
   bool _uploadingImage = false;
   bool _hasUnsavedChanges = false;
 
@@ -159,8 +163,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     _nicController.text = (data['nic'] ?? '') as String;
     _mobileController.text = (data['mobileNumber'] ?? '') as String;
     
-    // FIXED: Use 'profileImage' instead of 'profileImageBase64'
-    _profileImageBase64 = (data['profileImage'] ?? '') as String?;
+    // Load profile image URL from Cloudinary
+    _profileImageUrl = (data['profileImageUrl'] ?? '') as String?;
     
     _role = (data['role'] ?? '') as String;
 
@@ -250,19 +254,20 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     try {
       final picked = await _imagePicker.pickImage(
         source: source,
-        maxWidth: 400,  // Reduced for better performance
-        maxHeight: 400, // Reduced for better performance
-        imageQuality: 60, // Reduced quality for smaller file size
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
       );
       if (picked == null) return;
 
       setState(() {
-        _pickedImageFile = File(picked.path);
+        _pickedImageFile = picked;
         _hasUnsavedChanges = true;
       });
 
     } catch (e) {
-      _showSnackBar('Image pick failed: ${e.toString()}');
+      debugPrint('Image pick error: $e');
+      _showSnackBar('Failed to pick image: ${e.toString()}');
     }
   }
 
@@ -300,13 +305,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
 
     try {
-      // FIXED: Use 'profileImage' instead of 'profileImageBase64'
       await _firestore.collection('users').doc(user.uid).update({
-        'profileImage': FieldValue.delete(),
+        'profileImageUrl': FieldValue.delete(),
       });
 
       setState(() {
-        _profileImageBase64 = null;
+        _profileImageUrl = null;
         _pickedImageFile = null;
         _uploadingImage = false;
         _hasUnsavedChanges = true;
@@ -321,42 +325,84 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
-  // FIXED: Improved Image Processing Function
-  Future<String?> _processAndEncodeImage(File file) async {
+  // --- FIXED Cloudinary Upload Method ---
+  Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
-      debugPrint('🔄 Starting image processing...');
+      debugPrint('🔄 Starting Cloudinary upload process...');
+      debugPrint('🌩️ Cloud Name: $_cloudName');
+      debugPrint('📝 Upload Preset: $_uploadPreset');
+
+      // Convert XFile to bytes
+      final bytes = await imageFile.readAsBytes();
+      debugPrint('📊 Image size: ${bytes.length} bytes');
+
+      // Check file size (max 1MB)
+      if (bytes.length > 1000000) {
+        _showSnackBar('Image is too large. Please choose a smaller image (max 1MB).');
+        return null;
+      }
+
+      final url = Uri.parse("https://api.cloudinary.com/v1_1/dqeptzlsb/image/upload");
       
-      if (!await file.exists()) {
-        debugPrint('❌ File does not exist at path: ${file.path}');
+      // Create multipart request - ONLY include upload_preset for unsigned uploads
+      final request = http.MultipartRequest('POST', url)
+        ..fields['upload_preset'] = _uploadPreset
+        ..files.add(http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ));
+
+      debugPrint('📤 Uploading to Cloudinary...');
+      debugPrint('🔗 URL: $url');
+      
+      // Send request with timeout
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Cloudinary upload timed out');
+        },
+      );
+
+      // Get response
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseData = json.decode(response.body);
+      
+      debugPrint('📡 Cloudinary response status: ${response.statusCode}');
+      debugPrint('📄 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final imageUrl = responseData['secure_url'];
+        debugPrint('✅ Cloudinary upload successful! URL: $imageUrl');
+        return imageUrl;
+      } else {
+        debugPrint('❌ Cloudinary upload failed: ${response.statusCode}');
+        
+        String errorMessage = 'Unknown error';
+        if (responseData['error'] != null) {
+          errorMessage = responseData['error']['message'] ?? 'Unknown Cloudinary error';
+        }
+        
+        // Specific error handling
+        if (errorMessage.contains('API key') || response.statusCode == 401) {
+          errorMessage = 'Invalid Cloudinary configuration. Please check your cloud name and upload preset.';
+        } else if (response.statusCode == 404) {
+          errorMessage = 'Cloudinary service not found. Please check your cloud name.';
+        } else if (errorMessage.contains('Upload preset')) {
+          errorMessage = 'Upload preset not found or not configured for unsigned uploads.';
+        }
+        
+        _showSnackBar('Upload failed: $errorMessage');
         return null;
       }
-
-      // Get file info
-      final fileStat = await file.stat();
-      debugPrint('📁 File size: ${fileStat.size} bytes');
-      debugPrint('📁 File path: ${file.path}');
-
-      // Read file as bytes
-      final bytes = await file.readAsBytes();
-      debugPrint('📊 Original image size: ${bytes.length} bytes');
-
-      // Check if file is too large (max 500KB for base64)
-      if (bytes.length > 500000) {
-        debugPrint('⚠️ Image too large: ${bytes.length} bytes. Max allowed: 500000 bytes');
-        _showSnackBar('Image is too large. Please choose a smaller image.');
-        return null;
-      }
-
-      // Convert to base64
-      final base64String = base64Encode(bytes);
-      debugPrint('✅ Base64 encoding successful');
-      debugPrint('📐 Base64 string length: ${base64String.length} characters');
-
-      return base64String;
+      
+    } on TimeoutException catch (e) {
+      debugPrint('⏰ Upload timeout: $e');
+      _showSnackBar('Upload timed out. Please try again.');
+      return null;
     } catch (e) {
-      debugPrint('❌ Image processing error: $e');
-      debugPrint('❌ Error type: ${e.runtimeType}');
-      _showSnackBar('Failed to process image: ${e.toString()}');
+      debugPrint('❌ Upload error: $e');
+      _showSnackBar('Failed to upload image. Please try again.');
       return null;
     }
   }
@@ -386,23 +432,28 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     });
 
     try {
-      String? encodedImage = _profileImageBase64;
+      String? finalProfileImageUrl = _profileImageUrl;
       bool imageUpdated = false;
 
-      // Process image only if a new one is picked
+      // Upload new image to Cloudinary if one was picked
       if (_pickedImageFile != null) {
-        debugPrint('🖼️ New image detected, starting encoding process...');
-        final base64String = await _processAndEncodeImage(_pickedImageFile!);
-        if (base64String != null) {
-          encodedImage = base64String;
+        debugPrint('🖼️ Starting image upload...');
+        final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
+        if (cloudinaryUrl != null) {
+          finalProfileImageUrl = cloudinaryUrl;
           imageUpdated = true;
-          debugPrint('✅ Image encoding successful');
+          debugPrint('✅ Image uploaded successfully');
         } else {
-          debugPrint('❌ Image encoding failed - keeping existing image');
-          // Continue with existing image without showing error
+          debugPrint('❌ Image upload failed');
+          setState(() {
+            _saving = false;
+            _uploadingImage = false;
+          });
+          return; // Stop the save process if image upload fails
         }
       }
 
+      // Prepare update data
       final updateData = <String, dynamic>{
         'fullName': fullName,
         'email': newEmail,
@@ -410,48 +461,41 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         'mobileNumber': mobile,
         'updatedAt': FieldValue.serverTimestamp(),
       };
-      
-      // FIXED: Use 'profileImage' instead of 'profileImageBase64'
-      if (encodedImage != null && encodedImage.isNotEmpty) {
-        updateData['profileImage'] = encodedImage;
-        debugPrint('💾 Will update profileImage field in Firestore');
-      } else if (_profileImageBase64 == null && _pickedImageFile == null) {
-        updateData['profileImage'] = FieldValue.delete();
-        debugPrint('🗑️ Will remove profileImage field from Firestore');
+
+      // Handle profile image URL
+      if (finalProfileImageUrl != null && finalProfileImageUrl.isNotEmpty) {
+        updateData['profileImageUrl'] = finalProfileImageUrl;
+      } else if (_pickedImageFile == null && _profileImageUrl == null) {
+        updateData['profileImageUrl'] = FieldValue.delete();
       }
 
-      debugPrint('🔥 Updating Firestore with profile data...');
-      debugPrint('📝 Update data: $updateData');
-      
+      // Update Firestore
       await _firestore.collection('users').doc(user.uid).update(updateData);
-      debugPrint('✅ Firestore update successful');
 
-      // Show appropriate success message
+      // Handle email change if needed
       if (newEmail != user.email) {
         await _handleEmailChange(user, newEmail);
-      } else if (imageUpdated) {
-        _showSnackBar('Profile updated successfully with new photo!');
       } else {
-        _showSnackBar('Profile updated successfully');
+        // Show success message
+        if (imageUpdated) {
+          _showSnackBar('Profile updated successfully with new photo!');
+        } else if (_pickedImageFile == null && _profileImageUrl == null) {
+          _showSnackBar('Profile updated successfully - photo removed');
+        } else {
+          _showSnackBar('Profile updated successfully');
+        }
       }
 
-      // Reload profile to get latest data
-      await _loadUserProfile();
+      // Update local state
       setState(() {
         _pickedImageFile = null;
         _hasUnsavedChanges = false;
+        _profileImageUrl = finalProfileImageUrl;
       });
 
     } catch (e) {
       debugPrint('❌ Save profile error: $e');
-      debugPrint('❌ Error type: ${e.runtimeType}');
-      
-      // More specific error handling
-      if (e is FirebaseException) {
-        _setError('Firestore error: ${e.code} - ${e.message}');
-      } else {
-        _setError('Failed to save profile: ${e.toString()}');
-      }
+      _setError('Failed to save profile: ${e.toString()}');
     } finally {
       if (mounted) {
         setState(() {
@@ -648,10 +692,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       controller: controller,
       keyboardType: keyboardType,
       enabled: enabled,
-      style: TextStyle(color: enabled ? AppColors.darkText : Colors.grey.shade600),
+      style: TextStyle(color: enabled ? Colors.black : Colors.grey.shade600),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
+        hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
         filled: true,
         fillColor: enabled ? Colors.white : Colors.grey.shade100,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
@@ -692,7 +736,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               )
             : CircleAvatar(
                 radius: 36,
-                backgroundColor: Colors.white,
+                backgroundColor: Colors.grey.shade200,
                 backgroundImage: _getProfileImage(),
                 child: _getProfileImage() == null
                     ? Icon(Icons.person, size: 40, color: Color(0xFF8D78F9))
@@ -765,16 +809,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   // --- Helper Methods ---
   ImageProvider? _getProfileImage() {
+    // Priority: New picked image > Cloudinary URL
     if (_pickedImageFile != null) {
-      return FileImage(_pickedImageFile!);
-    } else if (_profileImageBase64 != null && _profileImageBase64!.isNotEmpty) {
-      try {
-        final bytes = base64Decode(_profileImageBase64!);
-        return MemoryImage(bytes);
-      } catch (e) {
-        debugPrint('Error decoding base64 image: $e');
-        return null;
-      }
+      return FileImage(File(_pickedImageFile!.path));
+    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return NetworkImage(_profileImageUrl!);
     }
     return null;
   }
@@ -812,7 +851,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   // --- Computed Properties ---
   bool get _isVerificationPending => _currentUser?.emailVerified == false && _currentUser != null;
-  bool get _hasExistingImage => _profileImageBase64 != null && _profileImageBase64!.isNotEmpty || _pickedImageFile != null;
+  bool get _hasExistingImage => _profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null;
   bool get _disableFieldsAndButton => _isVerificationPending || _saving;
   String get _displayName => _fullNameController.text.isNotEmpty 
       ? _fullNameController.text 
@@ -821,9 +860,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.lightBackground,
+      backgroundColor: Color(0xFFF3F0FF),
       appBar: AppBar(
-        backgroundColor: AppColors.lightBackground,
+        backgroundColor: Color(0xFFF3F0FF),
         elevation: 0,
         leading: Builder(builder: (context) {
           return IconButton(
@@ -916,7 +955,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                       style: TextStyle(
                                         fontSize: 18, 
                                         fontWeight: FontWeight.bold, 
-                                        color: AppColors.darkText
+                                        color: Colors.black
                                       ),
                                     ),
                                     SizedBox(height: 4),
@@ -924,13 +963,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                       _role.isNotEmpty ? _role : 'Administrator', 
                                       style: TextStyle(
                                         fontSize: 13.5, 
-                                        color: AppColors.darkText.withOpacity(0.7)
+                                        color: Colors.black.withOpacity(0.7)
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Icon(Icons.notifications_none, color: AppColors.darkText, size: 24),
                             ],
                           ),
                         ),
@@ -980,7 +1018,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                           ),
                                         ),
                                         SizedBox(width: 8),
-                                        Text('Processing Image...', style: TextStyle(color: Colors.white, fontSize: 14)),
+                                        Text('Uploading to Cloudinary...', style: TextStyle(color: Colors.white, fontSize: 14)),
                                       ],
                                     )
                                   : Text(
@@ -1051,7 +1089,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                             style: TextStyle(
                               fontSize: 13, 
                               fontWeight: FontWeight.w600, 
-                              color: AppColors.darkText
+                              color: Colors.black
                             ),
                           ),
                         ),
@@ -1072,7 +1110,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                             child: Text(
                               'Developed By Malitha Tishamal', 
                               style: TextStyle(
-                                color: AppColors.darkText.withOpacity(0.6), 
+                                color: Colors.black.withOpacity(0.6), 
                                 fontSize: 12
                               ),
                             ),

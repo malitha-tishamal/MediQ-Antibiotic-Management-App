@@ -120,7 +120,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'nic': _nic.trim().toUpperCase(),
         'mobileNumber': _mobileNumber.trim(),
         'status': 'Pending',
-        'profileImage': defaultProfileImage ?? '', // Use default image or empty string
+        'profileImageUrl': defaultProfileImage ?? '', // Use default image or empty string
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
