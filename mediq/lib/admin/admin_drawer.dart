@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
 import 'admin_dashboard.dart';
@@ -8,7 +7,7 @@ import 'admin_developer_about_screen.dart';
 class AdminDrawer extends StatelessWidget {
   final String userName;
   final String userRole;
-  final String? profileImageBase64;
+  final String? profileImageUrl; // Changed from profileImageBase64
   final Function(String) onNavTap;
   final VoidCallback onLogout;
 
@@ -16,7 +15,7 @@ class AdminDrawer extends StatelessWidget {
     super.key,
     required this.userName,
     required this.userRole,
-    this.profileImageBase64,
+    this.profileImageUrl, // Updated parameter
     required this.onNavTap,
     required this.onLogout,
   });
@@ -26,43 +25,48 @@ class AdminDrawer extends StatelessWidget {
     return userName.split(' ').first;
   }
 
-  // -------------------- PROFILE IMAGE (Base64) --------------------
+  // -------------------- PROFILE IMAGE (Network URL) --------------------
   Widget _buildProfileImage() {
-    if (profileImageBase64 != null && profileImageBase64!.isNotEmpty) {
-      try {
-        final bytes = base64Decode(profileImageBase64!);
-        return Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withOpacity(0.6),
-            border: Border.all(
-              color: Colors.white,
-              width: 3,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: main_app.AppColors.primaryPurple.withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    if (profileImageUrl != null && profileImageUrl!.isNotEmpty) {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.6),
+          border: Border.all(
+            color: Colors.white,
+            width: 3,
           ),
-          child: ClipOval(
-            child: Image.memory(
-              bytes,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildDefaultProfileIcon();
-              },
+          boxShadow: [
+            BoxShadow(
+              color: main_app.AppColors.primaryPurple.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            profileImageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: main_app.AppColors.primaryPurple,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return _buildDefaultProfileIcon();
+            },
           ),
-        );
-      } catch (e) {
-        debugPrint("Base64 decode error: $e");
-        return _buildDefaultProfileIcon();
-      }
+        ),
+      );
     }
     return _buildDefaultProfileIcon();
   }
@@ -92,11 +96,16 @@ class AdminDrawer extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(
-        Icons.person_rounded,
-        color: Colors.white,
-        size: 30,
-      ),
+      child: ClipRRect(
+  borderRadius: BorderRadius.circular(75), // 50% circular shape
+  child: Image.asset(
+    'assets/admin-default.jpg',
+    height: 150,
+    width: 150,            // important for perfect circle
+    fit: BoxFit.cover,     // fills circle nicely
+  ),
+),
+
     );
   }
 
@@ -309,7 +318,6 @@ class AdminDrawer extends StatelessWidget {
                     },
                   ),
 
-                  // ✅ FIXED: Pass required parameters here
                   _buildNavItem(
                     context: context,
                     icon: Icons.info_rounded,
@@ -322,7 +330,6 @@ class AdminDrawer extends StatelessWidget {
                           builder: (_) => AdminDeveloperAboutScreen(
                             userName: userName,
                             userRole: userRole,
-                            
                           ),
                         ),
                       );

@@ -330,7 +330,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           content = Row(
             children: [
               Expanded(
-                child: _miniStat('Admins', adminsCount.toString(),
+                child: _miniStat('Admins', adminsCount.toString().padLeft(2, '0'),
                     AppColors.adminsCountColor),
               ),
               const SizedBox(width: 8),
@@ -382,8 +382,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Row(
               children: const [
-                Icon(Icons.circle,
-                    color: AppColors.primaryPurple, size: 28),
+                Icon(
+  Icons.medication_liquid,      // 💊 Antibiotic / medicine icon
+  color: AppColors.primaryPurple,
+  size: 28,
+)
+,
                 Spacer(),
                 Text('Antibiotics',
                     textAlign: TextAlign.right,

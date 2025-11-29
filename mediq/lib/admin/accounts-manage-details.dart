@@ -212,7 +212,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
       drawer: AdminDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-        profileImageBase64: null,
+        //profileImageBase64: null,
         onNavTap: (title) => _handleNavTap(title, context),
         onLogout: () => _handleLogout(context),
       ),

@@ -32,7 +32,7 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
       drawer: AdminDrawer(
         userName: userName,
         userRole: userRole,
-        profileImageBase64: null, // You might want to update AdminDrawer too
+        //profileImageBase64: null, // You might want to update AdminDrawer too
         onNavTap: (page) => Navigator.pop(context),
         onLogout: () => Navigator.pop(context),
       ),

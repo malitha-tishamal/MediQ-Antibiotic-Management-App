@@ -259,6 +259,7 @@ class _UserListScreenState extends State<UserListScreen> {
     final nic = data['nic'] ?? '200302202615';
     final mobile = data['mobile'] ?? '0785530992';
     final status = data['status'] ?? 'Pending';
+    final profileImageUrl = data['profileImageUrl']; // Get profile image URL
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
         : DateTime.now();
@@ -307,19 +308,21 @@ class _UserListScreenState extends State<UserListScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Modern Profile Avatar
+                // Modern Profile Avatar with Image
                 Container(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primaryPurple.withOpacity(0.8),
-                        AppColors.primaryPurple,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: profileImageUrl == null 
+                        ? LinearGradient(
+                            colors: [
+                              AppColors.primaryPurple.withOpacity(0.8),
+                              AppColors.primaryPurple,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -328,14 +331,22 @@ class _UserListScreenState extends State<UserListScreen> {
                         offset: const Offset(0, 4),
                       ),
                     ],
+                    image: profileImageUrl != null 
+                        ? DecorationImage(
+                            image: NetworkImage(profileImageUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Center(
-                    child: Icon(
-                      Icons.medical_services,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
+                  child: profileImageUrl == null 
+                      ? Center(
+                          child: Icon(
+                            Icons.medical_services,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 // User Details
