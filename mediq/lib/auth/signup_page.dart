@@ -545,17 +545,17 @@ class _SignUpPageState extends State<SignUpPage> {
                         const SizedBox(width: 48),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
                     // Logo
                     Hero(
                       tag: 'app-logo',
                       child: Image.asset(
                         'assets/logo.png',
-                        height: 150,
+                        height: 200,
                         fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 0),
                     // Form fields
                     _buildRoleDropdown(),
                     const SizedBox(height: 20),
@@ -758,7 +758,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
                     // Footer
                     const Padding(
                       padding: EdgeInsets.only(bottom: 20.0),

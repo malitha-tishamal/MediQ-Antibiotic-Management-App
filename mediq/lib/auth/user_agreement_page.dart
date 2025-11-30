@@ -238,10 +238,10 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
               // Logo
               Image.asset(
                 'assets/logo.png',
-                height: 100,
+                height: 150,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 5),
 
               // Title
               Text(
