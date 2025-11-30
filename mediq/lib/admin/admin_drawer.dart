@@ -31,7 +31,8 @@ class _AdminDrawerState extends State<AdminDrawer> {
 
   String get _firstName {
     if (widget.userName.isEmpty) return 'User';
-    return widget.userName.split(' ').first;
+    //return widget.userName.split(' ').first;
+    return widget.userName;
   }
 
   // Profile Image Widget

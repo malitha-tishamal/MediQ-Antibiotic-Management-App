@@ -13,6 +13,17 @@ import '../main.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
+class AppColors {
+  static const Color primaryPurple = Color(0xFF9F7AEA);
+  static const Color lightBackground = Color(0xFFF3F0FF);
+  static const Color darkText = Color(0xFF333333);
+  
+  // Header gradient colors matching Factory Owner Dashboard - BLUE THEME
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerTextDark = Color(0xFF333333);
+}
+
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
 
@@ -27,7 +38,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   final _imagePicker = ImagePicker();
 
   // --- Cloudinary Configuration ---
-  final String _cloudName = "dqeptzlsb"; // Your actual cloud name from CLOUDINARY_URL
+  final String _cloudName = "dqeptzlsb";
   final String _uploadPreset = "flutter_mediq_upload";
 
   // --- Controllers for Form Fields ---
@@ -54,6 +65,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   XFile? _pickedImageFile;
   bool _uploadingImage = false;
   bool _hasUnsavedChanges = false;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -195,6 +207,124 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
+  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  Widget _buildDashboardHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [Color(0xFF2764E7), Color(0xFF457AED)], // Blue gradient
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF2764E7).withOpacity(0.4), // Blue shadow
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
+              
+              const SizedBox(width: 15),
+              
+              // User Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name
+                  Text(
+                    _displayName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  // Role
+                  Text(
+                    'Logged in as: $_displayName \n(${_role.isNotEmpty ? _role : 'Administrator'})',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 25),
+          
+          // Page Title
+          Text(
+            'Profile Management',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- Image Handling Methods ---
   void _openImageOptions() {
     if (_isVerificationPending) return;
@@ -241,7 +371,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     bool isDestructive = false,
   }) {
     return ListTile(
-      leading: Icon(icon, color: isDestructive ? Colors.red : const Color(0xFF8D78F9)),
+      leading: Icon(icon, color: isDestructive ? Colors.red : AppColors.primaryPurple),
       title: Text(title, style: TextStyle(color: isDestructive ? Colors.red : null)),
       onTap: () {
         Navigator.of(context).pop();
@@ -325,7 +455,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
   }
 
-  // --- FIXED Cloudinary Upload Method ---
+  // --- Cloudinary Upload Method ---
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
       debugPrint('🔄 Starting Cloudinary upload process...');
@@ -344,7 +474,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
       final url = Uri.parse("https://api.cloudinary.com/v1_1/dqeptzlsb/image/upload");
       
-      // Create multipart request - ONLY include upload_preset for unsigned uploads
+      // Create multipart request
       final request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = _uploadPreset
         ..files.add(http.MultipartFile.fromBytes(
@@ -558,7 +688,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.email_outlined, size: 50, color: Color(0xFF8D78F9)),
+              Icon(Icons.email_outlined, size: 50, color: AppColors.primaryPurple),
               const SizedBox(height: 16),
               const Text(
                 'Email Change Initiated',
@@ -578,7 +708,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8D78F9),
+                  backgroundColor: AppColors.primaryPurple,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
@@ -706,60 +836,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15), 
-          borderSide: const BorderSide(color: Color(0xFF8D78F9), width: 2)
+          borderSide: BorderSide(color: AppColors.primaryPurple, width: 2)
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15), 
           borderSide: BorderSide(color: Colors.grey.shade200)
         ),
       ),
-    );
-  }
-
-  Widget _buildProfileImage() {
-    return Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        _uploadingImage
-            ? Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8D78F9)),
-                  ),
-                ),
-              )
-            : CircleAvatar(
-                radius: 36,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: _getProfileImage(),
-                child: _getProfileImage() == null
-                    ? Icon(Icons.person, size: 40, color: Color(0xFF8D78F9))
-                    : null,
-              ),
-        
-        if (!_uploadingImage && !_isVerificationPending)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(6),
-            child: Icon(Icons.camera_alt, size: 16, color: Color(0xFF8D78F9)),
-          ),
-      ],
     );
   }
 
@@ -770,9 +853,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          backgroundColor: isDisabled ? Colors.grey.shade400 : const Color(0xFF8D78F9),
+          backgroundColor: isDisabled ? Colors.grey.shade400 : AppColors.primaryPurple,
           elevation: 4,
-          shadowColor: const Color(0xFF8D78F9).withOpacity(0.3),
+          shadowColor: AppColors.primaryPurple.withOpacity(0.3),
         ),
         onPressed: isDisabled ? null : _saveProfile,
         child: Container(
@@ -860,50 +943,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF3F0FF),
-      appBar: AppBar(
-        backgroundColor: Color(0xFFF3F0FF),
-        elevation: 0,
-        leading: Builder(builder: (context) {
-          return IconButton(
-            icon: Icon(Icons.menu, color: Color(0xFF8D78F9), size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          );
-        }),
-        actions: [
-          if (_hasUnsavedChanges)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, size: 16, color: Colors.orange.shade800),
-                    SizedBox(width: 4),
-                    Text(
-                      'Unsaved changes',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange.shade800,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          IconButton(
-            icon: Icon(Icons.logout, color: Color(0xFF8D78F9)),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
-          ),
-          SizedBox(width: 6),
-        ],
-      ),
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
       drawer: AdminDrawer(
         userName: _displayName,
         userRole: _role.isNotEmpty ? _role : 'Administrator',
@@ -915,210 +956,170 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       body: Stack(
         children: [
           SafeArea(
-            child: _loading
-                ? Center(child: CircularProgressIndicator(color: Color(0xFF8D78F9)))
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)], 
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF8D78F9).withOpacity(0.08),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
+            child: Column(
+              children: [
+                // 🌟 NEW HEADER - Factory Owner Dashboard Style
+                _buildDashboardHeader(context),
+                
+                // Main Content
+                Expanded(
+                  child: _loading
+                      ? Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const SizedBox(height: 10),
+                              
+                              _buildVerificationStatusWidget(_isVerificationPending), 
+                              
+                              Text(
+                                'Manage Profile Details', 
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
+                              ),
+                              SizedBox(height: 18),
+
+                              Text(
+                                'Profile Picture', 
+                                style: TextStyle(
+                                  fontSize: 15, 
+                                  fontWeight: FontWeight.w600, 
+                                  color: AppColors.primaryPurple
+                                ),
+                              ),
+                              SizedBox(height: 8),
+
                               GestureDetector(
                                 onTap: _isVerificationPending ? null : _openImageOptions,
-                                child: _buildProfileImage(),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: _isVerificationPending ? Colors.grey.shade100 : AppColors.primaryPurple,
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(
+                                      color: _isVerificationPending ? Colors.grey.shade300 : AppColors.primaryPurple
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: _uploadingImage
+                                        ? Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              SizedBox(
+                                                height: 16,
+                                                width: 16,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                ),
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('Uploading to Cloudinary...', style: TextStyle(color: Colors.white, fontSize: 14)),
+                                            ],
+                                          )
+                                        : Text(
+                                            _isVerificationPending 
+                                                ? 'Image Change Disabled (Verification Pending)' 
+                                                : (_pickedImageFile != null 
+                                                    ? 'Image Selected (Tap to Change)' 
+                                                    : (_hasExistingImage
+                                                        ? 'Change Image (Tap to Change)' 
+                                                        : 'Click To Choose Image..')),
+                                            style: TextStyle(
+                                              fontSize: 14, 
+                                              color: _isVerificationPending ? Colors.grey.shade500 : Colors.white
+                                            ),
+                                          ),
+                                  ),
+                                ),
                               ),
-                              SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Welcome Back, $_displayName',
-                                      style: TextStyle(
-                                        fontSize: 18, 
-                                        fontWeight: FontWeight.bold, 
-                                        color: Colors.black
-                                      ),
+
+                              SizedBox(height: 18),
+                              Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _fullNameController, 
+                                hint: 'Full Name', 
+                                enabled: !_isVerificationPending
+                              ),
+
+                              SizedBox(height: 12),
+                              Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _emailController, 
+                                hint: 'Email', 
+                                keyboardType: TextInputType.emailAddress, 
+                                enabled: !_isVerificationPending
+                              ),
+
+                              SizedBox(height: 12),
+                              Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _nicController, 
+                                hint: 'NIC', 
+                                enabled: !_isVerificationPending
+                              ),
+
+                              SizedBox(height: 12),
+                              Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              SizedBox(height: 8),
+                              _buildTextField(
+                                controller: _mobileController, 
+                                hint: 'Mobile Number', 
+                                keyboardType: TextInputType.phone, 
+                                enabled: !_isVerificationPending
+                              ),
+
+                              SizedBox(height: 24),
+                              Center(
+                                child: _buildSaveButton(_disableFieldsAndButton),
+                              ),
+
+                              SizedBox(height: 18),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6.0),
+                                child: Text(
+                                  'Account Created: ${_formatCreatedAt()}',
+                                  style: TextStyle(
+                                    fontSize: 13, 
+                                    fontWeight: FontWeight.w600, 
+                                    color: Colors.black
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: 30),
+                              if (_error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Text(
+                                    'Error: $_error', 
+                                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+                                  ),
+                                ),
+
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 10.0),
+                                  child: Text(
+                                    'Developed By Malitha Tishamal', 
+                                    style: TextStyle(
+                                      color: AppColors.darkText.withOpacity(0.7), 
+                                      fontSize: 12
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      _role.isNotEmpty ? _role : 'Administrator', 
-                                      style: TextStyle(
-                                        fontSize: 13.5, 
-                                        color: Colors.black.withOpacity(0.7)
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-
-                        SizedBox(height: 18),
-                        _buildVerificationStatusWidget(_isVerificationPending), 
-                        
-                        Text(
-                          'Manage Profile Details', 
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
-                        ),
-                        SizedBox(height: 18),
-
-                        Text(
-                          'Profile Picture', 
-                          style: TextStyle(
-                            fontSize: 15, 
-                            fontWeight: FontWeight.w600, 
-                            color: Color(0xFF8D78F9)
-                          ),
-                        ),
-                        SizedBox(height: 8),
-
-                        GestureDetector(
-                          onTap: _isVerificationPending ? null : _openImageOptions,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: _isVerificationPending ? Colors.grey.shade100 : Color(0xFF8D78F9),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: _isVerificationPending ? Colors.grey.shade300 : Color(0xFF8D78F9)
-                              ),
-                            ),
-                            child: Center(
-                              child: _uploadingImage
-                                  ? Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          height: 16,
-                                          width: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text('Uploading to Cloudinary...', style: TextStyle(color: Colors.white, fontSize: 14)),
-                                      ],
-                                    )
-                                  : Text(
-                                      _isVerificationPending 
-                                          ? 'Image Change Disabled (Verification Pending)' 
-                                          : (_pickedImageFile != null 
-                                              ? 'Image Selected (Tap to Change)' 
-                                              : (_hasExistingImage
-                                                  ? 'Change Image (Tap to Change)' 
-                                                  : 'Click To Choose Image..')),
-                                      style: TextStyle(
-                                        fontSize: 14, 
-                                        color: _isVerificationPending ? Colors.grey.shade500 : Colors.white
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(height: 18),
-                        Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        SizedBox(height: 8),
-                        _buildTextField(
-                          controller: _fullNameController, 
-                          hint: 'Full Name', 
-                          enabled: !_isVerificationPending
-                        ),
-
-                        SizedBox(height: 12),
-                        Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        SizedBox(height: 8),
-                        _buildTextField(
-                          controller: _emailController, 
-                          hint: 'Email', 
-                          keyboardType: TextInputType.emailAddress, 
-                          enabled: !_isVerificationPending
-                        ),
-
-                        SizedBox(height: 12),
-                        Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        SizedBox(height: 8),
-                        _buildTextField(
-                          controller: _nicController, 
-                          hint: 'NIC', 
-                          enabled: !_isVerificationPending
-                        ),
-
-                        SizedBox(height: 12),
-                        Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        SizedBox(height: 8),
-                        _buildTextField(
-                          controller: _mobileController, 
-                          hint: 'Mobile Number', 
-                          keyboardType: TextInputType.phone, 
-                          enabled: !_isVerificationPending
-                        ),
-
-                        SizedBox(height: 24),
-                        Center(
-                          child: _buildSaveButton(_disableFieldsAndButton),
-                        ),
-
-                        SizedBox(height: 18),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 6.0),
-                          child: Text(
-                            'Account Created: ${_formatCreatedAt()}',
-                            style: TextStyle(
-                              fontSize: 13, 
-                              fontWeight: FontWeight.w600, 
-                              color: Colors.black
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(height: 30),
-                        if (_error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(
-                              'Error: $_error', 
-                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
-                            ),
-                          ),
-
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 10.0),
-                            child: Text(
-                              'Developed By Malitha Tishamal', 
-                              style: TextStyle(
-                                color: Colors.black.withOpacity(0.6), 
-                                fontSize: 12
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                ),
+              ],
+            ),
           ),
 
           if (_showEmailChangePopup) _buildEmailChangePopup(),

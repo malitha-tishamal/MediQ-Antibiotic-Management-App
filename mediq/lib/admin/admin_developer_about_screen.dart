@@ -4,17 +4,35 @@ import 'package:url_launcher/url_launcher.dart';
 import 'admin_drawer.dart';
 import '../main.dart';
 
-class AdminDeveloperAboutScreen extends StatelessWidget {
+class AppColors {
+  static const Color primaryPurple = Color(0xFF9F7AEA);
+  static const Color lightBackground = Color(0xFFF3F0FF);
+  static const Color darkText = Color(0xFF333333);
+  
+  // Header gradient colors matching Factory Owner Dashboard - BLUE THEME
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerTextDark = Color(0xFF333333);
+}
+
+class AdminDeveloperAboutScreen extends StatefulWidget {
   final String userName;
   final String userRole;
-  final String? profileImageUrl; // Changed to profileImageUrl
+  final String? profileImageUrl;
 
   const AdminDeveloperAboutScreen({
     super.key,
     required this.userName,
     required this.userRole,
-    this.profileImageUrl, // Updated parameter
+    this.profileImageUrl,
   });
+
+  @override
+  State<AdminDeveloperAboutScreen> createState() => _AdminDeveloperAboutScreenState();
+}
+
+class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // URL Launcher Function
   Future<void> _launchUrl(String url) async {
@@ -24,350 +42,328 @@ class AdminDeveloperAboutScreen extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-
-      drawer: AdminDrawer(
-        userName: userName,
-        userRole: userRole,
-        //profileImageBase64: null, // You might want to update AdminDrawer too
-        onNavTap: (page) => Navigator.pop(context),
-        onLogout: () => Navigator.pop(context),
-      ),
-
-      appBar: AppBar(
-        backgroundColor: AppColors.lightBackground,
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu,
-                color: AppColors.primaryPurple, size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: const Text(
-          'Developer About Me',
-          style: TextStyle(
-            color: AppColors.darkText,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: true,
-      ),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // UPDATED HEADER WITH PROFILE PICTURE
-            _buildHeaderCardWithProfile(),
-            const SizedBox(height: 30),
-
-            // Developer Information Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildDeveloperImage(),
-                  const SizedBox(height: 20),
-
-                  // Name and Role
-                  const Text(
-                    "Malitha Tishamal",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    "Flutter Developer & UI/UX Designer",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primaryPurple,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 15),
-
-                  // Description
-                  const Text(
-                    "Passionate mobile app developer with expertise in Flutter framework. "
-                    "Creating beautiful and functional applications with modern UI/UX design principles.",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Social Media Links
-                  _buildSocialIconsRow(_launchUrl),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // Skills Section
-            _buildSkillsSection(),
-
-            const SizedBox(height: 25),
-
-            // Contact Information
-            _buildContactInfo(),
-
-            const SizedBox(height: 30),
-
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: AppColors.primaryPurple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Column(
-                children: [
-                  const Text(
-                    '🚀 Built with Flutter & ❤️',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Developed By Malitha Tishamal',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '© ${DateTime.now().year} Medi-Q App',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // UPDATED HEADER CARD WITH PROFILE PICTURE - USING profileImageUrl
-  Widget _buildHeaderCardWithProfile() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primaryPurple.withOpacity(0.2),
-            AppColors.primaryPurple.withOpacity(0.1),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // PROFILE PICTURE - USING profileImageUrl
-          _buildProfilePicture(),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkText,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  userRole,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.darkText.withOpacity(0.7),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.verified, size: 14, color: AppColors.primaryPurple),
-                      SizedBox(width: 4),
-                      Text(
-                        'Admin Account',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primaryPurple,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // PROFILE PICTURE WIDGET - USING profileImageUrl FROM FIRESTORE
-  Widget _buildProfilePicture() {
-    Widget profileImageWidget;
-
-    if (profileImageUrl != null && profileImageUrl!.isNotEmpty) {
-      // Use NetworkImage for Cloudinary URL from Firestore
-      profileImageWidget = Container(
-        width: 70,
-        height: 70,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.primaryPurple.withOpacity(0.3),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: ClipOval(
-          child: Image.network(
-            profileImageUrl!,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                      : null,
-                  color: AppColors.primaryPurple,
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              debugPrint('Error loading profile image: $error');
-              return _buildDefaultProfileIcon();
-            },
-          ),
-        ),
-      );
+  // 🌟 FIXED HEADER - Profile Image Loading Issue Solved
+  Widget _buildDashboardHeader(BuildContext context) {
+    // Debug print to check the profile image URL
+    if (widget.profileImageUrl != null) {
+      debugPrint('🖼️ Profile Image URL: ${widget.profileImageUrl}');
     } else {
-      profileImageWidget = _buildDefaultProfileIcon();
+      debugPrint('❌ No Profile Image URL provided');
     }
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        profileImageWidget,
-        // Add a subtle camera icon overlay to indicate it's a profile picture
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.photo_camera,
-              size: 14,
-              color: AppColors.primaryPurple,
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // 🎯 FIXED Profile Picture with proper network image loading
+              _buildProfilePicture(),
+              
+              const SizedBox(width: 15),
+              
+              // User Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name
+                  Text(
+                    widget.userName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  // Role
+                  Text(
+                    'Logged in as: ${widget.userName} \n(${widget.userRole})',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 25),
+          
+          // Page Title
+          Text(
+            'Developer About Me',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  // DEFAULT PROFILE ICON
-  Widget _buildDefaultProfileIcon() {
+  // 🎯 FIXED Profile Picture Widget with better error handling
+  Widget _buildProfilePicture() {
+    // Check if profileImageUrl is valid
+    bool hasValidImageUrl = widget.profileImageUrl != null && 
+                           widget.profileImageUrl!.isNotEmpty && 
+                           widget.profileImageUrl!.startsWith('http');
+
+    if (!hasValidImageUrl) {
+      debugPrint('⚠️ Invalid profile image URL: ${widget.profileImageUrl}');
+    }
+
     return Container(
       width: 70,
       height: 70,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(
-          color: AppColors.primaryPurple.withOpacity(0.3),
-          width: 2,
-        ),
+        gradient: hasValidImageUrl 
+            ? null
+            : const LinearGradient(
+                colors: [Color(0xFF2764E7), Color(0xFF457AED)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            color: const Color(0xFF2764E7).withOpacity(0.4),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Icon(
-        Icons.person,
-        size: 35,
-        color: AppColors.primaryPurple,
+      child: hasValidImageUrl
+          ? ClipOval(
+              child: Image.network(
+                widget.profileImageUrl!,
+                fit: BoxFit.cover,
+                width: 70,
+                height: 70,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    debugPrint('✅ Profile image loaded successfully');
+                    return child;
+                  }
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          : null,
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('❌ Error loading profile image: $error');
+                  debugPrint('🔄 Stack trace: $stackTrace');
+                  return Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF2764E7), Color(0xFF457AED)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.white,
+                    ),
+                  );
+                },
+              ),
+            )
+          : const Icon(
+              Icons.person,
+              size: 40,
+              color: Colors.white,
+            ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
+      drawer: AdminDrawer(
+        userName: widget.userName,
+        userRole: widget.userRole,
+        onNavTap: (page) => Navigator.pop(context),
+        onLogout: () => Navigator.pop(context),
+      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // 🌟 FIXED HEADER with Profile Image Solution
+                _buildDashboardHeader(context),
+                
+                // Main Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 10),
+
+                        // Developer Information Card
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildDeveloperImage(),
+                              const SizedBox(height: 20),
+
+                              // Name and Role
+                              const Text(
+                                "Malitha Tishamal",
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              const Text(
+                                "Flutter Developer & UI/UX Designer",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.primaryPurple,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 15),
+
+                              // Description
+                              const Text(
+                                "Passionate mobile app developer with expertise in Flutter framework. "
+                                "Creating beautiful and functional applications with modern UI/UX design principles.",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Social Media Links
+                              _buildSocialIconsRow(_launchUrl),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 25),
+
+                        // Skills Section
+                        _buildSkillsSection(),
+
+                        const SizedBox(height: 25),
+
+                        // Contact Information
+                        _buildContactInfo(),
+
+                        const SizedBox(height: 30),
+
+                        // Footer
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryPurple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text(
+                                '🚀 Built with Flutter & ❤️',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              const Text(
+                                'Developed By Malitha Tishamal',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                '© ${DateTime.now().year} Medi-Q App',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
