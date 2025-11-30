@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +16,11 @@ class AppColors {
   static const Color disabledColor = Color(0xFFE53935);
   static const Color pendingColor = Color(0xFFFF9800);
   static const Color iconColor = Color(0xFF5A43A7);
+  
+  // Header gradient colors matching Factory Owner Dashboard
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerTextDark = Color(0xFF333333);
 }
 
 class AccountManageDetails extends StatefulWidget {
@@ -35,6 +39,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
   String _currentUserRole = 'Guest';
   String? _profileImageUrl;
   bool _isUserLoading = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -56,7 +61,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
             _currentUserName =
                 data['fullName'] ?? user.email?.split('@').first ?? 'User';
             _currentUserRole = data['role'] ?? 'Unassigned';
-            _profileImageUrl = data['profileImageUrl']; // Firestore image
+            _profileImageUrl = data['profileImageUrl'];
           });
         } else {
           setState(() {
@@ -101,97 +106,118 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     }
   }
 
-  Widget _buildHeaderCard(String name, String role) {
+  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  Widget _buildDashboardHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.6),
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: ClipOval(
-              child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                  ? Image.network(
-                      _profileImageUrl!,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.person,
-                          size: 48,
-                          color: AppColors.primaryPurple,
-                        );
-                      },
-                    )
-                  : const Icon(
-                      Icons.person,
-                      size: 48,
-                      color: AppColors.primaryPurple,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isUserLoading ? 'Fetching Details...' : 'Welcome Back, $name',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkText,
-                  ),
+                  ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  role,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    color: AppColors.darkText.withOpacity(0.7),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
+              
+              const SizedBox(width: 15),
+              
+              // User Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  // Role
+                  Text(
+                    'Logged in as: $_currentUserName \n($_currentUserRole)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8.0, right: 18.0, top: 8.0, bottom: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Builder(
-            builder: (BuildContext innerContext) {
-              return IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.darkText, size: 30),
-                onPressed: () => Scaffold.of(innerContext).openDrawer(),
-              );
-            },
+          
+          const SizedBox(height: 25),
+          
+          // Page Title
+          Text(
+            'Account Management Dashboard',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
@@ -208,89 +234,96 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     }
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
       drawer: AdminDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-        //profileImageBase64: null,
         onNavTap: (title) => _handleNavTap(title, context),
         onLogout: () => _handleLogout(context),
       ),
       appBar: const PreferredSize(preferredSize: Size.fromHeight(0), child: SizedBox.shrink()),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildMenuButton(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 0.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderCard(_currentUserName, _currentUserRole),
-                    const SizedBox(height: 24),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 0.0, bottom: 20.0, top: 10.0),
-                      child: Text(
-                        'Manage Accounts',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // 🌟 NEW HEADER
+                _buildDashboardHeader(context),
+                
+                // Main Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        
+                        _buildSectionTitle('Manage Admin Accounts', Icons.admin_panel_settings),
+                        const SizedBox(height: 10),
+                        _buildAccountCard(
+                          role: 'Admin',
+                          title: 'Manage Admin Accounts',
+                          imagePath: 'assets/admin-default.jpg',
                         ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6.0, bottom: 10),
-                      child: Text(
-                        'Manage Admin Accounts',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
+                        
+                        const SizedBox(height: 24),
+                        
+                        _buildSectionTitle('Manage Pharmacist Accounts', Icons.medical_services),
+                        const SizedBox(height: 10),
+                        _buildAccountCard(
+                          role: 'Pharmacist',
+                          title: 'Manage Pharmacist Accounts',
+                          imagePath: 'assets/pharmizist-default.jpg',
                         ),
-                      ),
+                        
+                        const SizedBox(height: 30),
+                      ],
                     ),
-                    _buildAccountCard(
-                      role: 'Admin',
-                      title: 'Manage Admin Accounts',
-                      imagePath: 'assets/admin-default.jpg',
-                    ),
-                    const SizedBox(height: 24),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 6.0, bottom: 10),
-                      child: Text(
-                        'Manage Pharmacist Accounts',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
-                      ),
-                    ),
-                    _buildAccountCard(
-                      role: 'Pharmacist',
-                      title: 'Manage Pharmacist Accounts',
-                      imagePath: 'assets/pharmizist-default.jpg',
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Fixed Footer Text
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.darkText.withOpacity(0.7),
+                  fontSize: 12,
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 10.0),
-        child: Text(
-          'Developed By Malitha Tishamal',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.darkText.withOpacity(0.6),
-            fontSize: 12,
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  // Section Title Widget
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryPurple, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkText,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -494,4 +527,3 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 }
-

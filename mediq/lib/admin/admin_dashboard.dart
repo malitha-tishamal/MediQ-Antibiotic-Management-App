@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../auth/login_page.dart';
 import 'admin_drawer.dart';
 import 'admin_profile_screen.dart';
-
 import 'accounts-manage-details.dart';
 import 'admin_developer_about_screen.dart';
 
@@ -19,6 +18,11 @@ class AppColors {
   static const Color totalFoundColor = Color(0xFF1E88E5);
   static const Color releasesCountColor = Color(0xFFE53935);
   static const Color returnsCountColor = Color(0xFF43A047);
+  
+  // Header gradient colors matching Factory Owner Dashboard
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerTextDark = Color(0xFF333333);
 }
 
 // ---------------- Dashboard ----------------
@@ -45,6 +49,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   final CollectionReference _userCollection =
       FirebaseFirestore.instance.collection('users');
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  String? _profileImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfileImage();
+  }
+
+  void _fetchProfileImage() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          setState(() {
+            _profileImageUrl = userDoc.data()?['profileImageUrl'];
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching profile image: $e");
+      }
+    }
+  }
 
   Future<void> _handleLogout() async {
     try {
@@ -100,137 +132,199 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     final displayName =
-        widget.userName.isNotEmpty ? widget.userName : 'Malitha';
+        widget.userName.isNotEmpty ? widget.userName : 'Admin';
     final displayRole =
         widget.userRole.isNotEmpty ? widget.userRole : 'Administrator';
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
-      appBar: _buildAppBar(),
       drawer: AdminDrawer(
         userName: displayName,
         userRole: displayRole,
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeaderCard(displayName, displayRole),
-              const SizedBox(height: 18),
-              const Padding(
-                padding: EdgeInsets.only(left: 6.0, bottom: 6),
-                child: Text(
-                  'Home',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText),
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildTilesGrid(),
-              const SizedBox(height: 18),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Text(
-                    'Developed By Malitha Tishamal',
-                    style: TextStyle(
-                        color: AppColors.darkText.withOpacity(0.6),
-                        fontSize: 12),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // 🌟 NEW HEADER - Factory Owner Dashboard Style
+                _buildDashboardHeader(context, displayName, displayRole),
+                
+                // Main Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionTitle('Home', Icons.home_rounded),
+                        const SizedBox(height: 10),
+                        _buildTilesGrid(),
+                        
+                        const SizedBox(height: 50),
+                      ],
+                    ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          
+          // Fixed Footer Text
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.darkText.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  Widget _buildDashboardHeader(BuildContext context, String name, String role) {
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                onPressed: () {
+                  _scaffoldKey.currentState?.openDrawer();
+                },
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ---------------- AppBar ----------------
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppColors.lightBackground,
-      elevation: 0,
-      leading: Builder(builder: (context) {
-        return IconButton(
-          icon: const Icon(Icons.menu, size: 28, color: AppColors.darkText),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        );
-      }),
-    );
-  }
-
-  // ---------------- Header Card With Firestore Image ----------------
-  Widget _buildHeaderCard(String name, String role) {
-    final String uid = FirebaseAuth.instance.currentUser!.uid;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFE6D6F7), Color(0xFFE9D7FD)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
+          
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
+              
+              const SizedBox(width: 15),
+              
+              // User Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Admin Name
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  // Role
+                  Text(
+                    'Logged in as: $name \n($role)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 25),
+          
+          // Dashboard Title with Admin ID
+          Text(
+            'Administrative Dashboard',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // Section Title Widget
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
       child: Row(
         children: [
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(uid)
-                .get(),
-            builder: (context, snapshot) {
-              String? profileUrl;
-
-              if (snapshot.hasData && snapshot.data != null) {
-                profileUrl = snapshot.data!["profileImageUrl"];
-              }
-
-              return CircleAvatar(
-                radius: 32,
-                backgroundColor: Colors.white.withOpacity(0.6),
-                backgroundImage:
-                    profileUrl != null && profileUrl.isNotEmpty
-                        ? NetworkImage(profileUrl)
-                        : null,
-                child: profileUrl == null || profileUrl.isEmpty
-                    ? const Icon(Icons.person,
-                        size: 48, color: AppColors.primaryPurple)
-                    : null,
-              );
-            },
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Welcome Back, $name",
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.darkText)),
-                const SizedBox(height: 4),
-                Text(role,
-                    style: TextStyle(
-                        fontSize: 13.5,
-                        color: AppColors.darkText.withOpacity(0.7))),
-              ],
+          Icon(icon, color: AppColors.primaryPurple, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.darkText,
             ),
           ),
         ],
@@ -383,11 +477,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             Row(
               children: const [
                 Icon(
-  Icons.medication_liquid,      // 💊 Antibiotic / medicine icon
-  color: AppColors.primaryPurple,
-  size: 28,
-)
-,
+                  Icons.medication_liquid,
+                  color: AppColors.primaryPurple,
+                  size: 28,
+                ),
                 Spacer(),
                 Text('Antibiotics',
                     textAlign: TextAlign.right,

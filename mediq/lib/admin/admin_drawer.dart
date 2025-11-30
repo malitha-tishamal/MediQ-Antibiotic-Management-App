@@ -163,7 +163,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      "Hospital Management",
+                      "Antibiotics Management",
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -207,7 +207,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Welcome, $_firstName! 👋',
+                        '$_firstName! 👋',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,

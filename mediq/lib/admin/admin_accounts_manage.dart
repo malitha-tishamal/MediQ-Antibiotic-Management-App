@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -13,6 +14,11 @@ class AppColors {
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color successGreen = Color(0xFF00C853);
   static const Color warningOrange = Color(0xFFFF6D00);
+  
+  // Header gradient colors matching Factory Owner Dashboard
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerTextDark = Color(0xFF333333);
 }
 
 // Enum for filtering users
@@ -38,7 +44,54 @@ class UserListScreen extends StatefulWidget {
 class _UserListScreenState extends State<UserListScreen> {
   final CollectionReference _userCollection =
       FirebaseFirestore.instance.collection('users');
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   UserStatusFilter _currentFilter = UserStatusFilter.all;
+
+  String _currentUserName = 'Loading...';
+  String _currentUserRole = 'Guest';
+  String? _profileImageUrl;
+  bool _isUserLoading = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentUserDetails();
+  }
+
+  Future<void> _fetchCurrentUserDetails() async {
+    setState(() => _isUserLoading = true);
+
+    final user = _auth.currentUser;
+
+    if (user != null) {
+      try {
+        final doc = await _userCollection.doc(user.uid).get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          setState(() {
+            _currentUserName =
+                data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserRole = data['role'] ?? 'Unassigned';
+            _profileImageUrl = data['profileImageUrl'];
+          });
+        } else {
+          setState(() {
+            _currentUserName = user.email?.split('@').first ?? 'Authenticated User';
+            _currentUserRole = 'Profile Missing';
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching user profile: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load user data: $e')),
+          );
+        }
+      }
+    }
+    setState(() => _isUserLoading = false);
+  }
 
   String? _getFilterStatusValue(UserStatusFilter filter) {
     switch (filter) {
@@ -69,186 +122,299 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.primaryPurple.withOpacity(0.1),
-          ),
-          child: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppColors.primaryPurple),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  Widget _buildDashboardHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        title: Text(
-          'Manage ${widget.role} Accounts',
-          style: TextStyle(
-            color: AppColors.darkText,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
-        centerTitle: true,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
-      body: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Modern Filter Chips
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: UserStatusFilter.values.map((filter) {
-                final isSelected = _currentFilter == filter;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _currentFilter = filter;
-                      });
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primaryPurple : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getFilterName(filter),
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.darkText.withOpacity(0.6),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ),
           
-          // User List
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getFilterStatusValue(_currentFilter) == null
-                  ? _userCollection.where('role', isEqualTo: widget.role).snapshots()
-                  : _userCollection
-                      .where('role', isEqualTo: widget.role)
-                      .where('status', isEqualTo: _getFilterStatusValue(_currentFilter))
-                      .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          color: AppColors.primaryPurple,
-                          strokeWidth: 2,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Loading users...',
-                          style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.5),
-                          ),
-                        ),
-                      ],
+          const SizedBox(height: 10),
+          
+          Row(
+            children: [
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null 
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: AppColors.disabledColor,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading data',
-                          style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.7),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                  ],
+                  image: _profileImageUrl != null 
+                    ? DecorationImage(
+                        image: NetworkImage(_profileImageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
+              
+              const SizedBox(width: 15),
+              
+              // User Info
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
                     ),
-                  );
-                }
-                final documents = snapshot.data?.docs ?? [];
-                if (documents.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.people_outline,
-                          color: AppColors.darkText.withOpacity(0.3),
-                          size: 64,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No ${widget.role} accounts found',
-                          style: TextStyle(
-                            color: AppColors.darkText.withOpacity(0.5),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                  ),
+                  // Role
+                  Text(
+                    'Logged in as: $_currentUserName \n($_currentUserRole)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.headerTextDark.withOpacity(0.7),
                     ),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  itemCount: documents.length,
-                  itemBuilder: (context, index) {
-                    final data = documents[index].data() as Map<String, dynamic>;
-                    final userId = documents[index].id;
-                    return _buildUserCard(userId, data);
-                  },
-                );
-              },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 25),
+          
+          // Page Title
+          Text(
+            'Manage ${widget.role} Accounts',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
             ),
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          'Developed By Malitha Tishamal',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.darkText.withOpacity(0.4),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // 🌟 NEW HEADER
+                _buildDashboardHeader(context),
+                
+                // Main Content
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Modern Filter Chips
+                      Container(
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: UserStatusFilter.values.map((filter) {
+                            final isSelected = _currentFilter == filter;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _currentFilter = filter;
+                                  });
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? AppColors.primaryPurple : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _getFilterName(filter),
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white : AppColors.darkText.withOpacity(0.6),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      
+                      // User List
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: _getFilterStatusValue(_currentFilter) == null
+                              ? _userCollection.where('role', isEqualTo: widget.role).snapshots()
+                              : _userCollection
+                                  .where('role', isEqualTo: widget.role)
+                                  .where('status', isEqualTo: _getFilterStatusValue(_currentFilter))
+                                  .snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      color: AppColors.primaryPurple,
+                                      strokeWidth: 2,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Loading users...',
+                                      style: TextStyle(
+                                        color: AppColors.darkText.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: AppColors.disabledColor,
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Error loading data',
+                                      style: TextStyle(
+                                        color: AppColors.darkText.withOpacity(0.7),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            final documents = snapshot.data?.docs ?? [];
+                            if (documents.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.people_outline,
+                                      color: AppColors.darkText.withOpacity(0.3),
+                                      size: 64,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No ${widget.role} accounts found',
+                                      style: TextStyle(
+                                        color: AppColors.darkText.withOpacity(0.5),
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                              itemCount: documents.length,
+                              itemBuilder: (context, index) {
+                                final data = documents[index].data() as Map<String, dynamic>;
+                                final userId = documents[index].id;
+                                return _buildUserCard(userId, data);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          
+          // Fixed Footer Text
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.darkText.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -259,7 +425,7 @@ class _UserListScreenState extends State<UserListScreen> {
     final nic = data['nic'] ?? '200302202615';
     final mobile = data['mobile'] ?? '0785530992';
     final status = data['status'] ?? 'Pending';
-    final profileImageUrl = data['profileImageUrl']; // Get profile image URL
+    final profileImageUrl = data['profileImageUrl'];
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
         : DateTime.now();
