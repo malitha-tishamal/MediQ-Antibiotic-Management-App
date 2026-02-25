@@ -41,7 +41,6 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final int antibioticsCount = 40;
   final int wardsCount = 32;
   final int stockTypesCount = 2;
   final int todayReleases = 32;
@@ -49,6 +48,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   final CollectionReference _userCollection =
       FirebaseFirestore.instance.collection('users');
+  final CollectionReference _antibioticsCollection =
+      FirebaseFirestore.instance.collection('antibiotics'); // 👈 added
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   String? _profileImageUrl;
@@ -104,6 +105,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             .push(MaterialPageRoute(builder: (_) => AccountManageDetails()));
         break;
 
+      case 'Antibiotics': // 👈 handle navigation to antibiotics screens
+        // TODO: Navigate to AntibioticsManagementScreen when created
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Antibiotics Management coming soon!')),
+        );
+        break;
+
       case 'Developer About':
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -142,6 +150,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       drawer: AdminDrawer(
         userName: displayName,
         userRole: displayRole,
+        profileImageUrl: _profileImageUrl,
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
@@ -150,7 +159,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           SafeArea(
             child: Column(
               children: [
-                // 🌟 NEW HEADER - Factory Owner Dashboard Style
+                // Header with Full Name & Email
                 _buildDashboardHeader(context, displayName, displayRole),
                 
                 // Main Content
@@ -173,11 +182,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
           ),
           
-          // Fixed Footer Text
+          // 📌 FULL‑WIDTH FOOTER
           Align(
             alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            child: Container(
+              width: double.infinity,
+              color: const Color.fromARGB(255, 255, 255, 255),
+              padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
                 textAlign: TextAlign.center,
@@ -193,8 +204,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  // Header with profile picture, full name, and email
   Widget _buildDashboardHeader(BuildContext context, String name, String role) {
+    final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'No email provided';
+
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
@@ -273,7 +286,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Admin Name
+                  // Full Name
                   Text(
                     name,
                     style: const TextStyle(
@@ -282,9 +295,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  // Role
+                  const SizedBox(height: 4),
+                  // Role (not email as per your last version)
                   Text(
-                    'Logged in as: $name \n($role)',
+                    'Logged in as: Administrator',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -297,7 +311,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           
           const SizedBox(height: 25),
           
-          // Dashboard Title with Admin ID
+          // Dashboard Title
           Text(
             'Administrative Dashboard',
             style: const TextStyle(
@@ -343,7 +357,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       childAspectRatio: 1.50,
       children: [
         _tileAccountsManage(),
-        _tileAntibiotics(),
+        _tileAntibiotics(), // 👈 updated tile
         _tileSimple(
             icon: Icons.apartment,
             title: 'Wards',
@@ -466,34 +480,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // ---------------- Antibiotics Tile ----------------
+  // ---------------- Antibiotics Tile (live count) ----------------
   Widget _tileAntibiotics() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics'),
       child: _smallCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(
-                  Icons.medication_liquid,
-                  color: AppColors.primaryPurple,
-                  size: 28,
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _antibioticsCollection.snapshots(),
+          builder: (context, snapshot) {
+            int count = 0;
+            if (snapshot.hasData) {
+              count = snapshot.data!.docs.length;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(
+                      Icons.medication_liquid,
+                      color: AppColors.primaryPurple,
+                      size: 28,
+                    ),
+                    Spacer(),
+                    Text('Antibiotics',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkText,
+                            fontSize: 14)),
+                  ],
                 ),
-                Spacer(),
-                Text('Antibiotics',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
+                const Spacer(),
+                _miniStat('Total Found', count.toString(),
+                    AppColors.totalFoundColor),
               ],
-            ),
-            const Spacer(),
-            _miniStat('Total Found', antibioticsCount.toString(),
-                AppColors.totalFoundColor),
-          ],
+            );
+          },
         ),
       ),
     );

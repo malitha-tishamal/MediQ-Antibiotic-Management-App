@@ -197,7 +197,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                   ),
                   // Role
                   Text(
-                    'Logged in as: $_currentUserName \n($_currentUserRole)',
+                    'Logged in as: Administrator',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -239,6 +239,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
       drawer: AdminDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
+        profileImageUrl: _profileImageUrl, // ✅ passed to drawer
         onNavTap: (title) => _handleNavTap(title, context),
         onLogout: () => _handleLogout(context),
       ),
@@ -287,11 +288,13 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
             ),
           ),
           
-          // Fixed Footer Text
+          // 📌 FULL‑WIDTH FOOTER
           Align(
             alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            child: Container(
+              width: double.infinity,
+              color: const Color.fromARGB(255, 255, 254, 254), // optional – remove if you don't want background
+              padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
                 textAlign: TextAlign.center,

@@ -3,6 +3,7 @@ import '../main.dart' as main_app;
 import 'admin_dashboard.dart';
 import 'admin_profile_screen.dart';
 import 'admin_developer_about_screen.dart';
+import 'antibiotics_management_screen.dart'; 
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -25,17 +26,19 @@ class AdminDrawer extends StatefulWidget {
 }
 
 class _AdminDrawerState extends State<AdminDrawer> {
-  // Hardcoded Colors matching FactoryOwnerDrawer style
   final Color _primaryBlue = main_app.AppColors.primaryPurple;
   final Color _darkText = main_app.AppColors.darkestText;
 
   String get _firstName {
     if (widget.userName.isEmpty) return 'User';
-    //return widget.userName.split(' ').first;
     return widget.userName;
   }
 
-  // Profile Image Widget
+  String get _firstLetter {
+    if (widget.userName.isEmpty) return 'U';
+    return widget.userName[0].toUpperCase();
+  }
+
   Widget _buildProfileImage() {
     if (widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty) {
       return Container(
@@ -58,48 +61,56 @@ class _AdminDrawerState extends State<AdminDrawer> {
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
-              return const Center(
+              return Center(
                 child: SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
               );
             },
             errorBuilder: (context, error, stackTrace) {
-              return _buildDefaultProfileIcon();
+              return _buildLetterAvatar();
             },
           ),
         ),
       );
+    } else {
+      return _buildLetterAvatar();
     }
-    return _buildDefaultProfileIcon();
   }
 
-  Widget _buildDefaultProfileIcon() {
+  Widget _buildLetterAvatar() {
     return Container(
       width: 65,
       height: 65,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
             main_app.AppColors.buttonGradientStart,
             main_app.AppColors.buttonGradientEnd,
           ],
         ),
+        border: Border.all(color: _primaryBlue, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryBlue.withOpacity(0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/admin-default.jpg',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.person_rounded,
+      child: Center(
+        child: Text(
+          _firstLetter,
+          style: const TextStyle(
             color: Colors.white,
-            size: 28,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -117,8 +128,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 50),
-
-          // Header (Logo/Title section)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -178,8 +187,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
             ),
           ),
           const SizedBox(height: 30),
-
-          // Profile Section
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(18),
@@ -244,14 +251,11 @@ class _AdminDrawerState extends State<AdminDrawer> {
           const SizedBox(height: 25),
           _buildSectionDivider(),
           const SizedBox(height: 8),
-
-          // Menu Items
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               physics: const BouncingScrollPhysics(),
               children: [
-                // 1. Dashboard
                 _buildModernDrawerItem(
                   icon: Icons.dashboard_rounded,
                   label: "Dashboard",
@@ -269,68 +273,59 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     );
                   },
                 ),
-
-                // 2. Accounts Management
                 _buildModernDrawerItem(
                   icon: Icons.people_alt_rounded,
                   label: "Accounts Management",
                   description: "User accounts & permissions",
                   onTap: () => widget.onNavTap('Accounts Manage'),
                 ),
-
-                // 3. Antibiotics Management
+              
                 _buildModernDrawerItem(
                   icon: Icons.medical_services_rounded,
                   label: "Antibiotics Management",
                   description: "Manage antibiotics inventory",
-                  onTap: () => widget.onNavTap('Antibiotics'),
+                  onTap: () {
+                    Navigator.of(context).pop(); // close drawer
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AntibioticsManagementScreen(),
+                      ),
+                    );
+                  },
                 ),
-
-                // 4. Wards Management
                 _buildModernDrawerItem(
                   icon: Icons.local_hospital_rounded,
                   label: "Wards Management",
                   description: "Hospital wards & departments",
                   onTap: () => widget.onNavTap('Wards'),
                 ),
-
-                // 5. Stock Inventory
                 _buildModernDrawerItem(
                   icon: Icons.inventory_2_rounded,
                   label: "Stock Inventory",
                   description: "Medical stock management",
                   onTap: () => widget.onNavTap('Stocks'),
                 ),
-
-                // 6. Usage Details
                 _buildModernDrawerItem(
                   icon: Icons.receipt_long_rounded,
                   label: "Usage Details",
                   description: "Medication usage records",
                   onTap: () => widget.onNavTap('Usage Details'),
                 ),
-
-                // 7. Usage Analytics
                 _buildModernDrawerItem(
                   icon: Icons.analytics_rounded,
                   label: "Usage Analytics",
                   description: "Usage statistics & reports",
                   onTap: () => widget.onNavTap('Usage Analyst'),
                 ),
-
-                // 8. Record Books
                 _buildModernDrawerItem(
                   icon: Icons.menu_book_rounded,
                   label: "Record Books",
                   description: "Medical record books",
                   onTap: () => widget.onNavTap('Book Numbers'),
                 ),
-
                 const SizedBox(height: 10),
                 _buildSectionDivider(),
                 const SizedBox(height: 10),
-
-                // 9. My Profile
                 _buildModernDrawerItem(
                   icon: Icons.person_rounded,
                   label: "My Profile",
@@ -342,8 +337,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     );
                   },
                 ),
-
-                // 10. About & Help
                 _buildModernDrawerItem(
                   icon: Icons.info_rounded,
                   label: "About & Help",
@@ -363,8 +356,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
               ],
             ),
           ),
-
-          // Logout Button
           Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -439,8 +430,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
               ),
             ),
           ),
-
-          // Footer
           Container(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -456,7 +445,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "MEDI-Q © 2024 • Developed by Malitha Tishamal",
+                  "MEDI-Q © 2026 • Developed by Malitha Tishamal",
                   style: TextStyle(
                     fontSize: 10,
                     color: _darkText.withOpacity(0.3),
@@ -471,7 +460,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
     );
   }
 
-  // Modern Drawer Item Builder
   Widget _buildModernDrawerItem({
     required IconData icon,
     required String label,

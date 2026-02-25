@@ -50,6 +50,7 @@ class _UserListScreenState extends State<UserListScreen> {
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Guest';
   String? _profileImageUrl;
+  String? _currentUserId; // 👈 Store current user's UID
   bool _isUserLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -63,6 +64,7 @@ class _UserListScreenState extends State<UserListScreen> {
     setState(() => _isUserLoading = true);
 
     final user = _auth.currentUser;
+    _currentUserId = user?.uid; // 👈 Save current user ID
 
     if (user != null) {
       try {
@@ -211,7 +213,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   ),
                   // Role
                   Text(
-                    'Logged in as: $_currentUserName \n($_currentUserRole)',
+                    'Logged in as: Administrator',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -399,11 +401,13 @@ class _UserListScreenState extends State<UserListScreen> {
             ),
           ),
           
-          // Fixed Footer Text
+
           Align(
             alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            child: Container(
+              width: double.infinity,
+              color: const Color.fromARGB(255, 255, 255, 255), // optional background – remove if not wanted
+              padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
                 textAlign: TextAlign.center,
@@ -451,6 +455,9 @@ class _UserListScreenState extends State<UserListScreen> {
         statusText = 'Pending';
         statusIcon = Icons.pending;
     }
+
+    // Check if this card belongs to the currently logged-in user
+    final bool isCurrentUser = userId == _currentUserId;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -522,15 +529,24 @@ class _UserListScreenState extends State<UserListScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            fullName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.darkText,
+                          Expanded(
+                            child: Text(
+                              fullName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkText,
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          // 👇 EDIT ICON BUTTON (always visible for all users)
+                          IconButton(
+                            icon: Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
+                            onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
@@ -590,7 +606,7 @@ class _UserListScreenState extends State<UserListScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            // Modern Action Buttons
+            // Modern Action Buttons – disabled for current user
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
@@ -598,30 +614,30 @@ class _UserListScreenState extends State<UserListScreen> {
                   Expanded(
                     child: _buildModernActionButton(
                       'Approve',
-                      AppColors.successGreen,
+                      isCurrentUser ? Colors.grey : AppColors.successGreen,
                       Icons.check_circle,
-                      status == 'Approved',
-                      () => _updateStatus(userId, 'Approved'),
+                      isCurrentUser || status == 'Approved', // disabled if current user or already approved
+                      isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildModernActionButton(
                       'Disable',
-                      AppColors.disabledColor,
+                      isCurrentUser ? Colors.grey : AppColors.disabledColor,
                       Icons.lock,
-                      status == 'Disabled',
-                      () => _updateStatus(userId, 'Disabled'),
+                      isCurrentUser || status == 'Disabled',
+                      isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildModernActionButton(
                       'Delete',
-                      AppColors.warningOrange,
+                      isCurrentUser ? Colors.grey : AppColors.warningOrange,
                       Icons.delete_outline,
-                      false,
-                      () => _confirmDelete(userId, fullName),
+                      isCurrentUser, // disabled if current user
+                      isCurrentUser ? null : () => _confirmDelete(userId, fullName),
                     ),
                   ),
                 ],
@@ -659,22 +675,22 @@ class _UserListScreenState extends State<UserListScreen> {
     String label,
     Color color,
     IconData icon,
-    bool isCurrentStatus,
-    VoidCallback onTap,
+    bool isDisabled,
+    VoidCallback? onTap,
   ) {
     return Material(
       borderRadius: BorderRadius.circular(12),
-      color: isCurrentStatus ? color.withOpacity(0.2) : color.withOpacity(0.1),
+      color: isDisabled ? Colors.grey.withOpacity(0.1) : color.withOpacity(0.1),
       child: InkWell(
-        onTap: isCurrentStatus ? null : onTap,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isCurrentStatus ? color.withOpacity(0.3) : color.withOpacity(0.5),
-              width: isCurrentStatus ? 1.5 : 1,
+              color: isDisabled ? Colors.grey.withOpacity(0.3) : color.withOpacity(0.5),
+              width: isDisabled ? 1 : 1,
             ),
           ),
           child: Column(
@@ -683,13 +699,13 @@ class _UserListScreenState extends State<UserListScreen> {
               Icon(
                 icon,
                 size: 18,
-                color: isCurrentStatus ? color.withOpacity(0.6) : color,
+                color: isDisabled ? Colors.grey : color,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: isCurrentStatus ? color.withOpacity(0.6) : color,
+                  color: isDisabled ? Colors.grey : color,
                   fontWeight: FontWeight.w600,
                   fontSize: 11,
                 ),
@@ -699,6 +715,104 @@ class _UserListScreenState extends State<UserListScreen> {
         ),
       ),
     );
+  }
+
+  // 👇 Edit dialog and update function (copied from pharmacist page)
+  void _showEditDialog(String userId, String currentName, String currentMobile, String currentNic) {
+    final nameController = TextEditingController(text: currentName);
+    final mobileController = TextEditingController(text: currentMobile);
+    final nicController = TextEditingController(text: currentNic);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.edit, color: AppColors.primaryPurple),
+            const SizedBox(width: 12),
+            const Text('Edit Admin Details'),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    prefixIcon: Icon(Icons.person, color: AppColors.primaryPurple),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: mobileController,
+                  decoration: InputDecoration(
+                    labelText: 'Mobile Number',
+                    prefixIcon: Icon(Icons.phone, color: AppColors.primaryPurple),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'Mobile is required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: nicController,
+                  decoration: InputDecoration(
+                    labelText: 'NIC',
+                    prefixIcon: Icon(Icons.badge, color: AppColors.primaryPurple),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (value) => value == null || value.isEmpty ? 'NIC is required' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: TextStyle(color: AppColors.darkText.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryPurple,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(ctx).pop();
+                await _updateUserDetails(
+                  userId,
+                  nameController.text.trim(),
+                  mobileController.text.trim(),
+                  nicController.text.trim(),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateUserDetails(String userId, String newName, String newMobile, String newNic) async {
+    try {
+      await _userCollection.doc(userId).update({
+        'fullName': newName,
+        'mobile': newMobile,
+        'nic': newNic,
+      });
+      _showSnackBar('Details updated successfully', true);
+    } catch (e) {
+      _showSnackBar('Failed to update details: $e', false);
+    }
   }
 
   Future<void> _updateStatus(String userId, String status) async {

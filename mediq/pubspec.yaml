@@ -29,7 +29,7 @@ dependencies:
 
   # Image handling
   image_picker: ^1.2.0
-  flutter_image_compress: ^1.1.0
+  flutter_image_compress: ^2.3.0
 
   # HTTP for Cloudinary upload
   http: ^1.1.1
@@ -55,3 +55,5 @@ flutter:
     - assets/developer/developer_photo.png
     - assets/admin-default.jpg
     - assets/pharmizist-default.jpg
+    - assets/manage_antibiotic.jpg
+    - assets/add_antibiotic.jpg
