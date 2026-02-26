@@ -1,11 +1,12 @@
+// antibiotics_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'add_antibiotic_screen.dart';
 import 'manage_antibiotics_screen.dart';
-import 'admin_drawer.dart'; // 👈 import the drawer
-import '../auth/login_page.dart'; // 👈 import login page for logout (adjust path as needed)
+import 'admin_drawer.dart';
+import '../auth/login_page.dart'; // adjust path as needed
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -26,12 +27,13 @@ class AntibioticsManagementScreen extends StatefulWidget {
 class _AntibioticsManagementScreenState extends State<AntibioticsManagementScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final CollectionReference _userCollection = FirebaseFirestore.instance.collection('users');
+  final CollectionReference _antibioticsCollection = FirebaseFirestore.instance.collection('antibiotics');
 
   String _currentUserName = 'Loading...';
-  String _currentUserRole = 'Administrator'; // 👈 added role
+  String _currentUserRole = 'Administrator';
   String? _profileImageUrl;
   bool _isUserLoading = true;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // 👈 key for drawer
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -64,14 +66,12 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
     setState(() => _isUserLoading = false);
   }
 
-  // 👇 Placeholder navigation (you can replace with actual routing later)
   void _handleNavTap(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$title tapped')),
     );
   }
 
-  // 👇 Logout function
   Future<void> _handleLogout() async {
     try {
       await _auth.signOut();
@@ -112,7 +112,6 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 👇 Menu button to open drawer
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
@@ -124,7 +123,6 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
           const SizedBox(height: 10),
           Row(
             children: [
-              // Profile picture
               Container(
                 width: 70,
                 height: 70,
@@ -162,7 +160,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
                   ),
                   Text(
-                    'Logged in as: $_currentUserRole',
+                    'Logged in as: Administrator',
                     style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
                   ),
                 ],
@@ -179,83 +177,15 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey, // 👈 attach key
-      backgroundColor: AppColors.lightBackground,
-      drawer: AdminDrawer( // 👈 add drawer
-        userName: _currentUserName,
-        userRole: _currentUserRole,
-        profileImageUrl: _profileImageUrl,
-        onNavTap: _handleNavTap,
-        onLogout: _handleLogout,
-      ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildImageButton(
-                          imagePath: 'assets/add_antibiotic.jpg',
-                          label: 'Add Antibiotic',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const AddAntibioticScreen()),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 30),
-                        _buildImageButton(
-                          imagePath: 'assets/manage_antibiotic.jpg',
-                          label: 'Manage Antibiotics',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ManageAntibioticsScreen()),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Full‑width footer
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              width: double.infinity,
-              color: Colors.grey.shade200,
-              padding: const EdgeInsets.all(16.0),
-              child: const Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImageButton({
-    required String imagePath,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  /// Build a button for Add Antibiotic (no counts needed)
+  Widget _buildAddButton() {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddAntibioticScreen()),
+        );
+      },
       child: Container(
         width: 250,
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
@@ -273,21 +203,173 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
         child: Column(
           children: [
             Image.asset(
-              imagePath,
+              'assets/add_antibiotic.jpg',
               width: 60,
               height: 60,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Icon(Icons.broken_image, size: 60, color: Colors.grey);
+                return Icon(Icons.add, size: 60, color: Colors.grey);
               },
             ),
             const SizedBox(height: 10),
-            Text(
-              label,
+            const Text(
+              'Add Antibiotic',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build the Manage button with counts from stream
+  Widget _buildManageButtonWithCounts() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _antibioticsCollection.snapshots(),
+      builder: (context, snapshot) {
+        int total = 0, access = 0, watch = 0, reserve = 0, other = 0;
+
+        if (snapshot.hasData) {
+          final docs = snapshot.data!.docs;
+          total = docs.length;
+          for (var doc in docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final category = data['category'] ?? '';
+            if (category == 'Access') access++;
+            else if (category == 'Watch') watch++;
+            else if (category == 'Reserve') reserve++;
+            else other++;
+          }
+        }
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ManageAntibioticsScreen()),
+            );
+          },
+          child: Container(
+            width: 250,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryPurple.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+  children: [
+    Image.asset(
+      'assets/manage_antibiotic.jpg',
+      width: 60,
+      height: 60,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Icon(Icons.settings, size: 60, color: Colors.grey);
+      },
+    ),
+    const SizedBox(height: 10),
+    const Text(
+      'Manage Antibiotics',
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: AppColors.darkText,
+      ),
+    ),
+    const SizedBox(height: 12),
+    // Show counts
+    Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: [
+        _buildCountChip('Total', total, AppColors.primaryPurple),
+        const SizedBox(width: double.infinity), // ← forces next chips to new line
+        _buildCountChip('Access', access, AppColors.primaryPurple),
+        _buildCountChip('Watch', watch, Colors.green),
+        _buildCountChip('Reserve', reserve, Colors.orange),
+      ],
+    ),
+  ],
+),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCountChip(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '$label: $count',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
+      drawer: AdminDrawer(
+        userName: _currentUserName,
+        userRole: _currentUserRole,
+        profileImageUrl: _profileImageUrl,
+        onNavTap: _handleNavTap,
+        onLogout: _handleLogout,
+      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildAddButton(),
+                        const SizedBox(height: 30),
+                        _buildManageButtonWithCounts(), // Updated button with counts
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.infinity,
+              color: const Color.fromARGB(255, 255, 254, 254),
+              padding: const EdgeInsets.all(8.0),
+              child: const Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

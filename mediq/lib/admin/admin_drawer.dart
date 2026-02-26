@@ -3,7 +3,8 @@ import '../main.dart' as main_app;
 import 'admin_dashboard.dart';
 import 'admin_profile_screen.dart';
 import 'admin_developer_about_screen.dart';
-import 'antibiotics_management_screen.dart'; 
+import 'antibiotics_management_screen.dart';
+import 'accounts-manage-details.dart';
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -31,7 +32,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
 
   String get _firstName {
     if (widget.userName.isEmpty) return 'User';
-    return widget.userName;
+    return widget.userName.split(' ').first; 
   }
 
   String get _firstLetter {
@@ -128,6 +129,8 @@ class _AdminDrawerState extends State<AdminDrawer> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 50),
+
+          // ----- HEADER LOGO (purple background ඉවත් කළා) -----
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -135,17 +138,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 Container(
                   width: 60,
                   height: 60,
-                  decoration: BoxDecoration(
-                    color: _primaryBlue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primaryBlue.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
+                  // background එක ඉවත් කළා – දැන් icon/image විතරයි
                   child: Image.asset(
                     'assets/logo2.png',
                     width: 60,
@@ -187,6 +180,8 @@ class _AdminDrawerState extends State<AdminDrawer> {
             ),
           ),
           const SizedBox(height: 30),
+
+          // Profile Section (නොවෙනස්ව)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(18),
@@ -251,6 +246,8 @@ class _AdminDrawerState extends State<AdminDrawer> {
           const SizedBox(height: 25),
           _buildSectionDivider(),
           const SizedBox(height: 8),
+
+          // ----- MENU ITEMS (icon වටේ background ඉවත් කළා) -----
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -277,15 +274,21 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   icon: Icons.people_alt_rounded,
                   label: "Accounts Management",
                   description: "User accounts & permissions",
-                  onTap: () => widget.onNavTap('Accounts Manage'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AccountManageDetails(),
+                      ),
+                    );
+                  },
                 ),
-              
                 _buildModernDrawerItem(
                   icon: Icons.medical_services_rounded,
                   label: "Antibiotics Management",
                   description: "Manage antibiotics inventory",
                   onTap: () {
-                    Navigator.of(context).pop(); // close drawer
+                    Navigator.of(context).pop();
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const AntibioticsManagementScreen(),
@@ -356,6 +359,8 @@ class _AdminDrawerState extends State<AdminDrawer> {
               ],
             ),
           ),
+
+          // Logout Button (නොවෙනස්ව)
           Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -430,6 +435,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
               ),
             ),
           ),
+          // Footer (නොවෙනස්ව)
           Container(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -460,6 +466,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
     );
   }
 
+  // ----- නව _buildModernDrawerItem (background ඉවත් කළා) -----
   Widget _buildModernDrawerItem({
     required IconData icon,
     required String label,
@@ -514,17 +521,11 @@ class _AdminDrawerState extends State<AdminDrawer> {
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.white.withOpacity(0.2) : _primaryBlue.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isActive ? Colors.white : _primaryBlue,
-                    size: 18,
-                  ),
+                // ----- Icon එක වටේ background නැතිව කෙලින්ම icon එක දැම්මා -----
+                Icon(
+                  icon,
+                  color: isActive ? Colors.white : _primaryBlue,
+                  size: 18,
                 ),
                 const SizedBox(width: 14),
                 Expanded(

@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'admin_drawer.dart';
-import '../main.dart';
+import '../auth/login_page.dart'; // adjust path if needed
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
   static const Color darkText = Color(0xFF333333);
-  
-  // Header gradient colors matching Factory Owner Dashboard - BLUE THEME
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
 }
 
@@ -34,7 +33,7 @@ class AdminDeveloperAboutScreen extends StatefulWidget {
 class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // URL Launcher Function
+  // URL Launcher
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -42,15 +41,37 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     }
   }
 
-  // 🌟 FIXED HEADER - Profile Image Loading Issue Solved
-  Widget _buildDashboardHeader(BuildContext context) {
-    // Debug print to check the profile image URL
-    if (widget.profileImageUrl != null) {
-      debugPrint('🖼️ Profile Image URL: ${widget.profileImageUrl}');
-    } else {
-      debugPrint('❌ No Profile Image URL provided');
-    }
+  // Drawer navigation handler
+  void _handleNavTap(String page) {
+    Navigator.pop(context); // close drawer
+    // Replace with actual navigation if needed
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$page tapped')),
+    );
+  }
 
+  // Logout function
+  Future<void> _handleLogout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      debugPrint('Logout Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logout failed: $e')),
+        );
+      }
+    }
+  }
+
+  // Header with profile picture
+  Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
@@ -85,21 +106,14 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
               ),
             ],
           ),
-          
           const SizedBox(height: 10),
-          
           Row(
             children: [
-              // 🎯 FIXED Profile Picture with proper network image loading
               _buildProfilePicture(),
-              
               const SizedBox(width: 15),
-              
-              // User Info
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // User Name
                   Text(
                     widget.userName,
                     style: const TextStyle(
@@ -108,9 +122,8 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  // Role
                   Text(
-                    'Logged in as: ${widget.userName} \n(${widget.userRole})',
+                    'Logged in as: ${widget.userRole}',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -120,13 +133,10 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
               ),
             ],
           ),
-          
           const SizedBox(height: 25),
-          
-          // Page Title
-          Text(
+          const Text(
             'Developer About Me',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
@@ -137,23 +147,17 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // 🎯 FIXED Profile Picture Widget with better error handling
+  // Profile picture widget (robust error handling)
   Widget _buildProfilePicture() {
-    // Check if profileImageUrl is valid
-    bool hasValidImageUrl = widget.profileImageUrl != null && 
-                           widget.profileImageUrl!.isNotEmpty && 
-                           widget.profileImageUrl!.startsWith('http');
-
-    if (!hasValidImageUrl) {
-      debugPrint('⚠️ Invalid profile image URL: ${widget.profileImageUrl}');
-    }
-
+    bool hasValidImageUrl = widget.profileImageUrl != null &&
+        widget.profileImageUrl!.isNotEmpty &&
+        widget.profileImageUrl!.startsWith('http');
     return Container(
       width: 70,
       height: 70,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: hasValidImageUrl 
+        gradient: hasValidImageUrl
             ? null
             : const LinearGradient(
                 colors: [Color(0xFF2764E7), Color(0xFF457AED)],
@@ -177,14 +181,12 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
                 width: 70,
                 height: 70,
                 loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    debugPrint('✅ Profile image loaded successfully');
-                    return child;
-                  }
+                  if (loadingProgress == null) return child;
                   return Center(
                     child: CircularProgressIndicator(
                       value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
                           : null,
                       color: Colors.white,
                       strokeWidth: 2,
@@ -192,8 +194,6 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('❌ Error loading profile image: $error');
-                  debugPrint('🔄 Stack trace: $stackTrace');
                   return Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -202,173 +202,16 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
                         end: Alignment.bottomRight,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.person, size: 40, color: Colors.white),
                   );
                 },
               ),
             )
-          : const Icon(
-              Icons.person,
-              size: 40,
-              color: Colors.white,
-            ),
+          : const Icon(Icons.person, size: 40, color: Colors.white),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: AppColors.lightBackground,
-      drawer: AdminDrawer(
-        userName: widget.userName,
-        userRole: widget.userRole,
-        onNavTap: (page) => Navigator.pop(context),
-        onLogout: () => Navigator.pop(context),
-      ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                // 🌟 FIXED HEADER with Profile Image Solution
-                _buildDashboardHeader(context),
-                
-                // Main Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 10),
-
-                        // Developer Information Card
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              _buildDeveloperImage(),
-                              const SizedBox(height: 20),
-
-                              // Name and Role
-                              const Text(
-                                "Malitha Tishamal",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              const Text(
-                                "Flutter Developer & UI/UX Designer",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.primaryPurple,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 15),
-
-                              // Description
-                              const Text(
-                                "Passionate mobile app developer with expertise in Flutter framework. "
-                                "Creating beautiful and functional applications with modern UI/UX design principles.",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                  height: 1.5,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 20),
-
-                              // Social Media Links
-                              _buildSocialIconsRow(_launchUrl),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        // Skills Section
-                        _buildSkillsSection(),
-
-                        const SizedBox(height: 25),
-
-                        // Contact Information
-                        _buildContactInfo(),
-
-                        const SizedBox(height: 30),
-
-                        // Footer
-                        Container(
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryPurple.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Column(
-                            children: [
-                              const Text(
-                                '🚀 Built with Flutter & ❤️',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              const Text(
-                                'Developed By Malitha Tishamal',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                '© ${DateTime.now().year} Medi-Q App',
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // DEVELOPER IMAGE
+  // Developer image
   Widget _buildDeveloperImage() {
     return Column(
       children: [
@@ -422,7 +265,6 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
           ],
         ),
         const SizedBox(height: 15),
-        // Decorative stars
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -437,7 +279,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // SOCIAL ICONS
+  // Social icons row
   Widget _buildSocialIconsRow(Future<void> Function(String) launcher) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -514,7 +356,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // SKILLS SECTION
+  // Skills section
   Widget _buildSkillsSection() {
     final skills = [
       {'icon': Icons.phone_iphone, 'name': 'Flutter Development', 'color': Colors.blue},
@@ -595,7 +437,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // CONTACT INFORMATION
+  // Contact information
   Widget _buildContactInfo() {
     return Container(
       width: double.infinity,
@@ -699,6 +541,114 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
+      drawer: AdminDrawer(
+        userName: widget.userName,
+        userRole: widget.userRole,
+        profileImageUrl: widget.profileImageUrl, // ✅ now passed
+        onNavTap: _handleNavTap,
+        onLogout: _handleLogout,
+      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildDashboardHeader(context),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildDeveloperImage(),
+                              const SizedBox(height: 20),
+                              const Text(
+                                "Malitha Tishamal",
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.darkText,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              const Text(
+                                "Flutter Developer & UI/UX Designer",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.primaryPurple,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 15),
+                              const Text(
+                                "Passionate mobile app developer with expertise in Flutter framework. "
+                                "Creating beautiful and functional applications with modern UI/UX design principles.",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              _buildSocialIconsRow(_launchUrl),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 25),
+                        _buildSkillsSection(),
+                        const SizedBox(height: 25),
+                        _buildContactInfo(),
+                        const SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Full‑width footer
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.infinity,
+              color: Colors.grey.shade200,
+              padding: const EdgeInsets.all(16.0),
+              child: const Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 import '../auth/login_page.dart';
 import 'admin_drawer.dart';
 import 'admin_profile_screen.dart';
 import 'accounts-manage-details.dart';
 import 'admin_developer_about_screen.dart';
+import 'antibiotics_management_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -19,7 +21,6 @@ class AppColors {
   static const Color releasesCountColor = Color(0xFFE53935);
   static const Color returnsCountColor = Color(0xFF43A047);
   
-  // Header gradient colors matching Factory Owner Dashboard
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);  
   static const Color headerTextDark = Color(0xFF333333);
@@ -49,34 +50,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final CollectionReference _userCollection =
       FirebaseFirestore.instance.collection('users');
   final CollectionReference _antibioticsCollection =
-      FirebaseFirestore.instance.collection('antibiotics'); // 👈 added
+      FirebaseFirestore.instance.collection('antibiotics');
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Live user data (updates in real‑time)
+  String _currentUserName = '';
+  String _currentUserRole = '';
   String? _profileImageUrl;
+
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
   @override
   void initState() {
     super.initState();
-    _fetchProfileImage();
+    // Initially set from widget (in case stream takes time)
+    _currentUserName = widget.userName;
+    _currentUserRole = widget.userRole;
+    _listenToUserChanges();
   }
 
-  void _fetchProfileImage() async {
+  void _listenToUserChanges() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (userDoc.exists) {
+      _userSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.exists) {
+          final data = snapshot.data() as Map<String, dynamic>;
           setState(() {
-            _profileImageUrl = userDoc.data()?['profileImageUrl'];
+            _profileImageUrl = data['profileImageUrl'];
+            _currentUserName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserRole = data['role'] ?? 'Administrator';
           });
         }
-      } catch (e) {
-        debugPrint("Error fetching profile image: $e");
-      }
+      }, onError: (error) {
+        debugPrint("Error listening to user: $error");
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _handleLogout() async {
@@ -105,10 +124,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
             .push(MaterialPageRoute(builder: (_) => AccountManageDetails()));
         break;
 
-      case 'Antibiotics': // 👈 handle navigation to antibiotics screens
-        // TODO: Navigate to AntibioticsManagementScreen when created
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Antibiotics Management coming soon!')),
+      case 'Antibiotics':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AntibioticsManagementScreen()),
         );
         break;
 
@@ -116,8 +134,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AdminDeveloperAboutScreen(
-              userName: widget.userName,
-              userRole: widget.userRole,
+              userName: _currentUserName,      // use live name
+              userRole: _currentUserRole,      // use live role
+              profileImageUrl: _profileImageUrl, // pass live URL
             ),
           ),
         );
@@ -139,18 +158,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final displayName =
-        widget.userName.isNotEmpty ? widget.userName : 'Admin';
-    final displayRole =
-        widget.userRole.isNotEmpty ? widget.userRole : 'Administrator';
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
       drawer: AdminDrawer(
-        userName: displayName,
-        userRole: displayRole,
-        profileImageUrl: _profileImageUrl,
+        userName: _currentUserName,        // live name for drawer
+        userRole: _currentUserRole,        // live role for drawer
+        profileImageUrl: _profileImageUrl, // live URL for drawer
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
@@ -159,8 +173,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           SafeArea(
             child: Column(
               children: [
-                // Header with Full Name & Email
-                _buildDashboardHeader(context, displayName, displayRole),
+                // Header – now updates automatically when _currentUserName etc. change
+                _buildDashboardHeader(context),
                 
                 // Main Content
                 Expanded(
@@ -204,10 +218,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // Header with profile picture, full name, and email
-  Widget _buildDashboardHeader(BuildContext context, String name, String role) {
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'No email provided';
-
+  // Header – uses live _currentUserName, _currentUserRole and _profileImageUrl
+  Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
@@ -247,7 +259,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           
           Row(
             children: [
-              // Profile Picture
+              // Profile Picture (live URL)
               Container(
                 width: 70,
                 height: 70,
@@ -282,13 +294,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
               
               const SizedBox(width: 15),
               
-              // User Info
+              // User Info (live name & role)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Full Name
                   Text(
-                    name,
+                    _currentUserName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -296,7 +307,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // Role (not email as per your last version)
                   Text(
                     'Logged in as: Administrator',
                     style: TextStyle(
@@ -357,7 +367,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       childAspectRatio: 1.50,
       children: [
         _tileAccountsManage(),
-        _tileAntibiotics(), // 👈 updated tile
+        _tileAntibiotics(),
         _tileSimple(
             icon: Icons.apartment,
             title: 'Wards',
@@ -512,7 +522,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Spacer(),
-                _miniStat('Total Found', count.toString(),
+                _miniStat('Total Found', count.toString().padLeft(2, '0'),
                     AppColors.totalFoundColor),
               ],
             );
