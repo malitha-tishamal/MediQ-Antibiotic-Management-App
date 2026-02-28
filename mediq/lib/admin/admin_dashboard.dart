@@ -10,7 +10,8 @@ import 'admin_profile_screen.dart';
 import 'accounts-manage-details.dart';
 import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
-import 'wards_management_screen.dart'; // 👈 WardsManagementScreen import
+import 'wards_management_screen.dart'; 
+import 'stocks_management_screen.dart'; 
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -133,9 +134,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
         break;
 
-      case 'Wards': // 👈 Wards ටයිල් එක සඳහා නාවිකේතනය
+      case 'Wards':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const WardsManagementScreen()),
+        );
+        break;
+
+      case 'Stocks':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const StocksManagementScreen()),
         );
         break;
 
