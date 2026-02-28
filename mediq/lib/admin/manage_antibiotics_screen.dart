@@ -352,9 +352,9 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 20,
+            spacing: 10,
             runSpacing: 12,
             children: [
               _buildStatItem('Access', access, const Color(0xFF9F7AEA)),
@@ -686,23 +686,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 30.0), // Moves FAB higher
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AddAntibioticScreen()),
-            );
-          },
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text(
-            'Add New Antibiotic',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: AppColors.primaryPurple,
-        ),
-      ),
+     
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }

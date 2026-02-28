@@ -6,18 +6,14 @@ import '../main.dart'; // Assumed to contain AppColors
 import 'signup_page.dart';
 import '../core/dashboard_wrapper.dart';
 
-// NOTE: For a real app, persistent storage (like SharedPreferences) should be used
-// for failedAttempts and lockoutEndTime to survive app restarts.
-// This implements the real-time countdown logic for a better user experience
-// once the lockout is active within the current session.
-
 class LoginThrottleManager {
+  // නව lockout durations (මිනිත්තු වලින්)
   static const Map<int, int> _lockoutDurations = {
-    3: 2, // 3 failed attempts: 2 minutes lockout
-    5: 5, // 5 failed attempts: 5 minutes lockout
-    6: 10, // 6 failed attempts: 10 minutes lockout
-    7: 20, // 7 failed attempts: 20 minutes lockout
-    8: 60, // 8+ failed attempts: 60 minutes lockout
+    3: 1, // 3 attempts -> 1 minute
+    4: 2, // 4 attempts -> 2 minutes
+    5: 5, // 5 attempts -> 5 minutes
+    6: 10, // 6 attempts -> 10 minutes
+    // 7+ attempts -> 60 minutes (handle separately)
   };
 
   static int _failedAttempts = 0;
@@ -30,8 +26,8 @@ class LoginThrottleManager {
     _failedAttempts++;
     int durationMinutes = 0;
 
-    if (_failedAttempts >= 8) {
-      durationMinutes = 60;
+    if (_failedAttempts >= 7) {
+      durationMinutes = 60; // 7+ attempts -> 60 minutes
     } else if (_lockoutDurations.containsKey(_failedAttempts)) {
       durationMinutes = _lockoutDurations[_failedAttempts]!;
     }
@@ -324,7 +320,6 @@ class _LoginPageState extends State<LoginPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SignUpPage()),
-
                       );
                     },
                     child: const Text(

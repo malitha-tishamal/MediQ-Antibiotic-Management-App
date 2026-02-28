@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  csv: ^5.0.1
+  share_plus: ^7.2.0
+  path_provider: ^2.1.1
+
   font_awesome_flutter: ^10.7.0
   fluentui_system_icons: ^1.1.232
 
