@@ -1,3 +1,4 @@
+// admin_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import 'admin_profile_screen.dart';
 import 'accounts-manage-details.dart';
 import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
+import 'wards_management_screen.dart'; // 👈 WardsManagementScreen import
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -42,7 +44,6 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final int wardsCount = 32;
   final int stockTypesCount = 2;
   final int todayReleases = 32;
   final int todayReturns = 16;
@@ -51,6 +52,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       FirebaseFirestore.instance.collection('users');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
+  final CollectionReference _wardsCollection = // 👈 Wards collection එකතු කිරීම
+      FirebaseFirestore.instance.collection('wards');
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -130,13 +133,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
         break;
 
+      case 'Wards': // 👈 Wards ටයිල් එක සඳහා නාවිකේතනය
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const WardsManagementScreen()),
+        );
+        break;
+
       case 'Developer About':
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AdminDeveloperAboutScreen(
-              userName: _currentUserName,      // use live name
-              userRole: _currentUserRole,      // use live role
-              profileImageUrl: _profileImageUrl, // pass live URL
+              userName: _currentUserName,
+              userRole: _currentUserRole,
+              profileImageUrl: _profileImageUrl,
             ),
           ),
         );
@@ -162,9 +171,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
       key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
       drawer: AdminDrawer(
-        userName: _currentUserName,        // live name for drawer
-        userRole: _currentUserRole,        // live role for drawer
-        profileImageUrl: _profileImageUrl, // live URL for drawer
+        userName: _currentUserName,
+        userRole: _currentUserRole,
+        profileImageUrl: _profileImageUrl,
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
@@ -173,7 +182,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           SafeArea(
             child: Column(
               children: [
-                // Header – now updates automatically when _currentUserName etc. change
                 _buildDashboardHeader(context),
                 
                 // Main Content
@@ -368,11 +376,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         _tileAccountsManage(),
         _tileAntibiotics(),
-        _tileSimple(
-            icon: Icons.apartment,
-            title: 'Wards',
-            subtitle: 'Total Wards',
-            value: '$wardsCount'),
+        _tileWards(), // 👈 Live Wards tile එක (පැරණි static එක වෙනුවට)
         _tileSimple(
             icon: Icons.inventory_2_outlined,
             title: 'Stocks',
@@ -523,6 +527,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 const Spacer(),
                 _miniStat('Total Found', count.toString().padLeft(2, '0'),
+                    AppColors.totalFoundColor),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // ---------------- Wards Tile (live count) ----------------
+  Widget _tileWards() {
+    return InkWell(
+      onTap: () => _onNavTap('Wards'),
+      child: _smallCard(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _wardsCollection.snapshots(),
+          builder: (context, snapshot) {
+            int count = 0;
+            if (snapshot.hasData) {
+              count = snapshot.data!.docs.length;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(
+                      Icons.local_hospital_rounded,
+                      color: AppColors.primaryPurple,
+                      size: 28,
+                    ),
+                    Spacer(),
+                    Text('Wards',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkText,
+                            fontSize: 14)),
+                  ],
+                ),
+                const Spacer(),
+                _miniStat('Total Wards', count.toString().padLeft(2, '0'),
                     AppColors.totalFoundColor),
               ],
             );

@@ -61,3 +61,5 @@ flutter:
     - assets/pharmizist-default.jpg
     - assets/manage_antibiotic.jpg
     - assets/add_antibiotic.jpg
+    - assets/add-ward.png
+    - assets/manage-ward.png

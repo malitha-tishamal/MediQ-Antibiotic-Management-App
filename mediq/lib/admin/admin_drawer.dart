@@ -5,6 +5,7 @@ import 'admin_profile_screen.dart';
 import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
 import 'accounts-manage-details.dart';
+import 'wards_management_screen.dart';
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -12,6 +13,7 @@ class AdminDrawer extends StatefulWidget {
   final String? profileImageUrl;
   final Function(String) onNavTap;
   final VoidCallback onLogout;
+
 
   const AdminDrawer({
     super.key,
@@ -297,11 +299,18 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   },
                 ),
                 _buildModernDrawerItem(
-                  icon: Icons.local_hospital_rounded,
-                  label: "Wards Management",
-                  description: "Hospital wards & departments",
-                  onTap: () => widget.onNavTap('Wards'),
-                ),
+                    icon: Icons.local_hospital_rounded,
+                    label: "Wards Management",
+                    description: "Hospital wards & departments",
+                    onTap: () {
+                      Navigator.of(context).pop(); // drawer close
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const WardsManagementScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 _buildModernDrawerItem(
                   icon: Icons.inventory_2_rounded,
                   label: "Stock Inventory",
