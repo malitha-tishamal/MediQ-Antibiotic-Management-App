@@ -1,10 +1,9 @@
-// wards_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'add_ward_screen.dart';
-import 'manage_wards_screen.dart';
+import 'main_store_screen.dart';
+import 'return_store_screen.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
@@ -17,17 +16,16 @@ class AppColors {
   static const Color headerTextDark = Color(0xFF333333);
 }
 
-class WardsManagementScreen extends StatefulWidget {
-  const WardsManagementScreen({super.key});
+class StocksManagementScreen extends StatefulWidget {
+  const StocksManagementScreen({super.key});
 
   @override
-  State<WardsManagementScreen> createState() => _WardsManagementScreenState();
+  State<StocksManagementScreen> createState() => _StocksManagementScreenState();
 }
 
-class _WardsManagementScreenState extends State<WardsManagementScreen> {
+class _StocksManagementScreenState extends State<StocksManagementScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final CollectionReference _userCollection = FirebaseFirestore.instance.collection('users');
-  final CollectionReference _wardsCollection = FirebaseFirestore.instance.collection('wards');
 
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Administrator';
@@ -124,8 +122,8 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
           Row(
             children: [
               Container(
-                width: 70,
-                height: 70,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _profileImageUrl == null
@@ -169,7 +167,7 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
           ),
           const SizedBox(height: 25),
           const Text(
-            'Wards Management',
+            'Stocks Management',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
           ),
         ],
@@ -177,15 +175,14 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
     );
   }
 
-  /// Add Ward button with description
-  Widget _buildAddButton() {
+  Widget _buildStoreButton({
+    required String imagePath,
+    required String label,
+    required String description, // description in English
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddWardScreen()),
-        );
-      },
+      onTap: onTap,
       child: Container(
         width: 250,
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
@@ -203,152 +200,26 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
         child: Column(
           children: [
             Image.asset(
-              'assets/add-ward.png',
-              width: 60,
-              height: 60,
+              imagePath,
+              width: 80,
+              height: 80,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Icon(Icons.add, size: 60, color: Colors.grey);
+                return Icon(Icons.store, size: 60, color: Colors.grey);
               },
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Add Ward',
+            Text(
+              label,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Create a new ward record', // 👈 description added
+            Text(
+              description,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  /// Manage Ward button with live counts and description
-  Widget _buildManageButtonWithCounts() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _wardsCollection.snapshots(),
-      builder: (context, snapshot) {
-        int total = 0;
-        int pediatrics = 0, medicine = 0, icu = 0, surgery = 0, medSub = 0, surgSub = 0, other = 0;
-
-        if (snapshot.hasData) {
-          final docs = snapshot.data!.docs;
-          total = docs.length;
-          for (var doc in docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final category = data['category'] ?? '';
-            switch (category) {
-              case 'Pediatrics':
-                pediatrics++;
-                break;
-              case 'Medicine':
-                medicine++;
-                break;
-              case 'ICU':
-                icu++;
-                break;
-              case 'Surgery':
-                surgery++;
-                break;
-              case 'Medicine Subspecialty':
-                medSub++;
-                break;
-              case 'Surgery Subspecialty':
-                surgSub++;
-                break;
-              default:
-                other++;
-            }
-          }
-        }
-
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ManageWardsScreen()),
-            );
-          },
-          child: Container(
-            width: 250,
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryPurple.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/manage-ward.png',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(Icons.settings, size: 60, color: Colors.grey);
-                  },
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Manage Wards',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'View, edit or delete existing wards', // 👈 description added
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _buildCountChip('Total', total, AppColors.primaryPurple),
-                    if (pediatrics > 0)
-                      _buildCountChip('Pediatrics', pediatrics, Colors.blue),
-                    if (medicine > 0)
-                      _buildCountChip('Medicine', medicine, Colors.green),
-                    if (icu > 0)
-                      _buildCountChip('ICU', icu, Colors.orange),
-                    if (surgery > 0)
-                      _buildCountChip('Surgery', surgery, Colors.purple),
-                    // You can add more if needed
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCountChip(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        '$label: $count',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: color,
         ),
       ),
     );
@@ -377,9 +248,29 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildAddButton(),
+                        _buildStoreButton(
+                          imagePath: 'assets/main_store.jpg',
+                          label: 'Main Store',
+                          description: 'Store from which releases are made to wards',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const MainStoreScreen()),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 30),
-                        _buildManageButtonWithCounts(),
+                        _buildStoreButton(
+                          imagePath: 'assets/return_store.jpg',
+                          label: 'Return Store',
+                          description: 'Store where surplus antibiotics from wards are returned',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ReturnStoreScreen()),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -392,7 +283,7 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              color: const Color.fromARGB(255, 255, 254, 254),
+              color: const Color.fromARGB(255, 255, 255, 255),
               padding: const EdgeInsets.all(8.0),
               child: const Text(
                 'Developed By Malitha Tishamal',

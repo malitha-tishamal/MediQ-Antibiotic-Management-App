@@ -44,7 +44,7 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final int stockTypesCount = 2;
+  final String stockTypesCount = '02';
   final int todayReleases = 32;
   final int todayReturns = 16;
 

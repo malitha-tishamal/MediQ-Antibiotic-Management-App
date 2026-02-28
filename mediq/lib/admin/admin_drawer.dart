@@ -6,6 +6,7 @@ import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
 import 'accounts-manage-details.dart';
 import 'wards_management_screen.dart';
+import 'stocks_management_screen.dart'; 
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -315,7 +316,14 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   icon: Icons.inventory_2_rounded,
                   label: "Stock Inventory",
                   description: "Medical stock management",
-                  onTap: () => widget.onNavTap('Stocks'),
+                  onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const StocksManagementScreen(),
+                        ),
+                      );
+                    },
                 ),
                 _buildModernDrawerItem(
                   icon: Icons.receipt_long_rounded,

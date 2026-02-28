@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_antibiotic_screen.dart';
 import 'manage_antibiotics_screen.dart';
 import 'admin_drawer.dart';
-import '../auth/login_page.dart'; // adjust path as needed
+import '../auth/login_page.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -177,7 +177,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
     );
   }
 
-  /// Build a button for Add Antibiotic (no counts needed)
+  /// Add Antibiotic button with description
   Widget _buildAddButton() {
     return GestureDetector(
       onTap: () {
@@ -216,13 +216,19 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
               'Add Antibiotic',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
             ),
+            const SizedBox(height: 4),
+            const Text(
+              'Add a new antibiotic to the system',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ],
         ),
       ),
     );
   }
 
-  /// Build the Manage button with counts from stream
+  /// Manage Antibiotics button with live counts and description
   Widget _buildManageButtonWithCounts() {
     return StreamBuilder<QuerySnapshot>(
       stream: _antibioticsCollection.snapshots(),
@@ -264,41 +270,42 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
               ],
             ),
             child: Column(
-  children: [
-    Image.asset(
-      'assets/manage_antibiotic.jpg',
-      width: 60,
-      height: 60,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.settings, size: 60, color: Colors.grey);
-      },
-    ),
-    const SizedBox(height: 10),
-    const Text(
-      'Manage Antibiotics',
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppColors.darkText,
-      ),
-    ),
-    const SizedBox(height: 12),
-    // Show counts
-    Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: [
-        _buildCountChip('Total', total, AppColors.primaryPurple),
-        const SizedBox(width: double.infinity), // ← forces next chips to new line
-        _buildCountChip('Access', access, AppColors.primaryPurple),
-        _buildCountChip('Watch', watch, Colors.green),
-        _buildCountChip('Reserve', reserve, Colors.orange),
-      ],
-    ),
-  ],
-),
+              children: [
+                Image.asset(
+                  'assets/manage_antibiotic.jpg',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(Icons.settings, size: 60, color: Colors.grey);
+                  },
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Manage Antibiotics',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'View, edit or delete existing antibiotics',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildCountChip('Total', total, AppColors.primaryPurple),
+                    const SizedBox(width: double.infinity), // forces next chips to new line
+                    _buildCountChip('Access', access, AppColors.primaryPurple),
+                    _buildCountChip('Watch', watch, Colors.green),
+                    _buildCountChip('Reserve', reserve, Colors.orange),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -348,7 +355,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
                       children: [
                         _buildAddButton(),
                         const SizedBox(height: 30),
-                        _buildManageButtonWithCounts(), // Updated button with counts
+                        _buildManageButtonWithCounts(),
                       ],
                     ),
                   ),

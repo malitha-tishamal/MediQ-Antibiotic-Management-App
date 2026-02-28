@@ -34,10 +34,10 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String _currentUserName = 'Loading...';
-  String? _profileImageUrl;
+  String? _profileImageUrl; // not used in header now
 
   // Filter state
-  String _selectedFilter = 'All'; // 'All', 'Access', 'Watch', 'Reserve'
+  String _selectedFilter = 'All'; // 'All', 'Access', 'Watch', 'Reserve', 'Other'
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -82,7 +82,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -100,72 +100,48 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 5),
+          // Back button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 icon: const Icon(Icons.arrow_back,
-                    color: AppColors.headerTextDark, size: 28),
+                    color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)])
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    )
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover)
-                      : null,
+          const SizedBox(height: 2),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark),
                 ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentUserName,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTextDark),
-                  ),
-                  const Text(
-                    'Logged in as: Administrator',
-                    style: TextStyle(
-                        fontSize: 14, color: AppColors.headerTextDark),
-                  ),
-                ],
-              ),
-            ],
+                const SizedBox(height: 2),
+                const Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.headerTextDark),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 8),
+          // Page title
           const Text(
             'Manage Antibiotics',
             style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.headerTextDark),
           ),
@@ -249,44 +225,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     );
   }
 
-  /// Build filter chips row
-  Widget _buildFilterChips() {
-    final filters = ['All', 'Access', 'Watch', 'Reserve'];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: filters.map((filter) {
-            final isSelected = _selectedFilter == filter;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(filter),
-                selected: isSelected,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() {
-                      _selectedFilter = filter;
-                    });
-                  }
-                },
-                backgroundColor: Colors.grey[200],
-                selectedColor: AppColors.primaryPurple,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.darkText,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-                checkmarkColor: Colors.white,
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  /// Build a modern summary card with counts
+  /// Build a modern summary card with counts (clickable stats)
   Widget _buildSummaryCard(AsyncSnapshot<QuerySnapshot> snapshot) {
     int total = 0;
     int access = 0, watch = 0, reserve = 0, other = 0;
@@ -336,17 +275,25 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                   color: AppColors.darkText,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryPurple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  'Total: $total',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryPurple,
+              // Total clickable
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedFilter = 'All';
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    'All: $total',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryPurple,
+                    ),
                   ),
                 ),
               ),
@@ -357,10 +304,10 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
             spacing: 10,
             runSpacing: 12,
             children: [
-              _buildStatItem('Access', access, const Color(0xFF9F7AEA)),
-              _buildStatItem('Watch', watch, const Color(0xFF48BB78)),
-              _buildStatItem('Reserve', reserve, const Color(0xFFED8936)),
-              _buildStatItem('Other', other, const Color(0xFF718096)),
+              _buildStatItem('Access', access, const Color(0xFF9F7AEA), 'Access'),
+              _buildStatItem('Watch', watch, const Color(0xFF48BB78), 'Watch'),
+              _buildStatItem('Reserve', reserve, const Color(0xFFED8936), 'Reserve'),
+              _buildStatItem('Other', other, const Color(0xFF718096), 'Other'),
             ],
           ),
         ],
@@ -368,30 +315,37 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$label: $count',
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: color,
+  Widget _buildStatItem(String label, int count, Color color, String filterValue) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = filterValue;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              '$label: $count',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -406,8 +360,8 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
             child: Column(
               children: [
                 _buildHeader(context),
-                _buildSearchBar(), // Search bar added here
-                _buildFilterChips(),
+                _buildSearchBar(),
+
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _antibioticsCollection
@@ -430,7 +384,15 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                         // Category filter
                         if (_selectedFilter != 'All') {
                           final category = data['category'] ?? '';
-                          if (category != _selectedFilter) return false;
+                          if (_selectedFilter == 'Other') {
+                            // Other category: anything not Access, Watch, Reserve
+                            if (category == 'Access' || category == 'Watch' || category == 'Reserve') {
+                              return false;
+                            }
+                          } else {
+                            // Specific category
+                            if (category != _selectedFilter) return false;
+                          }
                         }
                         
                         // Search filter (by name)
@@ -686,7 +648,17 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
           ),
         ],
       ),
-     
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddAntibioticScreen()),
+          );
+        },
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Add New Antibiotic', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.primaryPurple,
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
