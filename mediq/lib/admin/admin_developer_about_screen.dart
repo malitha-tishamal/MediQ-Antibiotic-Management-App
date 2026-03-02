@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_drawer.dart';
-import '../auth/login_page.dart'; // adjust path if needed
+import '../auth/login_page.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -15,23 +16,74 @@ class AppColors {
 }
 
 class AdminDeveloperAboutScreen extends StatefulWidget {
-  final String userName;
-  final String userRole;
-  final String? profileImageUrl;
-
-  const AdminDeveloperAboutScreen({
-    super.key,
-    required this.userName,
-    required this.userRole,
-    this.profileImageUrl,
-  });
+  const AdminDeveloperAboutScreen({super.key}); // ← parameters නැත
 
   @override
-  State<AdminDeveloperAboutScreen> createState() => _AdminDeveloperAboutScreenState();
+  State<AdminDeveloperAboutScreen> createState() =>
+      _AdminDeveloperAboutScreenState();
 }
 
 class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Firebase instances
+  final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+
+  // User data state
+  bool _isLoading = true;
+  String _userName = '';
+  String _userRole = '';
+  String? _profileImageUrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      setState(() {
+        _error = 'No authenticated user found.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        setState(() {
+          _userName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
+          _userRole = data['role'] ?? 'Unassigned';
+          _profileImageUrl = data['profileImageUrl'];
+        });
+      } else {
+        setState(() {
+          _userName = user.email?.split('@').first ?? 'User';
+          _userRole = 'Profile Missing';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching user profile: $e');
+      setState(() {
+        _error = 'Failed to load profile: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // URL Launcher
   Future<void> _launchUrl(String url) async {
@@ -43,17 +95,15 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
 
   // Drawer navigation handler
   void _handleNavTap(String page) {
-    Navigator.pop(context); // close drawer
-    // Replace with actual navigation if needed
+    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$page tapped')),
     );
   }
 
-  // Logout function
   Future<void> _handleLogout() async {
     try {
-      await FirebaseAuth.instance.signOut();
+      await _auth.signOut();
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -70,7 +120,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     }
   }
 
-  // Header with profile picture
+  // Header - now uses state variables
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -109,13 +159,45 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              _buildProfilePicture(),
+              // Profile Picture
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null
+                      ? const LinearGradient(
+                          colors: [Color(0xFF2764E7), Color(0xFF457AED)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2764E7).withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: _profileImageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(_profileImageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+                    : null,
+              ),
               const SizedBox(width: 15),
+              // User Info
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.userName,
+                    _userName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -123,7 +205,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
                     ),
                   ),
                   Text(
-                    'Logged in as: ${widget.userRole}',
+                    'Logged in as: Administrator',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.headerTextDark.withOpacity(0.7),
@@ -147,71 +229,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // Profile picture widget (robust error handling)
-  Widget _buildProfilePicture() {
-    bool hasValidImageUrl = widget.profileImageUrl != null &&
-        widget.profileImageUrl!.isNotEmpty &&
-        widget.profileImageUrl!.startsWith('http');
-    return Container(
-      width: 70,
-      height: 70,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: hasValidImageUrl
-            ? null
-            : const LinearGradient(
-                colors: [Color(0xFF2764E7), Color(0xFF457AED)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2764E7).withOpacity(0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: hasValidImageUrl
-          ? ClipOval(
-              child: Image.network(
-                widget.profileImageUrl!,
-                fit: BoxFit.cover,
-                width: 70,
-                height: 70,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2764E7), Color(0xFF457AED)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Icon(Icons.person, size: 40, color: Colors.white),
-                  );
-                },
-              ),
-            )
-          : const Icon(Icons.person, size: 40, color: Colors.white),
-    );
-  }
-
-  // Developer image
+  // Developer image (unchanged)
   Widget _buildDeveloperImage() {
     return Column(
       children: [
@@ -279,7 +297,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // Social icons row
+  // Social icons row (unchanged)
   Widget _buildSocialIconsRow(Future<void> Function(String) launcher) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -356,7 +374,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // Skills section
+  // Skills section (unchanged)
   Widget _buildSkillsSection() {
     final skills = [
       {'icon': Icons.phone_iphone, 'name': 'Flutter Development', 'color': Colors.blue},
@@ -437,7 +455,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
     );
   }
 
-  // Contact information
+  // Contact information (unchanged)
   Widget _buildContactInfo() {
     return Container(
       width: double.infinity,
@@ -551,9 +569,9 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
       key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
       drawer: AdminDrawer(
-        userName: widget.userName,
-        userRole: widget.userRole,
-        profileImageUrl: widget.profileImageUrl, // ✅ now passed
+        userName: _userName,
+        userRole: _userRole,
+        profileImageUrl: _profileImageUrl,
         onNavTap: _handleNavTap,
         onLogout: _handleLogout,
       ),
@@ -564,72 +582,78 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
               children: [
                 _buildDashboardHeader(context),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+                      : _error != null
+                          ? Center(child: Text('Error: $_error', style: const TextStyle(color: Colors.red)))
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.grey.withOpacity(0.1),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        _buildDeveloperImage(),
+                                        const SizedBox(height: 20),
+                                        const Text(
+                                          "Malitha Tishamal",
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.darkText,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        const Text(
+                                          "Fullstack Developer & DevOps",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.primaryPurple,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 15),
+                                        const Text(
+                                          "Results-driven Fullstack Developer specializing in Flutter, modern web technologies, "
+  "and cloud-based DevOps solutions. Passionate about building scalable, high-performance "
+  "applications with clean architecture and exceptional user experiences.",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 20),
+                                        _buildSocialIconsRow(_launchUrl),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 25),
+                                  _buildSkillsSection(),
+                                  const SizedBox(height: 25),
+                                  _buildContactInfo(),
+                                  const SizedBox(height: 30),
+                                  const SizedBox(height: 50), // bottom padding
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              _buildDeveloperImage(),
-                              const SizedBox(height: 20),
-                              const Text(
-                                "Malitha Tishamal",
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.darkText,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              const Text(
-                                "Flutter Developer & UI/UX Designer",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.primaryPurple,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 15),
-                              const Text(
-                                "Passionate mobile app developer with expertise in Flutter framework. "
-                                "Creating beautiful and functional applications with modern UI/UX design principles.",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                  height: 1.5,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 20),
-                              _buildSocialIconsRow(_launchUrl),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-                        _buildSkillsSection(),
-                        const SizedBox(height: 25),
-                        _buildContactInfo(),
-                        const SizedBox(height: 30),
-                      ],
-                    ),
-                  ),
+                            ),
                 ),
               ],
             ),
@@ -640,7 +664,7 @@ class _AdminDeveloperAboutScreenState extends State<AdminDeveloperAboutScreen> {
             child: Container(
               width: double.infinity,
               color: Colors.grey.shade200,
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(8.0),
               child: const Text(
                 'Developed By Malitha Tishamal',
                 textAlign: TextAlign.center,

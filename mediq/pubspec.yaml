@@ -34,6 +34,7 @@ dependencies:
 
   # Image handling
   image_picker: ^1.2.0
+  #image_cropper: ^5.0.1
   flutter_image_compress: ^2.3.0
 
   # HTTP for Cloudinary upload

@@ -47,10 +47,14 @@ class _UserListScreenState extends State<UserListScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   UserStatusFilter _currentFilter = UserStatusFilter.all;
 
+  // Search functionality
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Guest';
-  String? _profileImageUrl;
-  String? _currentUserId; // 👈 Store current user's UID
+  String? _profileImageUrl; // kept for potential use but not in header
+  String? _currentUserId;
   bool _isUserLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -58,13 +62,24 @@ class _UserListScreenState extends State<UserListScreen> {
   void initState() {
     super.initState();
     _fetchCurrentUserDetails();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCurrentUserDetails() async {
     setState(() => _isUserLoading = true);
 
     final user = _auth.currentUser;
-    _currentUserId = user?.uid; // 👈 Save current user ID
+    _currentUserId = user?.uid;
 
     if (user != null) {
       try {
@@ -124,10 +139,10 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  // 🌟 NEW HEADER - Factory Owner Dashboard Style
-  Widget _buildDashboardHeader(BuildContext context) {
+  // 🌟 NEW COMPACT HEADER (without profile picture)
+  Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -148,94 +163,78 @@ class _UserListScreenState extends State<UserListScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 28),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
-          
-          const SizedBox(height: 10),
-          
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // User Info
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User Name
-                  Text(
-                    _currentUserName,
-                    style: const TextStyle(
-                      fontSize: 20,
+          const SizedBox(height: 2),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
-                    ),
-                  ),
-                  // Role
-                  Text(
-                    'Logged in as: Administrator',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                      color: AppColors.headerTextDark),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark),
+                ),
+              ],
+            ),
           ),
-          
-          const SizedBox(height: 25),
-          
-          // Page Title
+          const SizedBox(height: 8),
           Text(
             'Manage ${widget.role} Accounts',
             style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
-            ),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.headerTextDark),
           ),
         ],
+      ),
+    );
+  }
+
+  // Search bar
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search by name, email, NIC, or mobile...',
+          prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        ),
       ),
     );
   }
@@ -250,163 +249,177 @@ class _UserListScreenState extends State<UserListScreen> {
           SafeArea(
             child: Column(
               children: [
-                // 🌟 NEW HEADER
-                _buildDashboardHeader(context),
-                
-                // Main Content
-                Expanded(
-                  child: Column(
-                    children: [
-                      // Modern Filter Chips
-                      Container(
-                        margin: const EdgeInsets.all(16),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: UserStatusFilter.values.map((filter) {
-                            final isSelected = _currentFilter == filter;
-                            return Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _currentFilter = filter;
-                                  });
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.primaryPurple : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _getFilterName(filter),
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white : AppColors.darkText.withOpacity(0.6),
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      
-                      // User List
-                      Expanded(
-                        child: StreamBuilder<QuerySnapshot>(
-                          stream: _getFilterStatusValue(_currentFilter) == null
-                              ? _userCollection.where('role', isEqualTo: widget.role).snapshots()
-                              : _userCollection
-                                  .where('role', isEqualTo: widget.role)
-                                  .where('status', isEqualTo: _getFilterStatusValue(_currentFilter))
-                                  .snapshots(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      color: AppColors.primaryPurple,
-                                      strokeWidth: 2,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Loading users...',
-                                      style: TextStyle(
-                                        color: AppColors.darkText.withOpacity(0.5),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            if (snapshot.hasError) {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: AppColors.disabledColor,
-                                      size: 48,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Error loading data',
-                                      style: TextStyle(
-                                        color: AppColors.darkText.withOpacity(0.7),
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            final documents = snapshot.data?.docs ?? [];
-                            if (documents.isEmpty) {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.people_outline,
-                                      color: AppColors.darkText.withOpacity(0.3),
-                                      size: 64,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'No ${widget.role} accounts found',
-                                      style: TextStyle(
-                                        color: AppColors.darkText.withOpacity(0.5),
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            return ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                              itemCount: documents.length,
-                              itemBuilder: (context, index) {
-                                final data = documents[index].data() as Map<String, dynamic>;
-                                final userId = documents[index].id;
-                                return _buildUserCard(userId, data);
-                              },
-                            );
-                          },
-                        ),
+                _buildHeader(context),
+                _buildSearchBar(),
+                // Modern Filter Chips
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: UserStatusFilter.values.map((filter) {
+                      final isSelected = _currentFilter == filter;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _currentFilter = filter;
+                            });
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.primaryPurple : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _getFilterName(filter),
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : AppColors.darkText.withOpacity(0.6),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // User List
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _userCollection.where('role', isEqualTo: widget.role).snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                color: AppColors.primaryPurple,
+                                strokeWidth: 2,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading users...',
+                                style: TextStyle(
+                                  color: AppColors.darkText.withOpacity(0.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: AppColors.disabledColor,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Error loading data',
+                                style: TextStyle(
+                                  color: AppColors.darkText.withOpacity(0.7),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      final documents = snapshot.data?.docs ?? [];
+
+                      // Apply filters: status + search
+                      final filteredDocs = documents.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        
+                        // Status filter
+                        if (_currentFilter != UserStatusFilter.all) {
+                          final status = data['status'] ?? '';
+                          if (status != _getFilterStatusValue(_currentFilter)) return false;
+                        }
+                        
+                        // Search filter
+                        if (_searchQuery.isNotEmpty) {
+                          final fullName = (data['fullName'] ?? '').toLowerCase();
+                          final email = (data['email'] ?? '').toLowerCase();
+                          final nic = (data['nic'] ?? '').toLowerCase();
+                          final mobile = (data['mobile'] ?? '').toLowerCase();
+                          if (!fullName.contains(_searchQuery) &&
+                              !email.contains(_searchQuery) &&
+                              !nic.contains(_searchQuery) &&
+                              !mobile.contains(_searchQuery)) {
+                            return false;
+                          }
+                        }
+                        return true;
+                      }).toList();
+
+                      if (filteredDocs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.people_outline,
+                                color: AppColors.darkText.withOpacity(0.3),
+                                size: 64,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No ${widget.role} accounts found',
+                                style: TextStyle(
+                                  color: AppColors.darkText.withOpacity(0.5),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        itemCount: filteredDocs.length,
+                        itemBuilder: (context, index) {
+                          final doc = filteredDocs[index];
+                          final data = doc.data() as Map<String, dynamic>;
+                          final userId = doc.id;
+                          return _buildUserCard(userId, data);
+                        },
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          
-
+          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              color: const Color.fromARGB(255, 255, 255, 255), // optional background – remove if not wanted
+              color: const Color.fromARGB(255, 255, 255, 255),
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
@@ -456,7 +469,6 @@ class _UserListScreenState extends State<UserListScreen> {
         statusIcon = Icons.pending;
     }
 
-    // Check if this card belongs to the currently logged-in user
     final bool isCurrentUser = userId == _currentUserId;
 
     return Container(
@@ -539,7 +551,6 @@ class _UserListScreenState extends State<UserListScreen> {
                               ),
                             ),
                           ),
-                          // 👇 EDIT ICON BUTTON (always visible for all users)
                           IconButton(
                             icon: Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
                             onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
@@ -616,7 +627,7 @@ class _UserListScreenState extends State<UserListScreen> {
                       'Approve',
                       isCurrentUser ? Colors.grey : AppColors.successGreen,
                       Icons.check_circle,
-                      isCurrentUser || status == 'Approved', // disabled if current user or already approved
+                      isCurrentUser || status == 'Approved',
                       isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
                     ),
                   ),
@@ -636,7 +647,7 @@ class _UserListScreenState extends State<UserListScreen> {
                       'Delete',
                       isCurrentUser ? Colors.grey : AppColors.warningOrange,
                       Icons.delete_outline,
-                      isCurrentUser, // disabled if current user
+                      isCurrentUser,
                       isCurrentUser ? null : () => _confirmDelete(userId, fullName),
                     ),
                   ),
@@ -717,7 +728,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // 👇 Edit dialog and update function (copied from pharmacist page)
   void _showEditDialog(String userId, String currentName, String currentMobile, String currentNic) {
     final nameController = TextEditingController(text: currentName);
     final mobileController = TextEditingController(text: currentMobile);

@@ -7,6 +7,7 @@ import 'antibiotics_management_screen.dart';
 import 'accounts-manage-details.dart';
 import 'wards_management_screen.dart';
 import 'stocks_management_screen.dart'; 
+import 'book_numbers_screen.dart'; 
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -133,7 +134,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
         children: [
           const SizedBox(height: 50),
 
-          // ----- HEADER LOGO (purple background ඉවත් කළා) -----
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -141,7 +142,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 Container(
                   width: 60,
                   height: 60,
-                  // background එක ඉවත් කළා – දැන් icon/image විතරයි
+
                   child: Image.asset(
                     'assets/logo2.png',
                     width: 60,
@@ -341,7 +342,14 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   icon: Icons.menu_book_rounded,
                   label: "Record Books",
                   description: "Medical record books",
-                  onTap: () => widget.onNavTap('Book Numbers'),
+                  onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const BookNumbersScreen(),
+                        ),
+                      );
+                    },
                 ),
                 const SizedBox(height: 10),
                 _buildSectionDivider(),
@@ -364,12 +372,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AdminDeveloperAboutScreen(
-                          userName: widget.userName,
-                          userRole: widget.userRole,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (context) => const AdminDeveloperAboutScreen()),
                     );
                   },
                 ),
@@ -377,7 +380,6 @@ class _AdminDrawerState extends State<AdminDrawer> {
             ),
           ),
 
-          // Logout Button (නොවෙනස්ව)
           Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(

@@ -12,6 +12,7 @@ import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
 import 'wards_management_screen.dart'; 
 import 'stocks_management_screen.dart'; 
+import 'book_numbers_screen.dart'; 
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -53,7 +54,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       FirebaseFirestore.instance.collection('users');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
-  final CollectionReference _wardsCollection = // 👈 Wards collection එකතු කිරීම
+  final CollectionReference _wardsCollection = 
       FirebaseFirestore.instance.collection('wards');
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -146,17 +147,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
         break;
 
+      case 'Book Numbers':
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const BookNumbersScreen()),
+      );
+      break;
+
       case 'Developer About':
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AdminDeveloperAboutScreen(
-              userName: _currentUserName,
-              userRole: _currentUserRole,
-              profileImageUrl: _profileImageUrl,
-            ),
-          ),
-        );
-        break;
+        MaterialPageRoute(builder: (_) => const AdminDeveloperAboutScreen()),
+      );
+      break;
 
       case 'Profile Manage':
       case 'Profile':
@@ -383,7 +384,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         _tileAccountsManage(),
         _tileAntibiotics(),
-        _tileWards(), // 👈 Live Wards tile එක (පැරණි static එක වෙනුවට)
+        _tileWards(), 
         _tileSimple(
             icon: Icons.inventory_2_outlined,
             title: 'Stocks',
