@@ -271,8 +271,8 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 ),
                 _buildModernDrawerItem(
                   icon: Icons.medical_services_rounded,
-                  label: "Antibiotics Management",
-                  description: "Manage antibiotics inventory",
+                  label: "Antibiotics ",
+                  description: "Antibiotics inventory",
                   onTap: () {
                     Navigator.of(context).pop();
                   //  Navigator.of(context).push(
@@ -284,7 +284,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 ),
                 _buildModernDrawerItem(
                   icon: Icons.local_hospital_rounded,
-                  label: "Wards Management",
+                  label: "Wards",
                   description: "Hospital wards & departments",
                   onTap: () {
                   //  Navigator.of(context).pop();
