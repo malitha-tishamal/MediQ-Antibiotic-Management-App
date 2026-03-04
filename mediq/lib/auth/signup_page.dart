@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../main.dart';
-import 'login_page.dart'; // Make sure to import your login page
+import 'login_page.dart';
 
 enum UserRole { Admin, Pharmacist }
 
@@ -21,11 +21,9 @@ class _SignUpPageState extends State<SignUpPage> {
   final _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
   
-  // Controllers for real-time validation
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // State variables
   String _email = '';
   String _password = '';
   String _confirmPassword = '';
@@ -52,34 +50,22 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  // UPDATED: Function to get default profile picture with correct asset paths
   Future<String?> _getDefaultProfilePicture() async {
     try {
-      String assetPath;
-      
-      if (_selectedRole == UserRole.Admin) {
-        assetPath = 'assets/admin-default.jpg';
-      } else {
-        assetPath = 'assets/pharmacist-default.jpg';
-      }
+      String assetPath = _selectedRole == UserRole.Admin
+          ? 'assets/admin-default.jpg'
+          : 'assets/pharmacist-default.jpg';
 
       debugPrint('🖼️ Loading default profile picture from: $assetPath');
 
-      // Load asset as bytes
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
-      
-      // Convert to base64
       final String base64String = base64Encode(bytes);
       
       debugPrint('✅ Successfully loaded default profile picture for ${_selectedRole.name}');
-      debugPrint('📊 Base64 length: ${base64String.length} characters');
-      
       return base64String;
     } catch (e) {
       debugPrint('❌ Failed to load default profile picture: $e');
-      debugPrint('❌ Error type: ${e.runtimeType}');
-      // Return empty string if image loading fails
       return '';
     }
   }
@@ -103,7 +89,6 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
-      // Get default profile picture based on role
       final String? defaultProfileImage = await _getDefaultProfilePicture();
       
       final UserCredential userCredential = 
@@ -112,7 +97,6 @@ class _SignUpPageState extends State<SignUpPage> {
         password: _password,
       );
 
-      // Firestore document data
       final userData = {
         'email': _email.trim(),
         'role': _selectedRole.name,
@@ -120,23 +104,12 @@ class _SignUpPageState extends State<SignUpPage> {
         'nic': _nic.trim().toUpperCase(),
         'mobileNumber': _mobileNumber.trim(),
         'status': 'Pending',
-        'profileImageUrl': defaultProfileImage ?? '', // Use default image or empty string
+        'profileImageUrl': defaultProfileImage ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      debugPrint('🔥 Creating user document in Firestore...');
-      debugPrint('👤 Role: ${_selectedRole.name}');
-      debugPrint('📧 Email: ${_email.trim()}');
-      debugPrint('👤 Full Name: ${_fullName.trim()}');
-      debugPrint('🆔 NIC: ${_nic.trim().toUpperCase()}');
-      debugPrint('📱 Mobile: ${_mobileNumber.trim()}');
-      debugPrint('🖼️ Profile image set: ${defaultProfileImage != null && defaultProfileImage!.isNotEmpty}');
-
       await _firestore.collection('users').doc(userCredential.user!.uid).set(userData);
-
-      debugPrint('✅ User document created successfully');
-      debugPrint('👤 User UID: ${userCredential.user!.uid}');
 
       if (mounted) {
         await _showSuccessDialog();
@@ -146,9 +119,7 @@ class _SignUpPageState extends State<SignUpPage> {
     } catch (e) {
       _handleGenericError(e);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -168,10 +139,7 @@ class _SignUpPageState extends State<SignUpPage> {
       default:
         message = 'Registration failed: ${e.message}';
     }
-    
-    if (mounted) {
-      setState(() => _errorMessage = message);
-    }
+    if (mounted) setState(() => _errorMessage = message);
   }
 
   void _handleGenericError(dynamic e) {
@@ -183,7 +151,6 @@ class _SignUpPageState extends State<SignUpPage> {
     debugPrint('SignUp Error: $e');
   }
 
-  // UPDATED: Success dialog that navigates to login page
   Future<void> _showSuccessDialog() async {
     await showDialog(
       context: context,
@@ -207,7 +174,6 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Show role-specific icon in success dialog
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
@@ -222,9 +188,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     _selectedRole == UserRole.Admin 
                         ? Icons.admin_panel_settings 
                         : Icons.medical_services,
-                    color: _selectedRole == UserRole.Admin 
-                        ? Colors.purple 
-                        : Colors.blue,
+                    color: _selectedRole == UserRole.Admin ? Colors.purple : Colors.blue,
                     size: 60,
                   ),
                 ),
@@ -232,7 +196,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 Text(
                   '${_selectedRole.name} Account Created\nSuccessfully!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppColors.darkText,
@@ -245,25 +209,32 @@ class _SignUpPageState extends State<SignUpPage> {
                       ? 'Your admin account is pending approval.'
                       : 'Your pharmacist account is pending approval.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
                 const SizedBox(height: 25),
-                _buildGradientButton(
-                  text: 'Continue to Login',
-                  onPressed: () {
-                    // Close the dialog
-                    Navigator.of(context).pop();
-                    // Navigate to login page and remove all previous routes
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => LoginPage()),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  isLoading: false,
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                        (Route<dynamic> route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryPurple,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Continue to Login',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -273,48 +244,32 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+  // --- Validation methods ---
   String? _validateNIC(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'NIC number is required';
-    }
-    
+    if (value == null || value.isEmpty) return 'NIC number is required';
     final nic = value.trim().toUpperCase();
     final nicRegex = RegExp(r'^(\d{9}[VX]|\d{12})$');
-    
-    if (!nicRegex.hasMatch(nic)) {
-      return 'Enter valid NIC (901234567V or 12 digits)';
-    }
-    
+    if (!nicRegex.hasMatch(nic)) return 'Enter valid NIC (901234567V or 12 digits)';
     if (nic.length == 10) {
       final lastChar = nic.substring(9);
-      if (lastChar != 'V' && lastChar != 'X') {
-        return 'Last character must be V or X';
-      }
+      if (lastChar != 'V' && lastChar != 'X') return 'Last character must be V or X';
     }
-    
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Password is required';
-    }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters';
-    }
+    if (value == null || value.isEmpty) return 'Password is required';
+    if (value.length < 6) return 'Password must be at least 6 characters';
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Please confirm your password';
-    }
-    if (value != _passwordController.text) {
-      return 'Passwords do not match';
-    }
+    if (value == null || value.isEmpty) return 'Please confirm your password';
+    if (value != _passwordController.text) return 'Passwords do not match';
     return null;
   }
 
+  // --- Modern Input Decoration ---
   InputDecoration _inputDecoration({
     required String label,
     required IconData prefixIcon,
@@ -327,14 +282,11 @@ class _SignUpPageState extends State<SignUpPage> {
       hintText: hintText,
       floatingLabelBehavior: FloatingLabelBehavior.always,
       labelStyle: TextStyle(
-        color: isEnabled ? AppColors.darkText : Colors.grey.shade600,
-        fontSize: 14,
+        color: isEnabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: TextStyle(
-        color: Colors.grey.shade600,
-        fontSize: 14,
-      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
       filled: true,
       fillColor: isEnabled ? Colors.white : Colors.grey.shade100,
       border: OutlineInputBorder(
@@ -360,24 +312,23 @@ class _SignUpPageState extends State<SignUpPage> {
       prefixIcon: Container(
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: Colors.grey.shade300, width: 1.5),
-          ),
+          border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Icon(
-            prefixIcon, 
-            color: isEnabled ? AppColors.primaryPurple : Colors.grey.shade400, 
-            size: 22
+            prefixIcon,
+            color: isEnabled ? AppColors.primaryPurple : Colors.grey.shade400,
+            size: 20,
           ),
         ),
       ),
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
     );
   }
 
+  // --- Role Dropdown (modernized) ---
   Widget _buildRoleDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,11 +337,11 @@ class _SignUpPageState extends State<SignUpPage> {
           'Select Role',
           style: TextStyle(
             color: AppColors.darkText,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -401,16 +352,11 @@ class _SignUpPageState extends State<SignUpPage> {
             child: DropdownButtonFormField<UserRole>(
               decoration: const InputDecoration(
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               ),
               value: _selectedRole,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, 
-                  color: AppColors.primaryPurple),
-              style: const TextStyle(
-                color: AppColors.darkText,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+              style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
               dropdownColor: Colors.white,
               borderRadius: BorderRadius.circular(12),
               items: UserRole.values.map((UserRole role) {
@@ -419,25 +365,18 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: Row(
                     children: [
                       Icon(
-                        role == UserRole.Admin 
-                            ? Icons.admin_panel_settings 
-                            : Icons.medical_services,
+                        role == UserRole.Admin ? Icons.admin_panel_settings : Icons.medical_services,
                         color: AppColors.primaryPurple,
-                        size: 20,
+                        size: 18,
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        role.name,
-                        style: const TextStyle(fontSize: 16),
-                      ),
+                      const SizedBox(width: 10),
+                      Text(role.name, style: const TextStyle(fontSize: 15)),
                     ],
                   ),
                 );
               }).toList(),
               onChanged: _isLoading ? null : (UserRole? newValue) {
-                if (newValue != null) {
-                  setState(() => _selectedRole = newValue);
-                }
+                if (newValue != null) setState(() => _selectedRole = newValue);
               },
             ),
           ),
@@ -446,6 +385,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
+  // --- Gradient Button (same as before) ---
   Widget _buildGradientButton({
     required String text,
     required VoidCallback? onPressed,
@@ -454,16 +394,13 @@ class _SignUpPageState extends State<SignUpPage> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: double.infinity,
-      height: 56,
+      height: 52,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         gradient: LinearGradient(
           colors: onPressed == null || isLoading
               ? [Colors.grey.shade400, Colors.grey.shade600]
-              : const [
-                  AppColors.buttonGradientStart,
-                  AppColors.buttonGradientEnd,
-                ],
+              : const [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -497,7 +434,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     text,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),
@@ -515,264 +452,246 @@ class _SignUpPageState extends State<SignUpPage> {
       child: Scaffold(
         backgroundColor: AppColors.lightBackground,
         body: SafeArea(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: <Widget>[
-                    const SizedBox(height: 20),
-                    // Header with back button
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                              color: AppColors.darkText),
-                          onPressed: _isLoading ? null : () => Navigator.pop(context),
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Create Account',
-                          style: TextStyle(
-                            color: AppColors.darkText,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        const SizedBox(width: 48),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    // Logo
-                    Hero(
-                      tag: 'app-logo',
-                      child: Image.asset(
-                        'assets/logo.png',
-                        height: 200,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 0),
-                    // Form fields
-                    _buildRoleDropdown(),
-                    const SizedBox(height: 20),
-                    // NIC Field
-                    TextFormField(
-                      decoration: _inputDecoration(
-                        label: 'NIC Number',
-                        hintText: 'e.g., 901234567V or 202312345678',
-                        prefixIcon: Icons.badge_outlined,
-                        isEnabled: !_isLoading,
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                      onSaved: (value) => _nic = value!.trim().toUpperCase(),
-                      validator: _validateNIC,
-                      enabled: !_isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    // Full Name Field
-                    TextFormField(
-                      decoration: _inputDecoration(
-                        label: 'Full Name',
-                        hintText: 'Enter your full name',
-                        prefixIcon: Icons.person_outline_rounded,
-                        isEnabled: !_isLoading,
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                      onSaved: (value) => _fullName = value!.trim(),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Full name is required';
-                        }
-                        if (value.trim().length < 2) {
-                          return 'Name must be at least 2 characters';
-                        }
-                        return null;
-                      },
-                      enabled: !_isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    // Email Field
-                    TextFormField(
-                      decoration: _inputDecoration(
-                        label: 'Email Address',
-                        hintText: 'example@email.com',
-                        prefixIcon: Icons.email_outlined,
-                        isEnabled: !_isLoading,
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      onSaved: (value) => _email = value!.trim(),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Email is required';
-                        }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                            .hasMatch(value.trim())) {
-                          return 'Enter a valid email address';
-                        }
-                        return null;
-                      },
-                      enabled: !_isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    // Mobile Number Field
-                    TextFormField(
-                      decoration: _inputDecoration(
-                        label: 'Mobile Number',
-                        hintText: '07X XXX XXXX',
-                        prefixIcon: Icons.phone_android_outlined,
-                        isEnabled: !_isLoading,
-                      ),
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      onSaved: (value) => _mobileNumber = value!.trim(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mobile number is required';
-                        }
-                        if (value.length != 10) {
-                          return 'Must be exactly 10 digits';
-                        }
-                        if (!value.startsWith('07')) {
-                          return 'Must start with 07';
-                        }
-                        return null;
-                      },
-                      enabled: !_isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    // Password Field
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      decoration: _inputDecoration(
-                        label: 'Password',
-                        hintText: 'At least 6 characters',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        isEnabled: !_isLoading,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible 
-                                ? Icons.visibility_off_rounded 
-                                : Icons.visibility_rounded,
-                            color: AppColors.primaryPurple,
-                          ),
-                          onPressed: _isLoading ? null : () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible),
-                        ),
-                      ),
-                      onSaved: (value) => _password = value!,
-                      validator: _validatePassword,
-                      enabled: !_isLoading,
-                    ),
-                    const SizedBox(height: 20),
-                    // Confirm Password Field
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: !_isConfirmPasswordVisible,
-                      decoration: _inputDecoration(
-                        label: 'Confirm Password',
-                        hintText: 'Re-enter your password',
-                        prefixIcon: Icons.lock_reset_rounded,
-                        isEnabled: !_isLoading,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isConfirmPasswordVisible 
-                                ? Icons.visibility_off_rounded 
-                                : Icons.visibility_rounded,
-                            color: AppColors.primaryPurple,
-                          ),
-                          onPressed: _isLoading ? null : () => setState(() => 
-                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
-                        ),
-                      ),
-                      onSaved: (value) => _confirmPassword = value!,
-                      validator: _validateConfirmPassword,
-                      enabled: !_isLoading,
-                    ),
-                    // Error Message
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline_rounded, 
-                                color: Colors.red, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w500,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              children: [
+                // Scrollable content (form)
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: <Widget>[
+                          const SizedBox(height: 12),
+                          // Header with back button
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                    color: AppColors.darkText, size: 20),
+                                onPressed: _isLoading ? null : () => Navigator.pop(context),
+                              ),
+                              const Spacer(),
+                              const Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  color: AppColors.darkText,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                              const Spacer(),
+                              const SizedBox(width: 48),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Logo (slightly smaller)
+                          Hero(
+                            tag: 'app-logo',
+                            child: Image.asset(
+                              'assets/logo.png',
+                              height: 150,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Role Dropdown
+                          _buildRoleDropdown(),
+                          const SizedBox(height: 14),
+                          // NIC
+                          TextFormField(
+                            decoration: _inputDecoration(
+                              label: 'NIC Number',
+                              hintText: '901234567V / 202312345678',
+                              prefixIcon: Icons.badge_outlined,
+                              isEnabled: !_isLoading,
+                            ),
+                            textCapitalization: TextCapitalization.characters,
+                            onSaved: (value) => _nic = value!.trim().toUpperCase(),
+                            validator: _validateNIC,
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 14),
+                          // Full Name
+                          TextFormField(
+                            decoration: _inputDecoration(
+                              label: 'Full Name',
+                              hintText: 'Your full name',
+                              prefixIcon: Icons.person_outline_rounded,
+                              isEnabled: !_isLoading,
+                            ),
+                            textCapitalization: TextCapitalization.words,
+                            onSaved: (value) => _fullName = value!.trim(),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return 'Full name is required';
+                              if (value.trim().length < 2) return 'Name must be at least 2 characters';
+                              return null;
+                            },
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 14),
+                          // Email
+                          TextFormField(
+                            decoration: _inputDecoration(
+                              label: 'Email Address',
+                              hintText: 'example@email.com',
+                              prefixIcon: Icons.email_outlined,
+                              isEnabled: !_isLoading,
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            onSaved: (value) => _email = value!.trim(),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) return 'Email is required';
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                                return 'Enter a valid email address';
+                              }
+                              return null;
+                            },
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 14),
+                          // Mobile Number
+                          TextFormField(
+                            decoration: _inputDecoration(
+                              label: 'Mobile Number',
+                              hintText: '07X XXX XXXX',
+                              prefixIcon: Icons.phone_android_outlined,
+                              isEnabled: !_isLoading,
+                            ),
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
+                            onSaved: (value) => _mobileNumber = value!.trim(),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Mobile number is required';
+                              if (value.length != 10) return 'Must be exactly 10 digits';
+                              if (!value.startsWith('07')) return 'Must start with 07';
+                              return null;
+                            },
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 14),
+                          // Password
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: !_isPasswordVisible,
+                            decoration: _inputDecoration(
+                              label: 'Password',
+                              hintText: 'At least 6 characters',
+                              prefixIcon: Icons.lock_outline_rounded,
+                              isEnabled: !_isLoading,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                  color: AppColors.primaryPurple,
+                                  size: 20,
+                                ),
+                                onPressed: _isLoading ? null : () => setState(
+                                    () => _isPasswordVisible = !_isPasswordVisible),
+                              ),
+                            ),
+                            onSaved: (value) => _password = value!,
+                            validator: _validatePassword,
+                            enabled: !_isLoading,
+                          ),
+                          const SizedBox(height: 14),
+                          // Confirm Password
+                          TextFormField(
+                            controller: _confirmPasswordController,
+                            obscureText: !_isConfirmPasswordVisible,
+                            decoration: _inputDecoration(
+                              label: 'Confirm Password',
+                              hintText: 'Re-enter your password',
+                              prefixIcon: Icons.lock_reset_rounded,
+                              isEnabled: !_isLoading,
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isConfirmPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                  color: AppColors.primaryPurple,
+                                  size: 20,
+                                ),
+                                onPressed: _isLoading ? null : () => setState(
+                                    () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                              ),
+                            ),
+                            onSaved: (value) => _confirmPassword = value!,
+                            validator: _validateConfirmPassword,
+                            enabled: !_isLoading,
+                          ),
+                          // Error message inline
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500, fontSize: 13),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 30),
-                    // Sign Up Button
-                    _buildGradientButton(
-                      text: _isLoading ? 'Creating Account...' : 'Create Account',
-                      onPressed: _isLoading ? null : _handleSignUp,
-                      isLoading: _isLoading,
-                    ),
-                    const SizedBox(height: 25),
-                    // Sign In Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Already have an account? ",
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: AppColors.darkText,
+                          const SizedBox(height: 20),
+                          // Sign Up Button
+                          _buildGradientButton(
+                            text: _isLoading ? 'Creating Account...' : 'Create Account',
+                            onPressed: _isLoading ? null : _handleSignUp,
+                            isLoading: _isLoading,
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: _isLoading ? null : () => Navigator.pop(context),
-                          child: const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: AppColors.primaryPurple,
-                              fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
-                            ),
+                          const SizedBox(height: 18),
+                          // Sign In Link
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "Already have an account? ",
+                                style: TextStyle(fontSize: 14, color: AppColors.darkText),
+                              ),
+                              GestureDetector(
+                                onTap: _isLoading ? null : () => Navigator.pop(context),
+                                child: const Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.primaryPurple,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // Footer
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 20.0),
-                      child: Text(
-                        'Developed By Malitha Tishamal',
-                        style: TextStyle(
-                          color: AppColors.darkText,
-                          fontSize: 12,
-                        ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                // Fixed footer (never scrolls)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12.0),
+                  child: Text(
+                    'Developed By Malitha Tishamal',
+                    style: TextStyle(color: AppColors.darkText, fontSize: 11),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

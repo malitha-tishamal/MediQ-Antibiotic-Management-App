@@ -1,4 +1,4 @@
-name: mediq
+name: MediQ
 description: "Antibiotics Usage Analysis System For Karapitiya National Hospital. Collaboration with Karapitiya National Hospital"
 
 publish_to: 'none'
@@ -51,6 +51,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.2
+
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo2.png"
+  adaptive_icon_background: "#FFFFFF"
 
 flutter:
   uses-material-design: true

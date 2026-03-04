@@ -1,19 +1,18 @@
-import 'dart:async'; // Added for Timer functionality
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../main.dart'; // Assumed to contain AppColors
+import '../main.dart'; // AppColors
 import 'signup_page.dart';
 import '../core/dashboard_wrapper.dart';
+import 'forgot_password_page.dart'; // Import the new page
 
 class LoginThrottleManager {
-  // නව lockout durations (මිනිත්තු වලින්)
   static const Map<int, int> _lockoutDurations = {
-    3: 1, // 3 attempts -> 1 minute
-    4: 2, // 4 attempts -> 2 minutes
-    5: 5, // 5 attempts -> 5 minutes
-    6: 10, // 6 attempts -> 10 minutes
-    // 7+ attempts -> 60 minutes (handle separately)
+    3: 1,
+    4: 2,
+    5: 5,
+    6: 10,
   };
 
   static int _failedAttempts = 0;
@@ -27,7 +26,7 @@ class LoginThrottleManager {
     int durationMinutes = 0;
 
     if (_failedAttempts >= 7) {
-      durationMinutes = 60; // 7+ attempts -> 60 minutes
+      durationMinutes = 60;
     } else if (_lockoutDurations.containsKey(_failedAttempts)) {
       durationMinutes = _lockoutDurations[_failedAttempts]!;
     }
@@ -35,14 +34,11 @@ class LoginThrottleManager {
     if (durationMinutes > 0) {
       _lockoutEndTime = DateTime.now().add(Duration(minutes: durationMinutes));
     }
-
-    debugPrint('Login failed. Attempts: $_failedAttempts. Lockout ends: $_lockoutEndTime');
   }
 
   static void resetAttempts() {
     _failedAttempts = 0;
     _lockoutEndTime = null;
-    debugPrint('Login successful. Attempts reset.');
   }
 
   static String? getLockoutMessage() {
@@ -50,20 +46,14 @@ class LoginThrottleManager {
       _lockoutEndTime = null;
       return null;
     }
-
     if (_lockoutEndTime != null) {
       final duration = _lockoutEndTime!.difference(DateTime.now());
       String remaining = '';
-
-      if (duration.inHours > 0) {
-        remaining += '${duration.inHours}h ';
-      }
+      if (duration.inHours > 0) remaining += '${duration.inHours}h ';
       final minutes = duration.inMinutes.remainder(60);
       final seconds = duration.inSeconds.remainder(60);
-
       remaining += '${minutes.toString().padLeft(2, '0')}m ';
       remaining += '${seconds.toString().padLeft(2, '0')}s';
-
       return 'Too many failed attempts. Try again in $remaining.';
     }
     return null;
@@ -109,14 +99,8 @@ class _LoginPageState extends State<LoginPage> {
     if (LoginThrottleManager.getLockoutMessage() != null) {
       _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         final newLockoutMessage = LoginThrottleManager.getLockoutMessage();
-        if (newLockoutMessage == null) {
-          timer.cancel();
-        }
-        if (mounted) {
-          setState(() {
-            _errorMessage = newLockoutMessage;
-          });
-        }
+        if (newLockoutMessage == null) timer.cancel();
+        if (mounted) setState(() => _errorMessage = newLockoutMessage);
       });
     }
   }
@@ -124,9 +108,7 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() async {
     final lockoutMessage = LoginThrottleManager.getLockoutMessage();
     if (lockoutMessage != null) {
-      setState(() {
-        _errorMessage = lockoutMessage;
-      });
+      setState(() => _errorMessage = lockoutMessage);
       return;
     }
 
@@ -153,13 +135,13 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       final user = userCredential.user;
-      if (user == null) throw Exception("User object is null after successful login.");
+      if (user == null) throw Exception("User object is null.");
 
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (!userDoc.exists) {
         await _auth.signOut();
         setState(() {
-          _errorMessage = 'User profile data not found. Please contact support.';
+          _errorMessage = 'User profile not found. Contact support.';
         });
         return;
       }
@@ -169,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
         await _auth.signOut();
         setState(() {
           _errorMessage =
-              'Your account status is "$accountStatus". Access is restricted until approval.';
+              'Your account status is "$accountStatus". Access restricted until approval.';
         });
         return;
       }
@@ -205,20 +187,11 @@ class _LoginPageState extends State<LoginPage> {
         _startLockoutTimer();
       }
 
-      setState(() {
-        _errorMessage = message;
-      });
+      setState(() => _errorMessage = message);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'An unexpected error occurred: ${e.toString()}';
-      });
+      setState(() => _errorMessage = 'An unexpected error occurred.');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = _errorMessage ?? LoginThrottleManager.getLockoutMessage();
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -226,166 +199,176 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const SizedBox(height: 50),
-              Image.asset(
-                'assets/logo.png',
-                height: 250,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.lock, size: 100, color: AppColors.primaryPurple);
-                },
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                'Login In Now',
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                'Please login to continue using the app',
-                style: TextStyle(color: AppColors.darkText, fontSize: 14),
-              ),
-              const SizedBox(height: 40),
-              _buildInputField(
-                label: 'Enter Your Email',
-                hint: 'example@email.com',
-                icon: Icons.person_outline,
-                keyboardType: TextInputType.emailAddress,
-                controller: _emailController,
-              ),
-              const SizedBox(height: 20),
-              _buildPasswordInput(),
-              const SizedBox(height: 10),
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Forgot Password feature coming soon!')),
-                          );
-                        },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(50, 30),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: AppColors.primaryPurple,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30.0),
+        child: Column(
+          children: [
+            // Scrollable content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    const SizedBox(height: 30),
+                    Image.asset(
+                      'assets/logo.png',
+                      height: 200,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.lock, size: 100, color: AppColors.primaryPurple),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              _buildGradientButton(
-                text: _isLoading ? 'Logging In...' : 'Login',
-                onPressed: (_isLoading || LoginThrottleManager.getLockoutMessage() != null)
-                    ? () {}
-                    : _handleLogin,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Don't have account ? ",
-                    style: TextStyle(fontSize: 14, color: AppColors.darkText),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      if (_isLoading || LoginThrottleManager.getLockoutMessage() != null) return;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignUpPage()),
-                      );
-                    },
-                    child: const Text(
-                      'Sign up',
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Login In Now',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.primaryPurple,
+                        color: AppColors.darkText,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                        decorationColor: AppColors.primaryPurple,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
-                child: Text(
-                  'Developed By Malitha Tishamal',
-                  style: TextStyle(color: AppColors.darkText, fontSize: 12),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Please login to continue using the app',
+                      style: TextStyle(color: AppColors.darkText, fontSize: 14),
+                    ),
+                    const SizedBox(height: 30),
+                    _buildInputField(
+                      label: 'Enter Your Email',
+                      hint: 'example@email.com',
+                      icon: Icons.person_outline,
+                      keyboardType: TextInputType.emailAddress,
+                      controller: _emailController,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPasswordInput(),
+                    const SizedBox(height: 10),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ForgotPasswordPage(),
+                                  ),
+                                );
+                              },
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            color: AppColors.primaryPurple,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildGradientButton(
+                      text: _isLoading ? 'Logging In...' : 'Login',
+                      onPressed:
+                          (_isLoading || LoginThrottleManager.getLockoutMessage() != null)
+                              ? null
+                              : _handleLogin,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Don't have account? ",
+                          style: TextStyle(fontSize: 14, color: AppColors.darkText),
+                        ),
+                        GestureDetector(
+                          onTap: _isLoading || LoginThrottleManager.getLockoutMessage() != null
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const SignUpPage()),
+                                  );
+                                },
+                          child: const Text(
+                            'Sign up',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.primaryPurple,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            // Fixed footer
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'Developed By Malitha Tishamal',
+                style: TextStyle(color: AppColors.darkText, fontSize: 11),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildGradientButton({required String text, required VoidCallback onPressed}) {
-    final bool isButtonDisabled =
-        (text == 'Logging In...' || LoginThrottleManager.getLockoutMessage() != null);
-
+  Widget _buildGradientButton({required String text, required VoidCallback? onPressed}) {
+    final bool isButtonDisabled = onPressed == null;
     return Opacity(
       opacity: isButtonDisabled ? 0.6 : 1.0,
       child: Container(
         width: double.infinity,
-        height: 60,
+        height: 52,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           gradient: LinearGradient(
-            colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
+            colors: isButtonDisabled
+                ? [Colors.grey.shade400, Colors.grey.shade600]
+                : const [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.buttonGradientEnd.withOpacity(0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: isButtonDisabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.buttonGradientEnd.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 1,
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isButtonDisabled ? null : onPressed,
+            onTap: onPressed,
             borderRadius: BorderRadius.circular(15),
             child: Center(
               child: Text(
                 text,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -409,37 +392,43 @@ class _LoginPageState extends State<LoginPage> {
           label,
           style: const TextStyle(
             color: AppColors.darkText,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           readOnly: LoginThrottleManager.getLockoutMessage() != null,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
+            hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.0),
+              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.0),
+              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
             ),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(right: 15.0),
-              child: Icon(icon, color: AppColors.inputBorder),
+            prefixIcon: Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(icon, color: AppColors.primaryPurple, size: 20),
+              ),
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           ),
         ),
       ],
@@ -454,46 +443,53 @@ class _LoginPageState extends State<LoginPage> {
           'Enter Your Password',
           style: TextStyle(
             color: AppColors.darkText,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: _passwordController,
           obscureText: !_isPasswordVisible,
           readOnly: LoginThrottleManager.getLockoutMessage() != null,
           decoration: InputDecoration(
             hintText: '*********',
-            hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8)),
+            hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.0),
+              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.0),
+              borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
             ),
+            prefixIcon: Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(Icons.lock_outline_rounded, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
             suffixIcon: IconButton(
               icon: Icon(
-                _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                _isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                 color: AppColors.primaryPurple,
+                size: 20,
               ),
               onPressed: LoginThrottleManager.getLockoutMessage() != null
                   ? null
-                  : () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
+                  : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           ),
         ),
       ],
