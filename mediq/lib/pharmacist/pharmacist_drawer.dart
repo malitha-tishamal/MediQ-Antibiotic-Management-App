@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
+import '../main.dart' as main_app;
+import 'pharmacist_dashboard.dart';
+//import 'admin_profile_screen.dart';
+//import 'admin_developer_about_screen.dart';
+//import 'antibiotics_management_screen.dart';
+//import 'wards_management_screen.dart';
+//import 'book_numbers_screen.dart';
 
-class PharmacistDrawer extends StatelessWidget {
+class PharmacistDrawer extends StatefulWidget {
   final String userName;
   final String userRole;
+  final String? profileImageUrl;
   final Function(String) onNavTap;
   final VoidCallback onLogout;
 
@@ -11,387 +18,555 @@ class PharmacistDrawer extends StatelessWidget {
     super.key,
     required this.userName,
     required this.userRole,
+    this.profileImageUrl,
     required this.onNavTap,
     required this.onLogout,
   });
 
+  @override
+  State<PharmacistDrawer> createState() => _PharmacistDrawerState();
+}
+
+class _PharmacistDrawerState extends State<PharmacistDrawer> {
+  final Color _primaryBlue = main_app.AppColors.primaryPurple;
+  final Color _darkText = main_app.AppColors.darkestText;
+
   String get _firstName {
-    if (userName.isEmpty) return 'User';
-    return userName.split(' ').first;
+    if (widget.userName.isEmpty) return 'User';
+    return widget.userName.split(' ').first;
+  }
+
+  String get _firstLetter {
+    if (widget.userName.isEmpty) return 'U';
+    return widget.userName[0].toUpperCase();
+  }
+
+  Widget _buildProfileImage() {
+    if (widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty) {
+      return Container(
+        width: 65,
+        height: 65,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: _primaryBlue, width: 2.5),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryBlue.withOpacity(0.2),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.network(
+            widget.profileImageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return _buildLetterAvatar();
+            },
+          ),
+        ),
+      );
+    } else {
+      return _buildLetterAvatar();
+    }
+  }
+
+  Widget _buildLetterAvatar() {
+    return Container(
+      width: 65,
+      height: 65,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [
+            main_app.AppColors.buttonGradientStart,
+            main_app.AppColors.buttonGradientEnd,
+          ],
+        ),
+        border: Border.all(color: _primaryBlue, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryBlue.withOpacity(0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          _firstLetter,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      width: 300,
+      width: MediaQuery.of(context).size.width * 0.65,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(30)),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.drawerBackground,
-              AppColors.drawerBackground.withOpacity(0.9),
-            ],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 20,
-              offset: const Offset(2, 0),
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // ---------- Enhanced Drawer Header ----------
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryPurple.withOpacity(0.15),
-                    AppColors.primaryPurple.withOpacity(0.05),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 50),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  child: Image.asset(
+                    'assets/logo2.png',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.medical_services_rounded,
+                      color: Color(0xFF2764E7),
+                      size: 30,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "MEDI-Q",
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF2764E7),
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Antibiotics Management",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF666482),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: const BorderRadius.only(
-                  bottomRight: Radius.circular(25),
-                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          // Profile Section
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.white, Color(0xFFF8FAFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // App Logo and Name
-                  Row(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: _primaryBlue.withOpacity(0.08),
+                  blurRadius: 25,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              border: Border.all(color: Colors.white.withOpacity(0.9), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                _buildProfileImage(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppColors.buttonGradientStart,
-                              AppColors.buttonGradientEnd,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(15),
+                      Text(
+                        '$_firstName! 👋',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2C2A3A),
                         ),
-                        child: const Icon(Icons.medication_outlined, 
-                            color: Colors.white, size: 28),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'MEDI-Q',
-                        style: TextStyle(
-                          color: AppColors.darkestText,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _primaryBlue.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          widget.userRole.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2764E7),
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  
-                  // User Info Section
-                  Row(
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 25),
+          _buildSectionDivider(),
+          const SizedBox(height: 8),
+
+          // ----- Pharmacist Menu Items -----
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              physics: const BouncingScrollPhysics(),
+              children: [
+                _buildModernDrawerItem(
+                  icon: Icons.dashboard_rounded,
+                  label: "Dashboard",
+                  description: "Overview & Analytics",
+                  isActive: true,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => PharmacistDashboard(
+                          userName: widget.userName,
+                          userRole: widget.userRole,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.medical_services_rounded,
+                  label: "Antibiotics Management",
+                  description: "Manage antibiotics inventory",
+                  onTap: () {
+                    Navigator.of(context).pop();
+                  //  Navigator.of(context).push(
+                     // MaterialPageRoute(
+                       // builder: (context) => const AntibioticsManagementScreen(),
+                    //  ),
+                   // );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.local_hospital_rounded,
+                  label: "Wards Management",
+                  description: "Hospital wards & departments",
+                  onTap: () {
+                  //  Navigator.of(context).pop();
+                  //  Navigator.of(context).push(
+                  //    MaterialPageRoute(
+                   //     builder: (context) => const WardsManagementScreen(),
+                   //   ),
+                  //  );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.receipt_long_rounded,
+                  label: "Usage Details",
+                  description: "Medication usage records",
+                  onTap: () => widget.onNavTap('Usage Details'),
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.menu_book_rounded,
+                  label: "Record Books",
+                  description: "Medical record books",
+                  onTap: () {
+               //     Navigator.of(context).pop();
+               //     Navigator.of(context).push(
+                //      MaterialPageRoute(
+                //        builder: (context) => const BookNumbersScreen(),
+                //      ),
+                //    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildSectionDivider(),
+                const SizedBox(height: 10),
+                _buildModernDrawerItem(
+                  icon: Icons.person_rounded,
+                  label: "My Profile",
+                  description: "Personal settings & profile",
+                  onTap: () {
+              //      Navigator.of(context).pop();
+               //     Navigator.of(context).push(
+                //      MaterialPageRoute(builder: (context) => const AdminProfileScreen()),
+                //    );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.info_rounded,
+                  label: "About & Help",
+                  description: "App information & support",
+                  onTap: () {
+                  //  Navigator.of(context).pop();
+                  //  Navigator.of(context).push(
+                  //    MaterialPageRoute(builder: (context) => const AdminDeveloperAboutScreen()),
+                  //  );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Logout Button
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.red.shade50, Colors.red.shade100.withOpacity(0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+              border: Border.all(color: Colors.red.withOpacity(0.2), width: 1.5),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showLogoutConfirmation(context),
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
                     children: [
                       Container(
-                        width: 60,
-                        height: 60,
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.15),
                           shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppColors.buttonGradientStart,
-                              AppColors.buttonGradientEnd,
-                            ],
-                          ),
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 3,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryPurple.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: const Icon(Icons.person_rounded, 
-                            color: Colors.white, size: 30),
+                        child: const Icon(Icons.logout_rounded, color: Colors.red, size: 20),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
+                      const SizedBox(width: 14),
+                      const Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Welcome, $_firstName! 👋',
-                              style: const TextStyle(
-                                color: AppColors.darkestText,
-                                fontSize: 18,
+                              "Logout",
+                              style: TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
+                                color: Colors.red,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryPurple.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: AppColors.primaryPurple.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Text(
-                                userRole.toUpperCase(),
-                                style: TextStyle(
-                                  color: AppColors.primaryPurple,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                            SizedBox(height: 2),
+                            Text(
+                              "Secure sign out",
+                              style: TextStyle(fontSize: 11, color: Colors.red),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ---------- Navigation Items ----------
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                children: [
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.dashboard_rounded,
-                    title: 'Dashboard',
-                    onTap: () => onNavTap('Home'),
-                    isActive: true,
-                  ),
-                  
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.medical_services_rounded,
-                    title: 'Antibiotics Management',
-                    onTap: () => onNavTap('Antibiotics'),
-                  ),
-                  
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.local_hospital_rounded,
-                    title: 'Wards Management',
-                    onTap: () => onNavTap('Wards'),
-                  ),
-                  
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.receipt_long_rounded,
-                    title: 'Usage Details',
-                    onTap: () => onNavTap('Usage Details'),
-                  ),
-                  
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.menu_book_rounded,
-                    title: 'Record Books',
-                    onTap: () => onNavTap('Book Numbers'),
-                  ),
-
-                  const SizedBox(height: 10),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(height: 1, thickness: 1),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Profile and About Section
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.person_rounded,
-                    title: 'My Profile',
-                    onTap: () => onNavTap('Profile'),
-                  ),
-                  
-                  _buildNavItem(
-                    context: context,
-                    icon: Icons.info_rounded,
-                    title: 'About & Help',
-                    onTap: () => onNavTap('Developer About'),
-                  ),
-
-                  const SizedBox(height: 10),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(height: 1, thickness: 1),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Logout Item
-                  _buildLogoutItem(context),
-                ],
-              ),
-            ),
-
-            // ---------- Enhanced Footer ----------
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryPurple.withOpacity(0.08),
-                    AppColors.primaryPurple.withOpacity(0.03),
-                  ],
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Antibiotics Management System',
-                    style: TextStyle(
-                      color: AppColors.darkestText.withOpacity(0.7),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.code_rounded,
-                        color: AppColors.primaryPurple.withOpacity(0.6),
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'v1.0.0 • Developed by Malitha Tishamal',
-                        style: TextStyle(
-                          color: AppColors.darkestText.withOpacity(0.5),
-                          fontSize: 11,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.red.withOpacity(0.7),
+                          size: 12,
                         ),
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          // Footer
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(
+                  "v1.0.0",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: _darkText.withOpacity(0.4),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "MEDI-Q © 2026 • Developed by Malitha Tishamal",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _darkText.withOpacity(0.3),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNavItem({
-    required BuildContext context,
+  // Modern Drawer Item (reused)
+  Widget _buildModernDrawerItem({
     required IconData icon,
-    required String title,
-    required VoidCallback onTap,
+    required String label,
+    required String description,
     bool isActive = false,
+    required VoidCallback onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: isActive
-            ? const LinearGradient(
-                colors: [
-                  AppColors.buttonGradientStart,
-                  AppColors.buttonGradientEnd,
-                ],
-              )
-            : null,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.primaryPurple.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: isActive
+                  ? const LinearGradient(
+                      colors: [Color(0xFF2764E7), Color(0xFF457AED)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    )
+                  : LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.7),
+                        Colors.white.withOpacity(0.4),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: _primaryBlue.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+              border: Border.all(
+                color: isActive ? _primaryBlue.withOpacity(0.3) : Colors.white.withOpacity(0.8),
+                width: 1.2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: isActive ? Colors.white : _primaryBlue,
+                  size: 18,
                 ),
-              ]
-            : null,
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        horizontalTitleGap: 15,
-        minLeadingWidth: 35,
-        leading: Icon(
-          icon,
-          color: isActive ? Colors.white : AppColors.darkestText.withOpacity(0.7),
-          size: 24,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: isActive ? Colors.white : AppColors.darkestText,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 15,
-            letterSpacing: 0.2,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? Colors.white : _darkText,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isActive ? Colors.white.withOpacity(0.8) : _darkText.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: isActive ? Colors.white.withOpacity(0.7) : _primaryBlue.withOpacity(0.4),
+                  size: 14,
+                ),
+              ],
+            ),
           ),
         ),
-        trailing: isActive
-            ? const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16)
-            : null,
-        onTap: () {
-          Navigator.of(context).pop();
-          onTap();
-        },
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     );
   }
 
-  Widget _buildLogoutItem(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        horizontalTitleGap: 15,
-        minLeadingWidth: 35,
-        leading: Icon(
-          Icons.logout_rounded,
-          color: Colors.red.withOpacity(0.9),
-          size: 24,
-        ),
-        title: Text(
-          'Logout',
-          style: TextStyle(
-            color: Colors.red.withOpacity(0.9),
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            letterSpacing: 0.2,
+  Widget _buildSectionDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              "MENU",
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: _primaryBlue.withOpacity(0.5),
+                letterSpacing: 1.5,
+              ),
+            ),
           ),
-        ),
-        onTap: () {
-          Navigator.of(context).pop();
-          _showLogoutConfirmation(context);
-        },
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          Expanded(child: Divider(color: _primaryBlue.withOpacity(0.2), height: 1)),
+        ],
       ),
     );
   }
@@ -407,7 +582,6 @@ class PharmacistDrawer extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon
                 Container(
                   width: 80,
                   height: 80,
@@ -415,36 +589,24 @@ class PharmacistDrawer extends StatelessWidget {
                     color: Colors.red.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.logout_rounded,
                     color: Colors.red,
                     size: 40,
                   ),
                 ),
                 const SizedBox(height: 20),
-                
-                // Title
                 const Text(
                   'Confirm Logout',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 10),
-                
-                // Message
                 const Text(
                   'Are you sure you want to logout from your account?',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 const SizedBox(height: 25),
-                
-                // Buttons
                 Row(
                   children: [
                     Expanded(
@@ -455,12 +617,9 @@ class PharmacistDrawer extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          side: BorderSide(color: AppColors.primaryPurple),
+                          side: BorderSide(color: _primaryBlue),
                         ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(color: AppColors.primaryPurple),
-                        ),
+                        child: Text('Cancel', style: TextStyle(color: _primaryBlue)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -468,7 +627,7 @@ class PharmacistDrawer extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          onLogout();
+                          widget.onLogout();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
@@ -477,10 +636,7 @@ class PharmacistDrawer extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Logout',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        child: const Text('Logout', style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ],
