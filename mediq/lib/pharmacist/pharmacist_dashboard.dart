@@ -270,7 +270,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         _tileWards(),
         _tileUsageDetails(),
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
-        _buildSmallTile(icon: Icons.person_outline, title: 'Profile'),
+        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
         _buildLogoutTile(),
         const SizedBox.shrink(), // fill last slot
