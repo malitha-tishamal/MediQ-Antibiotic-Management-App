@@ -7,7 +7,7 @@ import 'dart:async';
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 //import 'admin_profile_screen.dart';
-//import 'admin_developer_about_screen.dart';
+import 'pharmacist_developer_about_screen.dart';
 //import 'book_numbers_screen.dart';
 
 // ---------------- App Colors ----------------
@@ -117,14 +117,22 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
-  void _onNavTap(String title) {
-    // In a real app, navigate to respective screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$title tapped')),
-    );
+    void _onNavTap(String title) {
+    switch (title) {
+      case 'Developer About':
+        Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PharmacistDeveloperAboutScreen()),
+      );
+      break;
+
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$title tapped')),
+        );
+    }
   }
 
-  // 🌟 Header – matches AdminDashboard style
+  //  Header – matches AdminDashboard style
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),

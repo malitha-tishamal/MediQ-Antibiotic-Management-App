@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
 import 'pharmacist_dashboard.dart';
-//import 'admin_profile_screen.dart';
-//import 'admin_developer_about_screen.dart';
-//import 'antibiotics_management_screen.dart';
-//import 'wards_management_screen.dart';
-//import 'book_numbers_screen.dart';
+import 'pharmacist_developer_about_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -131,6 +127,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
         children: [
           const SizedBox(height: 50),
 
+          // Logo Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -252,6 +249,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               physics: const BouncingScrollPhysics(),
               children: [
+                // Dashboard
                 _buildModernDrawerItem(
                   icon: Icons.dashboard_rounded,
                   label: "Dashboard",
@@ -269,74 +267,76 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                     );
                   },
                 ),
+                // Antibiotics Release
                 _buildModernDrawerItem(
-                  icon: Icons.medical_services_rounded,
-                  label: "Antibiotics ",
-                  description: "Antibiotics inventory",
+                  icon: Icons.receipt_long_rounded,
+                  label: "Antibiotics Release",
+                  description: "Today's releases",
                   onTap: () {
                     Navigator.of(context).pop();
-                  //  Navigator.of(context).push(
-                     // MaterialPageRoute(
-                       // builder: (context) => const AntibioticsManagementScreen(),
-                    //  ),
-                   // );
+                    widget.onNavTap('Antibiotics Release');
                   },
                 ),
+                // Antibiotics Returns
+                _buildModernDrawerItem(
+                  icon: Icons.archive_rounded,
+                  label: "Antibiotics Returns",
+                  description: "Today's returns",
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    widget.onNavTap('Antibiotics Returns');
+                  },
+                ),
+                // Wards
                 _buildModernDrawerItem(
                   icon: Icons.local_hospital_rounded,
                   label: "Wards",
                   description: "Hospital wards & departments",
                   onTap: () {
-                  //  Navigator.of(context).pop();
-                  //  Navigator.of(context).push(
-                  //    MaterialPageRoute(
-                   //     builder: (context) => const WardsManagementScreen(),
-                   //   ),
-                  //  );
+                    Navigator.of(context).pop();
+                    widget.onNavTap('Wards');
                   },
                 ),
+                // Usage Details
                 _buildModernDrawerItem(
                   icon: Icons.receipt_long_rounded,
                   label: "Usage Details",
                   description: "Medication usage records",
                   onTap: () => widget.onNavTap('Usage Details'),
                 ),
+                // Record Books
                 _buildModernDrawerItem(
                   icon: Icons.menu_book_rounded,
                   label: "Record Books",
                   description: "Medical record books",
                   onTap: () {
-               //     Navigator.of(context).pop();
-               //     Navigator.of(context).push(
-                //      MaterialPageRoute(
-                //        builder: (context) => const BookNumbersScreen(),
-                //      ),
-                //    );
+                    Navigator.of(context).pop();
+                    widget.onNavTap('Book Numbers');
                   },
                 ),
                 const SizedBox(height: 10),
                 _buildSectionDivider(),
                 const SizedBox(height: 10),
+                // My Profile
                 _buildModernDrawerItem(
                   icon: Icons.person_rounded,
                   label: "My Profile",
                   description: "Personal settings & profile",
                   onTap: () {
-              //      Navigator.of(context).pop();
-               //     Navigator.of(context).push(
-                //      MaterialPageRoute(builder: (context) => const AdminProfileScreen()),
-                //    );
+                    Navigator.of(context).pop();
+                    widget.onNavTap('Profile');
                   },
                 ),
+                // About & Help
                 _buildModernDrawerItem(
                   icon: Icons.info_rounded,
                   label: "About & Help",
                   description: "App information & support",
                   onTap: () {
-                  //  Navigator.of(context).pop();
-                  //  Navigator.of(context).push(
-                  //    MaterialPageRoute(builder: (context) => const AdminDeveloperAboutScreen()),
-                  //  );
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const PharmacistDeveloperAboutScreen()),
+                    );
                   },
                 ),
               ],
@@ -449,7 +449,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
     );
   }
 
-  // Modern Drawer Item (reused)
+  // Modern Drawer Item
   Widget _buildModernDrawerItem({
     required IconData icon,
     required String label,
