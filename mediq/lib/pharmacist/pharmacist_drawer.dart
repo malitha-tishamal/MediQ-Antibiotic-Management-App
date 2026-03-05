@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
 import 'pharmacist_dashboard.dart';
 import 'pharmacist_developer_about_screen.dart';
+import 'antibiotics_release_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -274,7 +275,9 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   description: "Today's releases",
                   onTap: () {
                     Navigator.of(context).pop();
-                    widget.onNavTap('Antibiotics Release');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const ReleaseAntibioticsScreen()),
+                    );
                   },
                 ),
                 // Antibiotics Returns

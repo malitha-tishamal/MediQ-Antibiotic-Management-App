@@ -9,6 +9,7 @@ import 'pharmacist_drawer.dart';
 //import 'admin_profile_screen.dart';
 import 'pharmacist_developer_about_screen.dart';
 //import 'book_numbers_screen.dart';
+import 'antibiotics_release_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -119,6 +120,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
     void _onNavTap(String title) {
     switch (title) {
+      case 'Antibiotics Release':
+        Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
+      );
+      break;
+
       case 'Developer About':
         Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const PharmacistDeveloperAboutScreen()),
@@ -132,7 +139,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
-  //  Header – matches AdminDashboard style
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
