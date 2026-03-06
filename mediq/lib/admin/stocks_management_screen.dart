@@ -205,13 +205,13 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
               height: 80,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Icon(Icons.store, size: 60, color: Colors.grey);
+                return const Icon(Icons.store, size: 60, color: Colors.grey);
               },
             ),
             const SizedBox(height: 10),
             Text(
               label,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
             ),
             const SizedBox(height: 4),
             Text(

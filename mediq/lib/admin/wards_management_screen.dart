@@ -208,7 +208,7 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
               height: 60,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Icon(Icons.add, size: 60, color: Colors.grey);
+                return const Icon(Icons.add, size: 60, color: Colors.grey);
               },
             ),
             const SizedBox(height: 10),
@@ -296,7 +296,7 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
                   height: 60,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return Icon(Icons.settings, size: 60, color: Colors.grey);
+                    return const Icon(Icons.settings, size: 60, color: Colors.grey);
                   },
                 ),
                 const SizedBox(height: 10),

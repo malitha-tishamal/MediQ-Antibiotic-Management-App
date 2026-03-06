@@ -178,7 +178,7 @@ class _AddWardScreenState extends State<AddWardScreen> {
                       ? const LinearGradient(colors: [AppColors.primaryPurple, Color(0xFFB08FEB)])
                       : null,
                   border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.4), blurRadius: 10, offset: Offset(0, 3))],
+                  boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 3))],
                   image: _profileImageUrl != null ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover) : null,
                 ),
                 child: _profileImageUrl == null ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
@@ -225,7 +225,7 @@ class _AddWardScreenState extends State<AddWardScreen> {
                         decoration: InputDecoration(
                           labelText: 'Ward Name',
                           hintText: 'e.g., 3 & 5 (Surgical prof.)',
-                          prefixIcon: Icon(Icons.place, color: AppColors.primaryPurple),
+                          prefixIcon: const Icon(Icons.place, color: AppColors.primaryPurple),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Ward name is required' : null,
@@ -238,7 +238,7 @@ class _AddWardScreenState extends State<AddWardScreen> {
                         decoration: InputDecoration(
                           labelText: 'Managed By (Team)',
                           hintText: 'Team',
-                          prefixIcon: Icon(Icons.group, color: AppColors.primaryPurple),
+                          prefixIcon: const Icon(Icons.group, color: AppColors.primaryPurple),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Team is required' : null,
@@ -251,7 +251,7 @@ class _AddWardScreenState extends State<AddWardScreen> {
                         decoration: InputDecoration(
                           labelText: 'Managed By (Doctor\'s Name)',
                           hintText: 'Dr. Name',
-                          prefixIcon: Icon(Icons.person, color: AppColors.primaryPurple),
+                          prefixIcon: const Icon(Icons.person, color: AppColors.primaryPurple),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Doctor name is required' : null,
@@ -260,10 +260,10 @@ class _AddWardScreenState extends State<AddWardScreen> {
 
                       // Category Dropdown
                       DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Category',
-                          prefixIcon: Icon(Icons.category, color: AppColors.primaryPurple),
+                          prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         items: [
@@ -288,7 +288,7 @@ class _AddWardScreenState extends State<AddWardScreen> {
                         decoration: InputDecoration(
                           labelText: 'Description',
                           hintText: 'Any Notice Details',
-                          prefixIcon: Icon(Icons.description, color: AppColors.primaryPurple),
+                          prefixIcon: const Icon(Icons.description, color: AppColors.primaryPurple),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),

@@ -289,7 +289,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
           children: [
             Icon(Icons.star, size: 16, color: AppColors.primaryPurple.withOpacity(0.6)),
             const SizedBox(width: 5),
-            Icon(Icons.star, size: 20, color: AppColors.primaryPurple),
+            const Icon(Icons.star, size: 20, color: AppColors.primaryPurple),
             const SizedBox(width: 5),
             Icon(Icons.star, size: 16, color: AppColors.primaryPurple.withOpacity(0.6)),
           ],

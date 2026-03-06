@@ -215,11 +215,11 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: 'Search antibiotics by name...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+          prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          contentPadding: EdgeInsets.symmetric(vertical: 15),
         ),
       ),
     );
@@ -236,8 +236,9 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
       for (var doc in docs) {
         final data = doc.data() as Map<String, dynamic>;
         final category = data['category'] ?? '';
-        if (category == 'Access') access++;
-        else if (category == 'Watch') watch++;
+        if (category == 'Access') {
+          access++;
+        } else if (category == 'Watch') watch++;
         else if (category == 'Reserve') reserve++;
         else other++;
       }

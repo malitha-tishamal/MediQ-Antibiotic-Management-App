@@ -332,8 +332,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.receipt_long,
                     color: AppColors.primaryPurple, size: 28),
                 Spacer(),
@@ -362,8 +362,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.archive,
                     color: AppColors.primaryPurple, size: 28),
                 Spacer(),
@@ -399,8 +399,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(
                       Icons.medication_liquid,
                       color: AppColors.primaryPurple,
@@ -441,8 +441,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(
                       Icons.local_hospital_rounded,
                       color: AppColors.primaryPurple,
@@ -476,8 +476,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.receipt_long,
                     color: AppColors.primaryPurple, size: 28),
                 Spacer(),
@@ -534,9 +534,9 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     return InkWell(
       onTap: _handleLogout,
       child: _smallCard(
-        child: Column(
+        child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.logout, color: Colors.red, size: 34),
             SizedBox(height: 6),
             Text('Logout',

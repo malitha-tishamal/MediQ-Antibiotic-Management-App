@@ -220,11 +220,11 @@ Widget _buildHeader(BuildContext context) {
       ),
       child: TextField(
         controller: _searchController,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: 'Search wards by name...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+          prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          contentPadding: EdgeInsets.symmetric(vertical: 15),
         ),
       ),
     );

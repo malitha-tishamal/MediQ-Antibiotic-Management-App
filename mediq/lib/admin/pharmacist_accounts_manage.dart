@@ -29,7 +29,7 @@ class PharmacistAccountsManagePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return UserListScreen(role: 'Pharmacist');
+    return const UserListScreen(role: 'Pharmacist');
   }
 }
 
@@ -229,11 +229,11 @@ class _UserListScreenState extends State<UserListScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           hintText: 'Search by name, email, NIC, or mobile...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+          prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          contentPadding: EdgeInsets.symmetric(vertical: 15),
         ),
       ),
     );
@@ -311,7 +311,7 @@ class _UserListScreenState extends State<UserListScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CircularProgressIndicator(
+                              const CircularProgressIndicator(
                                 color: AppColors.primaryPurple,
                                 strokeWidth: 2,
                               ),
@@ -331,7 +331,7 @@ class _UserListScreenState extends State<UserListScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.error_outline,
                                 color: AppColors.disabledColor,
                                 size: 48,
@@ -517,7 +517,7 @@ class _UserListScreenState extends State<UserListScreen> {
                         : null,
                   ),
                   child: profileImageUrl == null 
-                      ? Center(
+                      ? const Center(
                           child: Icon(
                             Icons.medical_services,
                             color: Colors.white,
@@ -546,7 +546,7 @@ class _UserListScreenState extends State<UserListScreen> {
                           ),
                           // 👇 EDIT ICON BUTTON
                           IconButton(
-                            icon: Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
+                            icon: const Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
                             onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -733,11 +733,11 @@ class _UserListScreenState extends State<UserListScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.edit, color: AppColors.primaryPurple),
-            const SizedBox(width: 10),
-            const Text('Edit Pharmacist Details'),
+            SizedBox(width: 10),
+            Text('Edit Pharmacist Details'),
           ],
         ),
         content: Form(
@@ -750,7 +750,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   controller: nameController,
                   decoration: InputDecoration(
                     labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person, color: AppColors.primaryPurple),
+                    prefixIcon: const Icon(Icons.person, color: AppColors.primaryPurple),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
@@ -760,7 +760,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   controller: mobileController,
                   decoration: InputDecoration(
                     labelText: 'Mobile Number',
-                    prefixIcon: Icon(Icons.phone, color: AppColors.primaryPurple),
+                    prefixIcon: const Icon(Icons.phone, color: AppColors.primaryPurple),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'Mobile is required' : null,
@@ -770,7 +770,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   controller: nicController,
                   decoration: InputDecoration(
                     labelText: 'NIC',
-                    prefixIcon: Icon(Icons.badge, color: AppColors.primaryPurple),
+                    prefixIcon: const Icon(Icons.badge, color: AppColors.primaryPurple),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'NIC is required' : null,
@@ -849,11 +849,11 @@ class _UserListScreenState extends State<UserListScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.warningOrange),
-            const SizedBox(width: 12),
-            const Text('Delete Pharmacist'),
+            SizedBox(width: 12),
+            Text('Delete Pharmacist'),
           ],
         ),
         content: Text('Are you sure you want to delete $fullName\'s account? This action cannot be undone.'),

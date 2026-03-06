@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart'; 
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
@@ -39,7 +40,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   bool _isLoading = true;
 
   // Form fields
-  String? _selectedAntibioticKey;          // key like "antibioticId|dosageIndex"
+  String? _selectedAntibioticKey; // key like "antibioticId|dosageIndex"
   String _selectedAntibioticId = '';
   String _dosage = '';
   String? _selectedWardId;
@@ -55,12 +56,12 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   List<Map<String, dynamic>> _activeBooks = [];
   String? _selectedBookNumber;
 
-  // Dropdown items
-  List<DropdownMenuItem<String>> _antibioticItems = [];
-  List<DropdownMenuItem<String>> _wardItems = [];
+  // Searchable antibiotic data
+  final List<Map<String, String>> _antibioticSearchList = []; // for TypeAhead
+  final Map<String, Map<String, String>> _antibioticMap = {}; // key -> details
 
-  // Maps for storing antibiotic and ward details
-  final Map<String, Map<String, String>> _antibioticMap = {};
+  // Ward dropdown items & map
+  List<DropdownMenuItem<String>> _wardItems = [];
   final Map<String, String> _wardMap = {};
 
   @override
@@ -108,28 +109,21 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
   }
 
-  /// Fetches only active book numbers.
-  /// Note: Because we use both .where() and .orderBy(), Firestore requires a composite index.
-  /// If the query fails, check the debug console for a link to create the index.
-  /// Index: collection 'book_numbers' with fields 'status' (ascending) and 'bookNumber' (ascending).
+  /// Fetches active book numbers (without orderBy to avoid index requirement)
   Future<void> _fetchActiveBooks() async {
     try {
       final snapshot = await _firestore
           .collection('book_numbers')
-          .where('status', isEqualTo: 'active')   // Ensure documents have 'active' (lowercase)
-          .orderBy('bookNumber')
+          .where('status', isEqualTo: 'active')
           .get();
 
-      // Debug: see what Firestore returns (check your console)
       print('Fetched book numbers: ${snapshot.docs.map((d) => d.data())}');
 
       final books = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        // Normalize fields to be safe
+        final data = doc.data();
         final bookNumber = (data['bookNumber'] ?? '').toString().trim();
         final status = (data['status'] ?? '').toString().toLowerCase().trim();
 
-        // Only include if bookNumber is not empty and status is active
         if (bookNumber.isEmpty || status != 'active') return null;
 
         return {
@@ -137,6 +131,9 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
           'bookNumber': bookNumber,
         };
       }).where((book) => book != null).cast<Map<String, dynamic>>().toList();
+
+      // Local sorting
+      books.sort((a, b) => a['bookNumber'].compareTo(b['bookNumber']));
 
       setState(() {
         _activeBooks = books;
@@ -147,9 +144,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching books: $e');
-      // If the error contains a link, follow it to create the required index
-      _showSnackBar(
-          'Failed to load book numbers. Check Firestore index & console.', false);
+      _showSnackBar('Failed to load book numbers.', false);
     }
   }
 
@@ -159,7 +154,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       final List<Map<String, dynamic>> tempList = [];
 
       for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final name = data['name'] ?? 'Unknown';
         final dosages = data['dosages'] as List<dynamic>? ?? [];
 
@@ -188,10 +183,14 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         }
       }
 
+      // Sort locally
       tempList.sort((a, b) =>
           a['display'].toLowerCase().compareTo(b['display'].toLowerCase()));
 
-      final items = <DropdownMenuItem<String>>[];
+      // Clear old data
+      _antibioticMap.clear();
+      _antibioticSearchList.clear();
+
       for (var entry in tempList) {
         final key = entry['key'];
         _antibioticMap[key] = {
@@ -199,17 +198,13 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
           'antibioticName': entry['antibioticName'],
           'dosage': entry['dosage'],
         };
-        items.add(
-          DropdownMenuItem<String>(
-            value: key,
-            child: Text(entry['display']),
-          ),
-        );
+        _antibioticSearchList.add({
+          'key': key,
+          'display': entry['display'],
+        });
       }
 
-      setState(() {
-        _antibioticItems = items;
-      });
+      setState(() {});
     } catch (e) {
       debugPrint('Error fetching antibiotics: $e');
     }
@@ -221,7 +216,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       final List<Map<String, dynamic>> tempList = [];
 
       for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final wardName = data['wardName'] ?? 'Unknown';
         tempList.add({
           'id': doc.id,
@@ -414,7 +409,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                         fontWeight: FontWeight.bold,
                         color: AppColors.headerTextDark),
                   ),
-                  Text(
+                  const Text(
                     'Logged in as: Pharmacist',
                     style: TextStyle(
                         fontSize: 14, color: AppColors.headerTextDark),
@@ -477,35 +472,57 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Antibiotic dropdown (includes dosage)
+                                // Searchable Antibiotic TypeAhead
                                 const Text('Select Antibiotic & Dosage',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedAntibioticKey,
-                                  items: _antibioticItems,
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      final data = _antibioticMap[value]!;
-                                      setState(() {
-                                        _selectedAntibioticKey = value;
-                                        _selectedAntibioticId = data['antibioticId']!;
-                                        _dosage = data['dosage']!;
-                                      });
-                                    }
-                                  },
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    filled: true,
-                                    fillColor: Colors.white,
+
+                                TypeAheadFormField<String>(
+                                  textFieldConfiguration: TextFieldConfiguration(
+                                    controller: TextEditingController(
+                                      text: _selectedAntibioticKey != null
+                                          ? _antibioticMap[_selectedAntibioticKey]!['display'] ?? ''
+                                          : '',
+                                    ),
+                                    decoration: InputDecoration(
+                                      prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      hintText: '-- Type to search Antibiotic --',
+                                    ),
                                   ),
-                                  hint: const Text('-- Select Antibiotic --'),
+                                  suggestionsCallback: (pattern) {
+                                    return _antibioticSearchList
+                                        .where((item) => item['display']!
+                                            .toLowerCase()
+                                            .contains(pattern.toLowerCase()))
+                                        .map((item) => item['display']!)
+                                        .toList();
+                                  },
+                                  itemBuilder: (context, suggestion) {
+                                    return ListTile(
+                                      title: Text(suggestion),
+                                    );
+                                  },
+                                  onSuggestionSelected: (suggestion) {
+                                    final selectedItem = _antibioticSearchList.firstWhere(
+                                        (item) => item['display'] == suggestion);
+                                    setState(() {
+                                      _selectedAntibioticKey = selectedItem['key'];
+                                      final data = _antibioticMap[selectedItem['key']]!;
+                                      _selectedAntibioticId = data['antibioticId']!;
+                                      _dosage = data['dosage']!;
+                                    });
+                                  },
                                   validator: (value) {
-                                    if (value == null) return 'Please select an antibiotic';
+                                    if (_selectedAntibioticKey == null) {
+                                      return 'Please select an antibiotic';
+                                    }
                                     return null;
                                   },
                                 ),
+
                                 const SizedBox(height: 16),
 
                                 // Dosage (readonly)
@@ -527,7 +544,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedWardId,
+                                  initialValue: _selectedWardId,
                                   items: _wardItems,
                                   onChanged: (value) {
                                     setState(() {
@@ -623,7 +640,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedBookNumber,
+                                  initialValue: _selectedBookNumber,
                                   items: _activeBooks.isEmpty
                                       ? [
                                           DropdownMenuItem<String>(

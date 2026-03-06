@@ -211,7 +211,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                       ? const LinearGradient(colors: [AppColors.primaryPurple, Color(0xFFB08FEB)])
                       : null,
                   border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.4), blurRadius: 10, offset: Offset(0, 3))],
+                  boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 3))],
                   image: _profileImageUrl != null ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover) : null,
                 ),
                 child: _profileImageUrl == null ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
@@ -260,7 +260,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                             decoration: InputDecoration(
                               labelText: 'Antibiotic Name',
                               hintText: 'eg: Amoxicillin',
-                              prefixIcon: Icon(Icons.medication, color: AppColors.primaryPurple),
+                              prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
@@ -269,10 +269,10 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
 
                           // Category Dropdown
                           DropdownButtonFormField<String>(
-                            value: _selectedCategory,
+                            initialValue: _selectedCategory,
                             decoration: InputDecoration(
                               labelText: 'Category',
-                              prefixIcon: Icon(Icons.category, color: AppColors.primaryPurple),
+                              prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                             items: ['Access', 'Watch', 'Reserve', 'Other'].map((category) {
@@ -345,7 +345,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                           Center(
                             child: TextButton.icon(
                               onPressed: _addDosageField,
-                              icon: Icon(Icons.add_circle, color: AppColors.primaryPurple),
+                              icon: const Icon(Icons.add_circle, color: AppColors.primaryPurple),
                               label: const Text('Add Another Dosage'),
                               style: TextButton.styleFrom(foregroundColor: AppColors.primaryPurple),
                             ),

@@ -208,7 +208,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
               height: 60,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return Icon(Icons.add, size: 60, color: Colors.grey);
+                return const Icon(Icons.add, size: 60, color: Colors.grey);
               },
             ),
             const SizedBox(height: 10),
@@ -241,8 +241,9 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>;
             final category = data['category'] ?? '';
-            if (category == 'Access') access++;
-            else if (category == 'Watch') watch++;
+            if (category == 'Access') {
+              access++;
+            } else if (category == 'Watch') watch++;
             else if (category == 'Reserve') reserve++;
             else other++;
           }
@@ -277,7 +278,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
                   height: 60,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return Icon(Icons.settings, size: 60, color: Colors.grey);
+                    return const Icon(Icons.settings, size: 60, color: Colors.grey);
                   },
                 ),
                 const SizedBox(height: 10),

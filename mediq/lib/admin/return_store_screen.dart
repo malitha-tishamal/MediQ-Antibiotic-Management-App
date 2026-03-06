@@ -104,9 +104,9 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => const AlertDialog(
         content: Row(
-          children: const [
+          children: [
             CircularProgressIndicator(),
             SizedBox(width: 20),
             Text('Generating CSV...'),
@@ -352,8 +352,8 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                     color: AppColors.primaryPurple.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: Row(
-                    children: const [
+                  child: const Row(
+                    children: [
                       Icon(Icons.download, size: 16, color: AppColors.primaryPurple),
                       SizedBox(width: 4),
                       Text('CSV', style: TextStyle(color: AppColors.primaryPurple)),

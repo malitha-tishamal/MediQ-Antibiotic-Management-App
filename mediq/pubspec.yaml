@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_typeahead: ^4.0.0
+
   csv: ^5.0.1
   share_plus: ^7.2.0
   path_provider: ^2.1.1

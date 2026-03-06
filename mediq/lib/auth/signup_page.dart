@@ -354,7 +354,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               ),
-              value: _selectedRole,
+              initialValue: _selectedRole,
               icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
               style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
               dropdownColor: Colors.white,

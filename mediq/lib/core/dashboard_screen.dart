@@ -112,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.dashboard,
               size: 80,
               color: AppColors.primaryPurple,
@@ -120,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 20),
             Text(
               'Welcome to $_currentPage',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.darkText,
@@ -150,7 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: AppColors.lightBackground,
         body: Center(
           child: Column(
@@ -159,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               CircularProgressIndicator(
                 color: AppColors.primaryPurple,
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Text(
                 'Loading Dashboard...',
                 style: TextStyle(
@@ -180,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.error_outline,
                 size: 80,
                 color: Colors.red,
@@ -224,7 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.menu,
               color: AppColors.darkText,
             ),
@@ -233,14 +233,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         title: Text(
           _currentPage,
-          style: TextStyle(
+          style: const TextStyle(
             color: AppColors.darkText,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.notifications_none,
               color: AppColors.darkText,
             ),

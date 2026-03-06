@@ -66,13 +66,13 @@ class _AdminDrawerState extends State<AdminDrawer> {
             fit: BoxFit.cover,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
-              return Center(
+              return const Center(
                 child: SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
               );
@@ -139,7 +139,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Container(
+                SizedBox(
                   width: 60,
                   height: 60,
 

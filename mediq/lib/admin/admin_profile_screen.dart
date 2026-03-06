@@ -264,7 +264,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF2764E7).withOpacity(0.4), // Blue shadow
+                      color: const Color(0xFF2764E7).withOpacity(0.4), // Blue shadow
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -312,9 +312,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           const SizedBox(height: 25),
           
           // Page Title
-          Text(
+          const Text(
             'Profile Management',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
@@ -661,7 +661,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.email_outlined, size: 50, color: AppColors.primaryPurple),
+              const Icon(Icons.email_outlined, size: 50, color: AppColors.primaryPurple),
               const SizedBox(height: 16),
               const Text(
                 'Email Change Initiated',
@@ -702,19 +702,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Dialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+        child: const Padding(
+          padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.verified, size: 50, color: Colors.green),
-              const SizedBox(height: 16),
-              const Text(
+              SizedBox(height: 16),
+              Text(
                 'Email Verified Successfully!',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
               ),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Your email has been verified successfully. All profile actions are now re-enabled.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey),
@@ -740,11 +740,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,7 +753,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       'Action Disabled: Email Verification Pending',
                       style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       'Please check your inbox for the verification link.',
                       style: TextStyle(color: Colors.red, fontSize: 13),
@@ -809,7 +809,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15), 
-          borderSide: BorderSide(color: AppColors.primaryPurple, width: 2)
+          borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2)
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15), 
@@ -836,7 +836,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Center(
             child: _saving
-                ? SizedBox(
+                ? const SizedBox(
                     height: 18, 
                     width: 18, 
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
@@ -845,11 +845,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (_hasUnsavedChanges) 
-                        Icon(Icons.save, size: 18, color: Colors.white),
+                        const Icon(Icons.save, size: 18, color: Colors.white),
                       if (_hasUnsavedChanges) const SizedBox(width: 6),
                       Text(
                         _hasUnsavedChanges ? 'Save' : 'Update',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white, 
                           fontSize: 16, 
                           fontWeight: FontWeight.bold
@@ -924,7 +924,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   Container(
                     width: 120,
                     height: 120,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: Colors.black54,
                     ),
@@ -1038,7 +1038,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 // Main Content
                 Expanded(
                   child: _loading
-                      ? Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
                       : SingleChildScrollView(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -1048,13 +1048,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               
                               _buildVerificationStatusWidget(_isVerificationPending), 
                               
-                              Text(
+                              const Text(
                                 'Manage Profile Details', 
                                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
                               ),
                               const SizedBox(height: 18),
 
-                              Text(
+                              const Text(
                                 'Profile Picture', 
                                 style: TextStyle(
                                   fontSize: 15, 
@@ -1068,7 +1068,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               _buildImagePreview(),
 
                               const SizedBox(height: 18),
-                              Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                               const SizedBox(height: 8),
                               _buildTextField(
                                 controller: _fullNameController, 
@@ -1077,7 +1077,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               ),
 
                               const SizedBox(height: 12),
-                              Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              const Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                               const SizedBox(height: 8),
                               _buildTextField(
                                 controller: _emailController, 
@@ -1087,7 +1087,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               ),
 
                               const SizedBox(height: 12),
-                              Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              const Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                               const SizedBox(height: 8),
                               _buildTextField(
                                 controller: _nicController, 
@@ -1096,7 +1096,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               ),
 
                               const SizedBox(height: 12),
-                              Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                              const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                               const SizedBox(height: 8),
                               _buildTextField(
                                 controller: _mobileController, 
@@ -1115,7 +1115,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                 padding: const EdgeInsets.only(left: 6.0),
                                 child: Text(
                                   'Account Created: ${_formatCreatedAt()}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 13, 
                                     fontWeight: FontWeight.w600, 
                                     color: Colors.black
@@ -1129,7 +1129,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                                   padding: const EdgeInsets.only(bottom: 8.0),
                                   child: Text(
                                     'Error: $_error', 
-                                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
                                   ),
                                 ),
 

@@ -211,9 +211,9 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
           const SizedBox(height: 25),
           
           // Page Title
-          Text(
+          const Text(
             'Account Management Dashboard',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
@@ -354,8 +354,9 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
             final data = doc.data() as Map<String, dynamic>;
             final userStatus = data['status'] ?? 'Pending';
 
-            if (userStatus == 'Approved') approved++;
-            else if (userStatus == 'Disabled') disabled++;
+            if (userStatus == 'Approved') {
+              approved++;
+            } else if (userStatus == 'Disabled') disabled++;
             else if (userStatus == 'Pending') pending++;
           }
         }
@@ -520,7 +521,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.darkText)),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Error fetching data. Check Firebase rules!',
             style: TextStyle(fontSize: 12, color: AppColors.disabledColor),
           ),

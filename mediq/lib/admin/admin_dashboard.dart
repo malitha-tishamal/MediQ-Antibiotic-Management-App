@@ -126,7 +126,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     switch (title) {
       case 'Accounts Manage':
         Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => AccountManageDetails()));
+            .push(MaterialPageRoute(builder: (_) => const AccountManageDetails()));
         break;
 
       case 'Antibiotics':
@@ -338,9 +338,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 25),
           
           // Dashboard Title
-          Text(
+          const Text(
             'Administrative Dashboard',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.headerTextDark,
@@ -389,7 +389,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             icon: Icons.inventory_2_outlined,
             title: 'Stocks',
             subtitle: 'Stock Types',
-            value: '$stockTypesCount'),
+            value: stockTypesCount),
         _tileUsageDetails(),
         _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst'),
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
@@ -479,8 +479,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(Icons.group_outlined,
                         color: AppColors.primaryPurple, size: 28),
                     Spacer(),
@@ -517,8 +517,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(
                       Icons.medication_liquid,
                       color: AppColors.primaryPurple,
@@ -559,8 +559,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Icon(
                       Icons.local_hospital_rounded,
                       color: AppColors.primaryPurple,
@@ -626,8 +626,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.receipt_long,
                     color: AppColors.primaryPurple, size: 28),
                 Spacer(),
@@ -684,9 +684,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return InkWell(
       onTap: _handleLogout,
       child: _smallCard(
-        child: Column(
+        child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(Icons.logout, color: Colors.red, size: 34),
             SizedBox(height: 6),
             Text('Logout',

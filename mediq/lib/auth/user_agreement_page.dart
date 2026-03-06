@@ -53,7 +53,7 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
                 const SizedBox(height: 25),
                 
                 // Title
-                Text(
+                const Text(
                   'Agreement Required',
                   style: TextStyle(
                     fontSize: 22,
@@ -244,7 +244,7 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
               const SizedBox(height: 5),
 
               // Title
-              Text(
+              const Text(
                 'MediQ - User Agreement &',
                 style: TextStyle(
                   color: AppColors.darkText,
@@ -252,7 +252,7 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
+              const Text(
                 'Terms and Conditions',
                 style: TextStyle(
                   color: AppColors.darkText,
@@ -410,7 +410,7 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(
+                    const Expanded(
                       child: Text(
                         'I have read and accept the User Agreement & Terms and Conditions',
                         style: TextStyle(
