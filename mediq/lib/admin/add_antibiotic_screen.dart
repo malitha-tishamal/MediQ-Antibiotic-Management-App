@@ -28,7 +28,26 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   final _nameController = TextEditingController();
   String? _selectedCategory;
 
-  final List<Map<String, TextEditingController>> _dosageControllers = [];
+  // Unit options
+  final List<String> _unitOptions = [
+    'mg',
+    'g',
+    'mcg',
+    'U',
+    'IU',
+    'mL',
+    'cc',
+    'Tablets/Capsules',
+    'IV',
+    'U/mL',
+    'mg/kg',
+    '%',
+    'gtt'
+  ];
+
+  // For each dosage: [valueCtrl, unit, srCtrl]
+  final List<Map<String, dynamic>> _dosageRows = [];
+
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
 
@@ -42,7 +61,6 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     _fetchCurrentUserDetails();
     _addDosageField();
 
-    // If editing, load existing antibiotic
     if (widget.antibioticId != null) {
       _loadAntibioticForEdit(widget.antibioticId!);
     }
@@ -66,21 +84,47 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     }
   }
 
+  // Parse a stored dosage string like "10 mg" into numeric and unit
+  Map<String, String> _parseDosage(String dosageStr) {
+    dosageStr = dosageStr.trim();
+    int lastSpace = dosageStr.lastIndexOf(' ');
+    if (lastSpace != -1) {
+      return {
+        'value': dosageStr.substring(0, lastSpace).trim(),
+        'unit': dosageStr.substring(lastSpace + 1).trim(),
+      };
+    } else {
+      RegExp regex = RegExp(r'^([\d\.]+)(.*)$');
+      var match = regex.firstMatch(dosageStr);
+      if (match != null) {
+        return {'value': match.group(1)!, 'unit': match.group(2)!};
+      }
+    }
+    return {'value': dosageStr, 'unit': ''};
+  }
+
   Future<void> _loadAntibioticForEdit(String id) async {
     final doc = await _antibioticsCollection.doc(id).get();
     if (doc.exists) {
       final data = doc.data() as Map<String, dynamic>;
       _nameController.text = data['name'] ?? '';
       _selectedCategory = data['category'];
-      _dosageControllers.clear();
+      _dosageRows.clear();
       final dosages = data['dosages'] as List<dynamic>? ?? [];
       if (dosages.isEmpty) {
         _addDosageField();
       } else {
         for (var d in dosages) {
-          _dosageControllers.add({
-            'dosage': TextEditingController(text: d['dosage']),
-            'srNumber': TextEditingController(text: d['srNumber']),
+          String dosageStr = d['dosage'] ?? '';
+          String srNumber = d['srNumber'] ?? '';
+          var parsed = _parseDosage(dosageStr);
+          String value = parsed['value']!;
+          String unit = parsed['unit']!;
+          if (unit.isEmpty) unit = _unitOptions.first;
+          _dosageRows.add({
+            'valueCtrl': TextEditingController(text: value),
+            'unit': unit,
+            'srCtrl': TextEditingController(text: srNumber),
           });
         }
       }
@@ -90,41 +134,46 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
 
   void _addDosageField() {
     setState(() {
-      _dosageControllers.add({
-        'dosage': TextEditingController(),
-        'srNumber': TextEditingController(),
+      _dosageRows.add({
+        'valueCtrl': TextEditingController(),
+        'unit': _unitOptions.first,
+        'srCtrl': TextEditingController(),
       });
     });
   }
 
   void _removeDosageField(int index) {
     setState(() {
-      _dosageControllers.removeAt(index);
+      _dosageRows[index]['valueCtrl'].dispose();
+      _dosageRows[index]['srCtrl'].dispose();
+      _dosageRows.removeAt(index);
     });
   }
 
   Future<void> _saveAntibiotic() async {
     if (_formKey.currentState!.validate()) {
-      bool hasDosage = _dosageControllers.any(
-          (pair) => pair['dosage']!.text.isNotEmpty && pair['srNumber']!.text.isNotEmpty);
+      bool hasDosage = _dosageRows.any(
+          (row) => row['valueCtrl'].text.isNotEmpty && row['srCtrl'].text.isNotEmpty);
       if (!hasDosage) {
         _showSnackBar('Please add at least one dosage and SR number', false);
         return;
       }
 
       List<Map<String, String>> dosages = [];
-      for (var pair in _dosageControllers) {
-        if (pair['dosage']!.text.isNotEmpty && pair['srNumber']!.text.isNotEmpty) {
+      for (var row in _dosageRows) {
+        String value = row['valueCtrl'].text.trim();
+        String unit = row['unit'];
+        String sr = row['srCtrl'].text.trim();
+        if (value.isNotEmpty && sr.isNotEmpty) {
           dosages.add({
-            'dosage': pair['dosage']!.text.trim(),
-            'srNumber': pair['srNumber']!.text.trim(),
+            'dosage': '$value $unit',
+            'srNumber': sr,
           });
         }
       }
 
       try {
         if (widget.antibioticId != null) {
-          // Update existing
           await _antibioticsCollection.doc(widget.antibioticId).update({
             'name': _nameController.text.trim(),
             'category': _selectedCategory,
@@ -132,9 +181,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
             'createdAt': FieldValue.serverTimestamp(),
           });
           _showSnackBar('Antibiotic updated successfully', true);
-          // Stay on same screen, keep the updated data
         } else {
-          // Add new
           await _antibioticsCollection.add({
             'name': _nameController.text.trim(),
             'category': _selectedCategory,
@@ -142,10 +189,8 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
             'createdAt': FieldValue.serverTimestamp(),
           });
           _showSnackBar('Antibiotic added successfully', true);
-          // Clear form to allow adding another antibiotic
           _clearForm();
         }
-        // Removed Navigator.pop() to prevent auto-back
       } catch (e) {
         _showSnackBar('Failed to save antibiotic: $e', false);
       }
@@ -156,8 +201,12 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     _nameController.clear();
     setState(() {
       _selectedCategory = null;
-      _dosageControllers.clear();
-      _addDosageField(); // add one empty field
+      for (var row in _dosageRows) {
+        row['valueCtrl'].dispose();
+        row['srCtrl'].dispose();
+      }
+      _dosageRows.clear();
+      _addDosageField();
     });
   }
 
@@ -269,7 +318,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
 
                           // Category Dropdown
                           DropdownButtonFormField<String>(
-                            initialValue: _selectedCategory,
+                            value: _selectedCategory,
                             decoration: InputDecoration(
                               labelText: 'Category',
                               prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
@@ -283,65 +332,91 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Dynamic Dosage & SR fields
                           const Text('Dosage & SR Number', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 8),
+
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _dosageControllers.length,
+                            itemCount: _dosageRows.length,
                             itemBuilder: (context, index) {
-                              final dosageCtrl = _dosageControllers[index]['dosage']!;
-                              final srCtrl = _dosageControllers[index]['srNumber']!;
+                              final row = _dosageRows[index];
+                              final valueCtrl = row['valueCtrl'] as TextEditingController;
+                              final srCtrl = row['srCtrl'] as TextEditingController;
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Row(
+                                padding: const EdgeInsets.only(bottom: 20),
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: TextFormField(
-                                        controller: dosageCtrl,
-                                        decoration: InputDecoration(
-                                          labelText: 'Dosage',
-                                          hintText: 'eg: 10mg',
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    // Row 1: Dosage (left) and SR Number (right)
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: TextFormField(
+                                            controller: valueCtrl,
+                                            keyboardType: TextInputType.number,
+                                            decoration: InputDecoration(
+                                              labelText: 'Dosage',
+                                              hintText: 'e.g., 10',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                            validator: (value) {
+                                              if (index == 0 && (value == null || value.isEmpty)) return 'Dosage is required';
+                                              return null;
+                                            },
+                                          ),
                                         ),
-                                        validator: (value) {
-                                          if (index == 0 && (value == null || value.isEmpty)) return 'Dosage is required';
-                                          return null;
-                                        },
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          flex: 2,
+                                          child: TextFormField(
+                                            controller: srCtrl,
+                                            decoration: InputDecoration(
+                                              labelText: 'SR Number',
+                                              hintText: 'e.g., 12345',
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                            ),
+                                            validator: (value) {
+                                              if (index == 0 && (value == null || value.isEmpty)) return 'SR Number is required';
+                                              return null;
+                                            },
+                                          ),
+                                        ),
+                                        if (index > 0)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 8.0),
+                                            child: IconButton(
+                                              icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                              onPressed: () => _removeDosageField(index),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Row 2: Unit dropdown (full width)
+                                    DropdownButtonFormField<String>(
+                                      value: row['unit'],
+                                      items: _unitOptions.map((unit) {
+                                        return DropdownMenuItem(value: unit, child: Text(unit));
+                                      }).toList(),
+                                      onChanged: (newUnit) {
+                                        setState(() {
+                                          row['unit'] = newUnit!;
+                                        });
+                                      },
+                                      decoration: InputDecoration(
+                                        labelText: 'Unit',
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 2,
-                                      child: TextFormField(
-                                        controller: srCtrl,
-                                        decoration: InputDecoration(
-                                          labelText: 'SR Number',
-                                          hintText: 'eg: 12345',
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                        validator: (value) {
-                                          if (index == 0 && (value == null || value.isEmpty)) return 'SR Number is required';
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                    if (index > 0)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 8.0),
-                                        child: IconButton(
-                                          icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                          onPressed: () => _removeDosageField(index),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               );
                             },
                           ),
+
                           Center(
                             child: TextButton.icon(
                               onPressed: _addDosageField,
@@ -352,7 +427,6 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // Submit & Clear
                           Row(
                             children: [
                               Expanded(
@@ -411,9 +485,9 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    for (var pair in _dosageControllers) {
-      pair['dosage']!.dispose();
-      pair['srNumber']!.dispose();
+    for (var row in _dosageRows) {
+      row['valueCtrl'].dispose();
+      row['srCtrl'].dispose();
     }
     super.dispose();
   }

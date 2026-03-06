@@ -10,9 +10,9 @@ import 'admin_profile_screen.dart';
 import 'accounts-manage-details.dart';
 import 'admin_developer_about_screen.dart';
 import 'antibiotics_management_screen.dart';
-import 'wards_management_screen.dart'; 
-import 'stocks_management_screen.dart'; 
-import 'book_numbers_screen.dart'; 
+import 'wards_management_screen.dart';
+import 'stocks_management_screen.dart';
+import 'book_numbers_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -24,9 +24,9 @@ class AppColors {
   static const Color totalFoundColor = Color(0xFF1E88E5);
   static const Color releasesCountColor = Color(0xFFE53935);
   static const Color returnsCountColor = Color(0xFF43A047);
-  
+
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
 }
 
@@ -54,7 +54,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       FirebaseFirestore.instance.collection('users');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
-  final CollectionReference _wardsCollection = 
+  final CollectionReference _wardsCollection =
       FirebaseFirestore.instance.collection('wards');
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -87,7 +87,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           final data = snapshot.data() as Map<String, dynamic>;
           setState(() {
             _profileImageUrl = data['profileImageUrl'];
-            _currentUserName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserName =
+                data['fullName'] ?? user.email?.split('@').first ?? 'User';
             _currentUserRole = data['role'] ?? 'Administrator';
           });
         }
@@ -148,16 +149,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         break;
 
       case 'Book Numbers':
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const BookNumbersScreen()),
-      );
-      break;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BookNumbersScreen()),
+        );
+        break;
 
       case 'Developer About':
         Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AdminDeveloperAboutScreen()),
-      );
-      break;
+          MaterialPageRoute(builder: (_) => const AdminDeveloperAboutScreen()),
+        );
+        break;
 
       case 'Profile Manage':
       case 'Profile':
@@ -191,7 +192,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-                
+
                 // Main Content
                 Expanded(
                   child: SingleChildScrollView(
@@ -202,7 +203,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         _buildSectionTitle('Home', Icons.home_rounded),
                         const SizedBox(height: 10),
                         _buildTilesGrid(),
-                        
+
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -211,7 +212,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ],
             ),
           ),
-          
+
           // 📌 FULL‑WIDTH FOOTER
           Align(
             alignment: Alignment.bottomCenter,
@@ -270,9 +271,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 10),
-          
+
           Row(
             children: [
               // Profile Picture (live URL)
@@ -281,13 +282,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
+                  gradient: _profileImageUrl == null
+                      ? const LinearGradient(
+                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
                   border: Border.all(color: Colors.white, width: 3),
                   boxShadow: [
                     BoxShadow(
@@ -296,20 +297,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       offset: const Offset(0, 3),
                     ),
                   ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+                  image: _profileImageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(_profileImageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
                 child: _profileImageUrl == null
                     ? const Icon(Icons.person, size: 40, color: Colors.white)
                     : null,
               ),
-              
+
               const SizedBox(width: 15),
-              
+
               // User Info (live name & role)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,9 +335,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 25),
-          
+
           // Dashboard Title
           const Text(
             'Administrative Dashboard',
@@ -384,7 +385,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       children: [
         _tileAccountsManage(),
         _tileAntibiotics(),
-        _tileWards(), 
+        _tileWards(),
         _tileSimple(
             icon: Icons.inventory_2_outlined,
             title: 'Stocks',
@@ -396,7 +397,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(
             icon: Icons.developer_board, title: 'Developer About'),
-        _buildLogoutTile(),
+        // Logout tile එක ඉවත් කර ඇත
       ],
     );
   }
@@ -672,27 +673,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkText,
-                    fontSize: 14)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------- Logout Tile ----------------
-  Widget _buildLogoutTile() {
-    return InkWell(
-      onTap: _handleLogout,
-      child: _smallCard(
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 34),
-            SizedBox(height: 6),
-            Text('Logout',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red,
                     fontSize: 14)),
           ],
         ),
