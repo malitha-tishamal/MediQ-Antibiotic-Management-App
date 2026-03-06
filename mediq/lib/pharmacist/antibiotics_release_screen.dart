@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_typeahead/flutter_typeahead.dart'; 
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
@@ -43,26 +43,26 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   String? _selectedAntibioticKey; // key like "antibioticId|dosageIndex"
   String _selectedAntibioticId = '';
   String _dosage = '';
-  String? _selectedWardId;
+  String? _selectedWardId; // ward ID
   final _pageNumberController = TextEditingController();
   final _itemCountController = TextEditingController();
 
   // Radio options
-  String _datetimeOption = 'current'; // 'current' or 'manual'
+  String _datetimeOption = 'current';
   DateTime? _manualDateTime;
-  String _stockType = 'msd'; // 'msd' or 'lp'
+  String _stockType = 'msd';
 
   // Book numbers list (active only)
   List<Map<String, dynamic>> _activeBooks = [];
   String? _selectedBookNumber;
 
-  // Searchable antibiotic data
-  final List<Map<String, String>> _antibioticSearchList = []; // for TypeAhead
-  final Map<String, Map<String, String>> _antibioticMap = {}; // key -> details
+  // ---------- Antibiotic search data ----------
+  final List<Map<String, String>> _antibioticSearchList = [];
+  final Map<String, Map<String, String>> _antibioticMap = {};
 
-  // Ward dropdown items & map
-  List<DropdownMenuItem<String>> _wardItems = [];
-  final Map<String, String> _wardMap = {};
+  // ---------- Ward search data ----------
+  final List<Map<String, String>> _wardSearchList = [];
+  final Map<String, String> _wardMap = {}; // id -> name
 
   @override
   void initState() {
@@ -109,15 +109,14 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
   }
 
-  /// Fetches active book numbers (without orderBy to avoid index requirement)
+  /// Fetches active book numbers without requiring a composite index.
+  /// Sorted in descending order.
   Future<void> _fetchActiveBooks() async {
     try {
       final snapshot = await _firestore
           .collection('book_numbers')
           .where('status', isEqualTo: 'active')
           .get();
-
-      print('Fetched book numbers: ${snapshot.docs.map((d) => d.data())}');
 
       final books = snapshot.docs.map((doc) {
         final data = doc.data();
@@ -132,8 +131,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         };
       }).where((book) => book != null).cast<Map<String, dynamic>>().toList();
 
-      // Local sorting
-      books.sort((a, b) => a['bookNumber'].compareTo(b['bookNumber']));
+      // Sort descending (largest to smallest)
+      books.sort((a, b) => b['bookNumber'].compareTo(a['bookNumber']));
 
       setState(() {
         _activeBooks = books;
@@ -183,11 +182,9 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         }
       }
 
-      // Sort locally
       tempList.sort((a, b) =>
           a['display'].toLowerCase().compareTo(b['display'].toLowerCase()));
 
-      // Clear old data
       _antibioticMap.clear();
       _antibioticSearchList.clear();
 
@@ -222,22 +219,26 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
           'id': doc.id,
           'name': wardName,
         });
-        _wardMap[doc.id] = wardName;
       }
 
+      // Sort locally by name ascending (for search list)
       tempList.sort((a, b) =>
           a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
 
-      final items = tempList.map((entry) {
-        return DropdownMenuItem<String>(
-          value: entry['id'],
-          child: Text(entry['name']),
-        );
-      }).toList();
+      _wardMap.clear();
+      _wardSearchList.clear();
 
-      setState(() {
-        _wardItems = items;
-      });
+      for (var entry in tempList) {
+        final id = entry['id'];
+        final name = entry['name'];
+        _wardMap[id] = name;
+        _wardSearchList.add({
+          'id': id,
+          'display': name,
+        });
+      }
+
+      setState(() {});
     } catch (e) {
       debugPrint('Error fetching wards: $e');
     }
@@ -472,7 +473,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Searchable Antibiotic TypeAhead
+                                // ----- Antibiotic Searchable Field -----
                                 const Text('Select Antibiotic & Dosage',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
@@ -540,29 +541,53 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Ward dropdown
+                                // ----- Ward Searchable Field -----
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _selectedWardId,
-                                  items: _wardItems,
-                                  onChanged: (value) {
+
+                                TypeAheadFormField<String>(
+                                  textFieldConfiguration: TextFieldConfiguration(
+                                    controller: TextEditingController(
+                                      text: _selectedWardId != null
+                                          ? _wardMap[_selectedWardId] ?? ''
+                                          : '',
+                                    ),
+                                    decoration: InputDecoration(
+                                      prefixIcon: const Icon(Icons.local_hospital, color: AppColors.primaryPurple),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      hintText: '-- Type to search Ward --',
+                                    ),
+                                  ),
+                                  suggestionsCallback: (pattern) {
+                                    return _wardSearchList
+                                        .where((item) => item['display']!
+                                            .toLowerCase()
+                                            .contains(pattern.toLowerCase()))
+                                        .map((item) => item['display']!)
+                                        .toList();
+                                  },
+                                  itemBuilder: (context, suggestion) {
+                                    return ListTile(
+                                      title: Text(suggestion),
+                                    );
+                                  },
+                                  onSuggestionSelected: (suggestion) {
+                                    final selectedItem = _wardSearchList.firstWhere(
+                                        (item) => item['display'] == suggestion);
                                     setState(() {
-                                      _selectedWardId = value;
+                                      _selectedWardId = selectedItem['id'];
                                     });
                                   },
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.local_hospital, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                  ),
-                                  hint: const Text('-- Select Ward --'),
                                   validator: (value) {
-                                    if (value == null) return 'Please select a ward';
+                                    if (_selectedWardId == null) {
+                                      return 'Please select a ward';
+                                    }
                                     return null;
                                   },
                                 ),
+
                                 const SizedBox(height: 16),
 
                                 // Date & Time options
@@ -635,12 +660,12 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 ],
                                 const SizedBox(height: 16),
 
-                                // Book number dropdown (active only)
+                                // Book number dropdown (active only) - descending order
                                 const Text('Select Book Number (Active Only)',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  initialValue: _selectedBookNumber,
+                                  value: _selectedBookNumber,
                                   items: _activeBooks.isEmpty
                                       ? [
                                           DropdownMenuItem<String>(

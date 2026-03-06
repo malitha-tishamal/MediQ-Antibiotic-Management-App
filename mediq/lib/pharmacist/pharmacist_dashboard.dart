@@ -6,10 +6,8 @@ import 'dart:async';
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
-//import 'admin_profile_screen.dart';
 import 'pharmacist_developer_about_screen.dart';
-//import 'book_numbers_screen.dart';
-import 'antibiotics_release_screen.dart';
+import 'antibiotics_release_screen.dart'; // Adjust import if needed
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -21,9 +19,9 @@ class AppColors {
   static const Color totalFoundColor = Color(0xFF1E88E5);
   static const Color releasesCountColor = Color(0xFFE53935);
   static const Color returnsCountColor = Color(0xFF43A047);
-  
+
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
 }
 
@@ -118,19 +116,19 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
-    void _onNavTap(String title) {
+  void _onNavTap(String title) {
     switch (title) {
       case 'Antibiotics Release':
         Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
-      );
-      break;
+          MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
+        );
+        break;
 
       case 'Developer About':
         Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const PharmacistDeveloperAboutScreen()),
-      );
-      break;
+          MaterialPageRoute(builder: (_) => const PharmacistDeveloperAboutScreen()),
+        );
+        break;
 
       default:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -286,7 +284,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
         _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
-        _buildLogoutTile(),
         const SizedBox.shrink(), // fill last slot
       ],
     );
@@ -529,27 +526,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Logout Tile ----------------
-  Widget _buildLogoutTile() {
-    return InkWell(
-      onTap: _handleLogout,
-      child: _smallCard(
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 34),
-            SizedBox(height: 6),
-            Text('Logout',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.red,
-                    fontSize: 14)),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -558,7 +534,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       drawer: PharmacistDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-       profileImageUrl: _profileImageUrl, 
+        profileImageUrl: _profileImageUrl,
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
