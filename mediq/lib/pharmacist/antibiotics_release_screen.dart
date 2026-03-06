@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:async';
 import 'package:intl/intl.dart';
 
 import '../auth/login_page.dart';
@@ -40,193 +39,44 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   bool _isLoading = true;
 
   // Form fields
-  final _antibioticController = TextEditingController();
-  final _dosageController = TextEditingController();
-  final _wardController = TextEditingController();
+  String? _selectedAntibioticKey;          // key like "antibioticId|dosageIndex"
+  String _selectedAntibioticId = '';
+  String _dosage = '';
+  String? _selectedWardId;
   final _pageNumberController = TextEditingController();
   final _itemCountController = TextEditingController();
-
-  // Focus nodes
-  final FocusNode _antibioticFocusNode = FocusNode();
-  final FocusNode _wardFocusNode = FocusNode();
-
-  // Hidden IDs
-  String? _selectedAntibioticId;
-  String? _selectedWardId;
 
   // Radio options
   String _datetimeOption = 'current'; // 'current' or 'manual'
   DateTime? _manualDateTime;
   String _stockType = 'msd'; // 'msd' or 'lp'
 
-  // Book numbers list
+  // Book numbers list (active only)
   List<Map<String, dynamic>> _activeBooks = [];
   String? _selectedBookNumber;
 
-  // Autocomplete suggestions
-  List<Map<String, dynamic>> _antibioticSuggestions = [];
-  List<Map<String, dynamic>> _wardSuggestions = [];
-  Timer? _antibioticDebounce;
-  Timer? _wardDebounce;
+  // Dropdown items
+  List<DropdownMenuItem<String>> _antibioticItems = [];
+  List<DropdownMenuItem<String>> _wardItems = [];
 
-  // Suggestion visibility
-  bool _showAntibioticSuggestions = false;
-  bool _showWardSuggestions = false;
+  // Maps for storing antibiotic and ward details
+  final Map<String, Map<String, String>> _antibioticMap = {};
+  final Map<String, String> _wardMap = {};
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
     _fetchActiveBooks();
-    _antibioticController.addListener(_onAntibioticChanged);
-    _wardController.addListener(_onWardChanged);
-    _antibioticFocusNode.addListener(_onAntibioticFocusChanged);
-    _wardFocusNode.addListener(_onWardFocusChanged);
+    _fetchAntibiotics();
+    _fetchWards();
   }
 
   @override
   void dispose() {
-    _antibioticController.removeListener(_onAntibioticChanged);
-    _wardController.removeListener(_onWardChanged);
-    _antibioticFocusNode.removeListener(_onAntibioticFocusChanged);
-    _wardFocusNode.removeListener(_onWardFocusChanged);
-    _antibioticController.dispose();
-    _dosageController.dispose();
-    _wardController.dispose();
     _pageNumberController.dispose();
     _itemCountController.dispose();
-    _antibioticFocusNode.dispose();
-    _wardFocusNode.dispose();
-    _antibioticDebounce?.cancel();
-    _wardDebounce?.cancel();
     super.dispose();
-  }
-
-  void _onAntibioticFocusChanged() {
-    if (!_antibioticFocusNode.hasFocus) {
-      // Hide suggestions after a short delay to allow tap on suggestion
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && !_antibioticFocusNode.hasFocus) {
-          setState(() => _showAntibioticSuggestions = false);
-        }
-      });
-    } else {
-      if (_antibioticController.text.isNotEmpty && _antibioticSuggestions.isNotEmpty) {
-        setState(() => _showAntibioticSuggestions = true);
-      }
-    }
-  }
-
-  void _onWardFocusChanged() {
-    if (!_wardFocusNode.hasFocus) {
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted && !_wardFocusNode.hasFocus) {
-          setState(() => _showWardSuggestions = false);
-        }
-      });
-    } else {
-      if (_wardController.text.isNotEmpty && _wardSuggestions.isNotEmpty) {
-        setState(() => _showWardSuggestions = true);
-      }
-    }
-  }
-
-  void _onAntibioticChanged() {
-    _antibioticDebounce?.cancel();
-    final query = _antibioticController.text.trim();
-    if (query.isEmpty) {
-      setState(() {
-        _antibioticSuggestions = [];
-        _showAntibioticSuggestions = false;
-      });
-      return;
-    }
-    _antibioticDebounce = Timer(const Duration(milliseconds: 400), () async {
-      try {
-        final snapshot = await _firestore
-            .collection('antibiotics')
-            .where('name', isGreaterThanOrEqualTo: query)
-            .where('name', isLessThanOrEqualTo: query + '\uf8ff')
-            .limit(10)
-            .get();
-        final suggestions = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final dosages = data['dosages'] as List<dynamic>? ?? [];
-          String firstDosage = '';
-          if (dosages.isNotEmpty) {
-            final first = dosages.first as Map<String, dynamic>;
-            firstDosage = first['dosage'] ?? '';
-          }
-          return {
-            'id': doc.id,
-            'name': data['name'] ?? '',
-            'dosage': firstDosage,
-          };
-        }).toList();
-        setState(() {
-          _antibioticSuggestions = suggestions;
-          _showAntibioticSuggestions = suggestions.isNotEmpty && _antibioticFocusNode.hasFocus;
-        });
-      } catch (e) {
-        debugPrint('Search antibiotic error: $e');
-      }
-    });
-  }
-
-  void _onWardChanged() {
-    _wardDebounce?.cancel();
-    final query = _wardController.text.trim();
-    if (query.isEmpty) {
-      setState(() {
-        _wardSuggestions = [];
-        _showWardSuggestions = false;
-      });
-      return;
-    }
-    _wardDebounce = Timer(const Duration(milliseconds: 400), () async {
-      try {
-        final snapshot = await _firestore
-            .collection('wards')
-            .where('wardName', isGreaterThanOrEqualTo: query)
-            .where('wardName', isLessThanOrEqualTo: query + '\uf8ff')
-            .limit(10)
-            .get();
-        final suggestions = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return {
-            'id': doc.id,
-            'wardName': data['wardName'] ?? '',
-          };
-        }).toList();
-        setState(() {
-          _wardSuggestions = suggestions;
-          _showWardSuggestions = suggestions.isNotEmpty && _wardFocusNode.hasFocus;
-        });
-      } catch (e) {
-        debugPrint('Search ward error: $e');
-      }
-    });
-  }
-
-  void _selectAntibiotic(Map<String, dynamic> antibiotic) {
-    setState(() {
-      _selectedAntibioticId = antibiotic['id'];
-      _antibioticController.text = antibiotic['name'];
-      _dosageController.text = antibiotic['dosage'] ?? '';
-      _antibioticSuggestions = [];
-      _showAntibioticSuggestions = false;
-    });
-    _antibioticFocusNode.unfocus();
-  }
-
-  void _selectWard(Map<String, dynamic> ward) {
-    setState(() {
-      _selectedWardId = ward['id'];
-      _wardController.text = ward['wardName'];
-      _wardSuggestions = [];
-      _showWardSuggestions = false;
-    });
-    _wardFocusNode.unfocus();
   }
 
   Future<void> _fetchUserData() async {
@@ -258,20 +108,143 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
   }
 
+  /// Fetches only active book numbers.
+  /// Note: Because we use both .where() and .orderBy(), Firestore requires a composite index.
+  /// If the query fails, check the debug console for a link to create the index.
+  /// Index: collection 'book_numbers' with fields 'status' (ascending) and 'bookNumber' (ascending).
   Future<void> _fetchActiveBooks() async {
     try {
       final snapshot = await _firestore
           .collection('book_numbers')
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'active')   // Ensure documents have 'active' (lowercase)
           .orderBy('bookNumber')
           .get();
+
+      // Debug: see what Firestore returns (check your console)
+      print('Fetched book numbers: ${snapshot.docs.map((d) => d.data())}');
+
+      final books = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Normalize fields to be safe
+        final bookNumber = (data['bookNumber'] ?? '').toString().trim();
+        final status = (data['status'] ?? '').toString().toLowerCase().trim();
+
+        // Only include if bookNumber is not empty and status is active
+        if (bookNumber.isEmpty || status != 'active') return null;
+
+        return {
+          'id': doc.id,
+          'bookNumber': bookNumber,
+        };
+      }).where((book) => book != null).cast<Map<String, dynamic>>().toList();
+
       setState(() {
-        _activeBooks = snapshot.docs.map((doc) {
-          return {'id': doc.id, 'bookNumber': doc['bookNumber']};
-        }).toList();
+        _activeBooks = books;
       });
+
+      if (_activeBooks.isEmpty) {
+        _showSnackBar('No active book numbers found.', false);
+      }
     } catch (e) {
       debugPrint('Error fetching books: $e');
+      // If the error contains a link, follow it to create the required index
+      _showSnackBar(
+          'Failed to load book numbers. Check Firestore index & console.', false);
+    }
+  }
+
+  Future<void> _fetchAntibiotics() async {
+    try {
+      final snapshot = await _firestore.collection('antibiotics').get();
+      final List<Map<String, dynamic>> tempList = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final name = data['name'] ?? 'Unknown';
+        final dosages = data['dosages'] as List<dynamic>? ?? [];
+
+        if (dosages.isEmpty) {
+          final key = '${doc.id}|';
+          tempList.add({
+            'key': key,
+            'antibioticId': doc.id,
+            'antibioticName': name,
+            'display': name,
+            'dosage': '',
+          });
+        } else {
+          for (int i = 0; i < dosages.length; i++) {
+            final dosageData = dosages[i] as Map<String, dynamic>;
+            final dosage = dosageData['dosage'] ?? '';
+            final key = '${doc.id}|$i';
+            tempList.add({
+              'key': key,
+              'antibioticId': doc.id,
+              'antibioticName': name,
+              'display': '$name – $dosage',
+              'dosage': dosage,
+            });
+          }
+        }
+      }
+
+      tempList.sort((a, b) =>
+          a['display'].toLowerCase().compareTo(b['display'].toLowerCase()));
+
+      final items = <DropdownMenuItem<String>>[];
+      for (var entry in tempList) {
+        final key = entry['key'];
+        _antibioticMap[key] = {
+          'antibioticId': entry['antibioticId'],
+          'antibioticName': entry['antibioticName'],
+          'dosage': entry['dosage'],
+        };
+        items.add(
+          DropdownMenuItem<String>(
+            value: key,
+            child: Text(entry['display']),
+          ),
+        );
+      }
+
+      setState(() {
+        _antibioticItems = items;
+      });
+    } catch (e) {
+      debugPrint('Error fetching antibiotics: $e');
+    }
+  }
+
+  Future<void> _fetchWards() async {
+    try {
+      final snapshot = await _firestore.collection('wards').get();
+      final List<Map<String, dynamic>> tempList = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final wardName = data['wardName'] ?? 'Unknown';
+        tempList.add({
+          'id': doc.id,
+          'name': wardName,
+        });
+        _wardMap[doc.id] = wardName;
+      }
+
+      tempList.sort((a, b) =>
+          a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
+
+      final items = tempList.map((entry) {
+        return DropdownMenuItem<String>(
+          value: entry['id'],
+          child: Text(entry['name']),
+        );
+      }).toList();
+
+      setState(() {
+        _wardItems = items;
+      });
+    } catch (e) {
+      debugPrint('Error fetching wards: $e');
     }
   }
 
@@ -284,12 +257,12 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedAntibioticId == null) {
-      _showSnackBar('Please select a valid antibiotic from suggestions', false);
+    if (_selectedAntibioticKey == null) {
+      _showSnackBar('Please select an antibiotic', false);
       return;
     }
     if (_selectedWardId == null) {
-      _showSnackBar('Please select a valid ward from suggestions', false);
+      _showSnackBar('Please select a ward', false);
       return;
     }
 
@@ -311,12 +284,17 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
 
     try {
+      final selectedData = _antibioticMap[_selectedAntibioticKey!]!;
+      final antibioticId = selectedData['antibioticId']!;
+      final antibioticName = selectedData['antibioticName']!;
+      final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
+
       await _firestore.collection('releases').add({
-        'antibioticId': _selectedAntibioticId,
-        'antibioticName': _antibioticController.text,
-        'dosage': _dosageController.text,
+        'antibioticId': antibioticId,
+        'antibioticName': antibioticName,
+        'dosage': _dosage,
         'wardId': _selectedWardId,
-        'wardName': _wardController.text,
+        'wardName': wardName,
         'releaseDateTime': releaseDateTime,
         'pageNumber': _pageNumberController.text.trim(),
         'bookNumber': _selectedBookNumber ?? '',
@@ -335,21 +313,16 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
 
   void _clearForm() {
     setState(() {
-      _antibioticController.clear();
-      _dosageController.clear();
-      _wardController.clear();
+      _selectedAntibioticKey = null;
+      _selectedAntibioticId = '';
+      _dosage = '';
+      _selectedWardId = null;
       _pageNumberController.clear();
       _itemCountController.clear();
-      _selectedAntibioticId = null;
-      _selectedWardId = null;
       _datetimeOption = 'current';
       _manualDateTime = null;
       _stockType = 'msd';
       _selectedBookNumber = null;
-      _antibioticSuggestions = [];
-      _wardSuggestions = [];
-      _showAntibioticSuggestions = false;
-      _showWardSuggestions = false;
     });
   }
 
@@ -504,114 +477,34 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Antibiotic field with autocomplete
-                                const Text('Select Antibiotic',
+                                // Antibiotic dropdown (includes dosage)
+                                const Text('Select Antibiotic & Dosage',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
-                                Stack(
-                                  clipBehavior: Clip.none, // allows dropdown to overflow
-                                  children: [
-                                    TextFormField(
-                                      controller: _antibioticController,
-                                      focusNode: _antibioticFocusNode,
-                                      decoration: InputDecoration(
-                                        hintText: 'Type antibiotic name...',
-                                        prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                        filled: true,
-                                        fillColor: Colors.white,
-                                        suffixIcon: _antibioticController.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.clear, size: 18),
-                                                onPressed: () {
-                                                  _antibioticController.clear();
-                                                  setState(() {
-                                                    _selectedAntibioticId = null;
-                                                    _dosageController.clear();
-                                                    _antibioticSuggestions = [];
-                                                  });
-                                                },
-                                              )
-                                            : null,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Please select an antibiotic';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    // Suggestion list
-                                    if (_showAntibioticSuggestions && _antibioticSuggestions.isNotEmpty)
-                                      Positioned(
-                                        top: 60,
-                                        left: 0,
-                                        right: 0,
-                                        child: Container(
-                                          constraints: const BoxConstraints(maxHeight: 250),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(8),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.grey.withOpacity(0.3),
-                                                blurRadius: 5,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                            border: Border.all(color: Colors.grey.shade300),
-                                          ),
-                                          child: ListView.builder(
-                                            shrinkWrap: true,
-                                            padding: EdgeInsets.zero,
-                                            itemCount: _antibioticSuggestions.length,
-                                            itemBuilder: (context, index) {
-                                              final item = _antibioticSuggestions[index];
-                                              return InkWell(
-                                                onTap: () => _selectAntibiotic(item),
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                  decoration: BoxDecoration(
-                                                    border: Border(
-                                                      bottom: BorderSide(color: Colors.grey.shade200),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text(
-                                                              item['name'],
-                                                              style: const TextStyle(
-                                                                fontWeight: FontWeight.w600,
-                                                                fontSize: 15,
-                                                              ),
-                                                            ),
-                                                            if (item['dosage']?.isNotEmpty == true)
-                                                              const SizedBox(height: 4),
-                                                            if (item['dosage']?.isNotEmpty == true)
-                                                              Text(
-                                                                'Dosage: ${item['dosage']}',
-                                                                style: TextStyle(
-                                                                  color: AppColors.primaryPurple,
-                                                                  fontSize: 13,
-                                                                ),
-                                                              ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                                DropdownButtonFormField<String>(
+                                  value: _selectedAntibioticKey,
+                                  items: _antibioticItems,
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      final data = _antibioticMap[value]!;
+                                      setState(() {
+                                        _selectedAntibioticKey = value;
+                                        _selectedAntibioticId = data['antibioticId']!;
+                                        _dosage = data['dosage']!;
+                                      });
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                  ),
+                                  hint: const Text('-- Select Antibiotic --'),
+                                  validator: (value) {
+                                    if (value == null) return 'Please select an antibiotic';
+                                    return null;
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -619,7 +512,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 const Text('Dosage', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 TextFormField(
-                                  controller: _dosageController,
+                                  controller: TextEditingController(text: _dosage),
                                   readOnly: true,
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(Icons.medical_information, color: AppColors.primaryPurple),
@@ -630,93 +523,28 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Ward field with autocomplete
+                                // Ward dropdown
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
-                                Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    TextFormField(
-                                      controller: _wardController,
-                                      focusNode: _wardFocusNode,
-                                      decoration: InputDecoration(
-                                        hintText: 'Type ward name...',
-                                        prefixIcon: const Icon(Icons.local_hospital, color: AppColors.primaryPurple),
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                        filled: true,
-                                        fillColor: Colors.white,
-                                        suffixIcon: _wardController.text.isNotEmpty
-                                            ? IconButton(
-                                                icon: const Icon(Icons.clear, size: 18),
-                                                onPressed: () {
-                                                  _wardController.clear();
-                                                  setState(() => _selectedWardId = null);
-                                                },
-                                              )
-                                            : null,
-                                      ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Please select a ward';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                    if (_showWardSuggestions && _wardSuggestions.isNotEmpty)
-                                      Positioned(
-                                        top: 60,
-                                        left: 0,
-                                        right: 0,
-                                        child: Container(
-                                          constraints: const BoxConstraints(maxHeight: 250),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(8),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.grey.withOpacity(0.3),
-                                                blurRadius: 5,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                            border: Border.all(color: Colors.grey.shade300),
-                                          ),
-                                          child: ListView.builder(
-                                            shrinkWrap: true,
-                                            padding: EdgeInsets.zero,
-                                            itemCount: _wardSuggestions.length,
-                                            itemBuilder: (context, index) {
-                                              final item = _wardSuggestions[index];
-                                              return InkWell(
-                                                onTap: () => _selectWard(item),
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                  decoration: BoxDecoration(
-                                                    border: Border(
-                                                      bottom: BorderSide(color: Colors.grey.shade200),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          item['wardName'],
-                                                          style: const TextStyle(
-                                                            fontWeight: FontWeight.w600,
-                                                            fontSize: 15,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                                DropdownButtonFormField<String>(
+                                  value: _selectedWardId,
+                                  items: _wardItems,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedWardId = value;
+                                    });
+                                  },
+                                  decoration: InputDecoration(
+                                    prefixIcon: const Icon(Icons.local_hospital, color: AppColors.primaryPurple),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                  ),
+                                  hint: const Text('-- Select Ward --'),
+                                  validator: (value) {
+                                    if (value == null) return 'Please select a ward';
+                                    return null;
+                                  },
                                 ),
                                 const SizedBox(height: 16),
 
@@ -790,19 +618,32 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 ],
                                 const SizedBox(height: 16),
 
-                                // Book number dropdown
+                                // Book number dropdown (active only)
                                 const Text('Select Book Number (Active Only)',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
                                   value: _selectedBookNumber,
-                                  items: _activeBooks.map((book) {
-                                    return DropdownMenuItem<String>(
-                                      value: book['bookNumber'],
-                                      child: Text(book['bookNumber']),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) => setState(() => _selectedBookNumber = val),
+                                  items: _activeBooks.isEmpty
+                                      ? [
+                                          DropdownMenuItem<String>(
+                                            value: null,
+                                            enabled: false,
+                                            child: Text(
+                                              'No active books',
+                                              style: TextStyle(color: Colors.grey[600]),
+                                            ),
+                                          )
+                                        ]
+                                      : _activeBooks.map((book) {
+                                          return DropdownMenuItem<String>(
+                                            value: book['bookNumber'],
+                                            child: Text(book['bookNumber']),
+                                          );
+                                        }).toList(),
+                                  onChanged: _activeBooks.isEmpty
+                                      ? null
+                                      : (val) => setState(() => _selectedBookNumber = val),
                                   decoration: InputDecoration(
                                     prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
