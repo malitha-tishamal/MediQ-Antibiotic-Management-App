@@ -92,10 +92,10 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
     return '${antibioticId}_$dosageIndex';
   }
 
-  // Get or create quantity controller for an item
-  TextEditingController _getController(String key, int initialValue) {
+  // Get or create quantity controller for an item (now empty by default)
+  TextEditingController _getController(String key) {
     if (!_quantityControllers.containsKey(key)) {
-      _quantityControllers[key] = TextEditingController(text: initialValue.toString());
+      _quantityControllers[key] = TextEditingController(); // No default value
     }
     return _quantityControllers[key]!;
   }
@@ -534,8 +534,8 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                                         statusText = 'In Stock';
                                       }
 
-                                      // Get or create controller for this item
-                                      final controller = _getController(key, quantity);
+                                      // Get or create controller for this item (empty by default)
+                                      final controller = _getController(key);
 
                                       return Card(
                                         margin: const EdgeInsets.only(bottom: 12),
