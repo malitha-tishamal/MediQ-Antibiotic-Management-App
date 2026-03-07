@@ -42,6 +42,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   // Form fields
   String? _selectedAntibioticKey; // key like "antibioticId|dosageIndex"
   String _selectedAntibioticId = '';
+  int? _selectedDosageIndex;
   String _dosage = '';
   String? _selectedWardId; // ward ID
   final _pageNumberController = TextEditingController();
@@ -93,7 +94,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         setState(() {
           _userName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
           _userRole = data['role'] ?? 'Pharmacist';
-          _profileImageUrl = data['profileImageUrl'];
+          _profileImageUrl = data['profileImageUrl']; // Drawer එකට අවශ්‍යයි
           _isLoading = false;
         });
       } else {
@@ -109,8 +110,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
   }
 
-  /// Fetches active book numbers without requiring a composite index.
-  /// Sorted in descending order.
   Future<void> _fetchActiveBooks() async {
     try {
       final snapshot = await _firestore
@@ -131,7 +130,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         };
       }).where((book) => book != null).cast<Map<String, dynamic>>().toList();
 
-      // Sort descending (largest to smallest)
       books.sort((a, b) => b['bookNumber'].compareTo(a['bookNumber']));
 
       setState(() {
@@ -165,6 +163,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
             'antibioticName': name,
             'display': name,
             'dosage': '',
+            'dosageIndex': -1,
           });
         } else {
           for (int i = 0; i < dosages.length; i++) {
@@ -177,6 +176,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
               'antibioticName': name,
               'display': '$name – $dosage',
               'dosage': dosage,
+              'dosageIndex': i,
             });
           }
         }
@@ -194,6 +194,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
           'antibioticId': entry['antibioticId'],
           'antibioticName': entry['antibioticName'],
           'dosage': entry['dosage'],
+          'dosageIndex': entry['dosageIndex'].toString(),
         };
         _antibioticSearchList.add({
           'key': key,
@@ -221,7 +222,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         });
       }
 
-      // Sort locally by name ascending (for search list)
       tempList.sort((a, b) =>
           a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
 
@@ -253,15 +253,38 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validate antibiotic selection
     if (_selectedAntibioticKey == null) {
       _showSnackBar('Please select an antibiotic', false);
       return;
     }
+    final selectedData = _antibioticMap[_selectedAntibioticKey!];
+    if (selectedData == null) {
+      _showSnackBar('Selected antibiotic data not found', false);
+      return;
+    }
+    final antibioticId = selectedData['antibioticId'];
+    final antibioticName = selectedData['antibioticName'];
+    final dosageIndexStr = selectedData['dosageIndex'];
+    if (antibioticId == null || antibioticName == null || dosageIndexStr == null) {
+      _showSnackBar('Incomplete antibiotic data', false);
+      return;
+    }
+    final dosageIndex = int.tryParse(dosageIndexStr);
+    if (dosageIndex == null || dosageIndex < 0) {
+      _showSnackBar('Invalid dosage selected', false);
+      return;
+    }
+
+    // Validate ward selection
     if (_selectedWardId == null) {
       _showSnackBar('Please select a ward', false);
       return;
     }
+    final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
 
+    // Determine date/time
     DateTime releaseDateTime;
     if (_datetimeOption == 'current') {
       releaseDateTime = DateTime.now();
@@ -273,31 +296,71 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       releaseDateTime = _manualDateTime!;
     }
 
+    // Validate item count
     final itemCount = int.tryParse(_itemCountController.text);
     if (itemCount == null || itemCount <= 0) {
       _showSnackBar('Item count must be a positive number', false);
       return;
     }
 
-    try {
-      final selectedData = _antibioticMap[_selectedAntibioticKey!]!;
-      final antibioticId = selectedData['antibioticId']!;
-      final antibioticName = selectedData['antibioticName']!;
-      final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
+    // Query main_stock for this antibiotic and dosage
+    final stockQuery = await _firestore
+        .collection('main_stock')
+        .where('antibioticId', isEqualTo: antibioticId)
+        .where('dosageIndex', isEqualTo: dosageIndex)
+        .limit(1)
+        .get();
 
-      await _firestore.collection('releases').add({
-        'antibioticId': antibioticId,
-        'antibioticName': antibioticName,
-        'dosage': _dosage,
-        'wardId': _selectedWardId,
-        'wardName': wardName,
-        'releaseDateTime': releaseDateTime,
-        'pageNumber': _pageNumberController.text.trim(),
-        'bookNumber': _selectedBookNumber ?? '',
-        'itemCount': itemCount,
-        'stockType': _stockType,
-        'createdBy': _auth.currentUser?.uid,
-        'createdAt': FieldValue.serverTimestamp(),
+    if (stockQuery.docs.isEmpty) {
+      _showSnackBar('No stock entry found for this antibiotic and dosage', false);
+      return;
+    }
+
+    final stockDoc = stockQuery.docs.first;
+    final stockData = stockDoc.data() as Map<String, dynamic>;
+    final currentQuantity = stockData['quantity'] as int? ?? 0;
+
+    if (currentQuantity < itemCount) {
+      _showSnackBar('Insufficient stock. Available: $currentQuantity', false);
+      return;
+    }
+
+    // Use transaction to update stock and add release record
+    try {
+      await _firestore.runTransaction((transaction) async {
+        // Re‑read the stock document inside transaction to ensure consistency
+        final freshStockDoc = await transaction.get(stockDoc.reference);
+        if (!freshStockDoc.exists) {
+          throw Exception('Stock document no longer exists');
+        }
+        final freshData = freshStockDoc.data() as Map<String, dynamic>;
+        final freshQuantity = freshData['quantity'] as int? ?? 0;
+        if (freshQuantity < itemCount) {
+          throw Exception('Insufficient stock (concurrent update)');
+        }
+
+        // Update stock quantity
+        transaction.update(stockDoc.reference, {
+          'quantity': freshQuantity - itemCount,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+
+        // Add release record
+        final releaseRef = _firestore.collection('releases').doc();
+        transaction.set(releaseRef, {
+          'antibioticId': antibioticId,
+          'antibioticName': antibioticName,
+          'dosage': _dosage,
+          'wardId': _selectedWardId,
+          'wardName': wardName,
+          'releaseDateTime': releaseDateTime,
+          'pageNumber': _pageNumberController.text.trim(),
+          'bookNumber': _selectedBookNumber ?? '',
+          'itemCount': itemCount,
+          'stockType': _stockType,
+          'createdBy': _auth.currentUser?.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       });
 
       _showSnackBar('Release recorded successfully!', true);
@@ -311,6 +374,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     setState(() {
       _selectedAntibioticKey = null;
       _selectedAntibioticId = '';
+      _selectedDosageIndex = null;
       _dosage = '';
       _selectedWardId = null;
       _pageNumberController.clear();
@@ -340,9 +404,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     );
   }
 
+  // ----- Header (profile picture නැතිව, නම සහ role පමණක්) -----
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -354,76 +419,53 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
           bottomRight: Radius.circular(30),
         ),
         boxShadow: [
-          BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+          BoxShadow(
+              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          const SizedBox(height: 5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.menu,
+                    color: AppColors.headerTextDark, size: 24),
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(colors: [AppColors.primaryPurple, Color(0xFFB08FEB)])
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    )
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+          const SizedBox(height: 2),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _userName,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark),
                 ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _userName,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.headerTextDark),
-                  ),
-                  const Text(
-                    'Logged in as: Pharmacist',
-                    style: TextStyle(
-                        fontSize: 14, color: AppColors.headerTextDark),
-                  ),
-                ],
-              ),
-            ],
+                const SizedBox(height: 2),
+                const Text(
+                  'Logged in as: Pharmacist',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 8),
           const Text(
             'Release Antibiotics',
             style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.headerTextDark),
           ),
@@ -467,22 +509,23 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                       _buildHeader(context),
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(16),
                           child: Form(
                             key: _formKey,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // ----- Antibiotic Searchable Field -----
                                 const Text('Select Antibiotic & Dosage',
                                     style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
 
                                 TypeAheadFormField<String>(
                                   textFieldConfiguration: TextFieldConfiguration(
                                     controller: TextEditingController(
                                       text: _selectedAntibioticKey != null
-                                          ? _antibioticMap[_selectedAntibioticKey]!['display'] ?? ''
+                                          ? _antibioticMap[_selectedAntibioticKey]!['antibioticName']! +
+                                              ' – ' +
+                                              _antibioticMap[_selectedAntibioticKey]!['dosage']!
                                           : '',
                                     ),
                                     decoration: InputDecoration(
@@ -491,6 +534,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       filled: true,
                                       fillColor: Colors.white,
                                       hintText: '-- Type to search Antibiotic --',
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                     ),
                                   ),
                                   suggestionsCallback: (pattern) {
@@ -524,11 +568,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                   },
                                 ),
 
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 12),
 
-                                // Dosage (readonly)
                                 const Text('Dosage', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 TextFormField(
                                   controller: TextEditingController(text: _dosage),
                                   readOnly: true,
@@ -537,13 +580,13 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                     filled: true,
                                     fillColor: Colors.grey.shade100,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 12),
 
-                                // ----- Ward Searchable Field -----
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
 
                                 TypeAheadFormField<String>(
                                   textFieldConfiguration: TextFieldConfiguration(
@@ -558,6 +601,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       filled: true,
                                       fillColor: Colors.white,
                                       hintText: '-- Type to search Ward --',
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                     ),
                                   ),
                                   suggestionsCallback: (pattern) {
@@ -588,33 +632,43 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                   },
                                 ),
 
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 10),
 
-                                // Date & Time options
                                 const Text('Select Date & Time', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
-                                Row(
+                                const SizedBox(height: 4),
+
+                                // Compact radio buttons with minimal spacing
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Radio<String>(
-                                      value: 'current',
-                                      groupValue: _datetimeOption,
-                                      onChanged: (val) => setState(() => _datetimeOption = val!),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Radio<String>(
+                                          value: 'current',
+                                          groupValue: _datetimeOption,
+                                          onChanged: (val) => setState(() => _datetimeOption = val!),
+                                        ),
+                                        const Text('Use current system date & time'),
+                                      ],
                                     ),
-                                    const Text('Use current system date & time'),
+                                    const SizedBox(height: 0),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Radio<String>(
+                                          value: 'manual',
+                                          groupValue: _datetimeOption,
+                                          onChanged: (val) => setState(() => _datetimeOption = val!),
+                                        ),
+                                        const Text('Enter manually'),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                                Row(
-                                  children: [
-                                    Radio<String>(
-                                      value: 'manual',
-                                      groupValue: _datetimeOption,
-                                      onChanged: (val) => setState(() => _datetimeOption = val!),
-                                    ),
-                                    const Text('Enter manually'),
-                                  ],
-                                ),
+
                                 if (_datetimeOption == 'manual') ...[
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
                                   InkWell(
                                     onTap: () async {
                                       final picked = await showDatePicker(
@@ -639,7 +693,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       }
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.all(12),
+                                      padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
                                         border: Border.all(color: Colors.grey),
                                         borderRadius: BorderRadius.circular(8),
@@ -658,59 +712,75 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     ),
                                   ),
                                 ],
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 4),
 
-                                // Book number dropdown (active only) - descending order
-                                const Text('Select Book Number (Active Only)',
-                                    style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedBookNumber,
-                                  items: _activeBooks.isEmpty
-                                      ? [
-                                          DropdownMenuItem<String>(
-                                            value: null,
-                                            enabled: false,
-                                            child: Text(
-                                              'No active books',
-                                              style: TextStyle(color: Colors.grey[600]),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('Select Book Number',
+                                              style: TextStyle(fontWeight: FontWeight.w600)),
+                                          const SizedBox(height: 6),
+                                          DropdownButtonFormField<String>(
+                                            value: _selectedBookNumber,
+                                            items: _activeBooks.isEmpty
+                                                ? [
+                                                    DropdownMenuItem<String>(
+                                                      value: null,
+                                                      enabled: false,
+                                                      child: Text(
+                                                        'No active books',
+                                                        style: TextStyle(color: Colors.grey[600]),
+                                                      ),
+                                                    )
+                                                  ]
+                                                : _activeBooks.map((book) {
+                                                    return DropdownMenuItem<String>(
+                                                      value: book['bookNumber'],
+                                                      child: Text(book['bookNumber']),
+                                                    );
+                                                  }).toList(),
+                                            onChanged: _activeBooks.isEmpty
+                                                ? null
+                                                : (val) => setState(() => _selectedBookNumber = val),
+                                            decoration: InputDecoration(
+                                              prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                             ),
-                                          )
-                                        ]
-                                      : _activeBooks.map((book) {
-                                          return DropdownMenuItem<String>(
-                                            value: book['bookNumber'],
-                                            child: Text(book['bookNumber']),
-                                          );
-                                        }).toList(),
-                                  onChanged: _activeBooks.isEmpty
-                                      ? null
-                                      : (val) => setState(() => _selectedBookNumber = val),
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  hint: const Text('-- Select Book Number --'),
+                                            hint: const Text('-- Select --'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('Enter Page Number', style: TextStyle(fontWeight: FontWeight.w600)),
+                                          const SizedBox(height: 6),
+                                          TextFormField(
+                                            controller: _pageNumberController,
+                                            keyboardType: TextInputType.text,
+                                            decoration: InputDecoration(
+                                              hintText: 'Page number',
+                                              prefixIcon: const Icon(Icons.numbers, color: AppColors.primaryPurple),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 12),
 
-                                // Page number
-                                const Text('Enter Page Number', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _pageNumberController,
-                                  keyboardType: TextInputType.text,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter page number',
-                                    prefixIcon: const Icon(Icons.numbers, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-
-                                // Item count
                                 const Text('Item Count', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 TextFormField(
                                   controller: _itemCountController,
                                   keyboardType: TextInputType.number,
@@ -718,6 +788,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     hintText: 'Enter item count',
                                     prefixIcon: const Icon(Icons.production_quantity_limits, color: AppColors.primaryPurple),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
@@ -730,11 +801,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 10),
 
-                                // Stock type (MSD / LP)
                                 const Text('Stock of Antibiotic', style: TextStyle(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 2),
                                 Row(
                                   children: [
                                     Radio<String>(
@@ -743,7 +813,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       onChanged: (val) => setState(() => _stockType = val!),
                                     ),
                                     const Text('MSD'),
-                                    const SizedBox(width: 24),
+                                    const SizedBox(width: 16),
                                     Radio<String>(
                                       value: 'lp',
                                       groupValue: _stockType,
@@ -752,9 +822,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     const Text('LP'),
                                   ],
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 4),
 
-                                // Submit & Clear buttons
                                 Row(
                                   children: [
                                     Expanded(
@@ -763,7 +832,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppColors.successGreen,
                                           foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(12),
                                           ),
@@ -771,14 +840,14 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                         child: const Text('Update Database'),
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 8),
                                     Expanded(
                                       child: OutlinedButton(
                                         onPressed: _clearForm,
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red,
                                           side: const BorderSide(color: Colors.red),
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(12),
                                           ),
@@ -788,7 +857,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 30),
+                                const SizedBox(height: 20),
                               ],
                             ),
                           ),
@@ -797,7 +866,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                     ],
                   ),
                 ),
-                // Static footer
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(

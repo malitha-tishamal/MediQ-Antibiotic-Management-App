@@ -228,7 +228,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     }
   }
 
-  // ----- header එක (ManageWardsScreen ආකෘතියට, නම/role මැදට) -----
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),

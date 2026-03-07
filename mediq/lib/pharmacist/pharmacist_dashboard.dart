@@ -7,7 +7,7 @@ import 'dart:async';
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
-import 'antibiotics_release_screen.dart'; // Adjust import if needed
+import 'antibiotics_release_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -41,14 +41,14 @@ class PharmacistDashboard extends StatefulWidget {
 }
 
 class _PharmacistDashboardState extends State<PharmacistDashboard> {
-  // Static demo values
-  final int todayReleases = 40;
-  final int todayReturns = 30;
-
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
   final CollectionReference _wardsCollection =
       FirebaseFirestore.instance.collection('wards');
+  final CollectionReference _releasesCollection =
+      FirebaseFirestore.instance.collection('releases');
+  final CollectionReference _returnsCollection =
+      FirebaseFirestore.instance.collection('returns'); // adjust if needed
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -62,7 +62,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   @override
   void initState() {
     super.initState();
-    // Initially set from widget (in case stream takes time)
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
     _listenToUserChanges();
@@ -95,6 +94,21 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   void dispose() {
     _userSubscription?.cancel();
     super.dispose();
+  }
+
+  // ---------- Sri Lanka time helpers ----------
+  DateTime _getSriLankaNow() {
+    return DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+  }
+
+  DateTime _getStartOfToday() {
+    final now = _getSriLankaNow();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  DateTime _getEndOfToday() {
+    final start = _getStartOfToday();
+    return start.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
   }
 
   Future<void> _handleLogout() async {
@@ -173,7 +187,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           const SizedBox(height: 10),
           Row(
             children: [
-              // Profile Picture (live URL)
+              // Profile Picture
               Container(
                 width: 70,
                 height: 70,
@@ -206,7 +220,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                     : null,
               ),
               const SizedBox(width: 15),
-              // User Info (live name & role)
+              // User Info
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -231,7 +245,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             ],
           ),
           const SizedBox(height: 25),
-          // Dashboard Title
           const Text(
             'Pharmacist Dashboard',
             style: TextStyle(
@@ -245,7 +258,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // Section Title Widget
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -284,7 +296,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
         _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
-        const SizedBox.shrink(), // fill last slot
+        const SizedBox.shrink(),
       ],
     );
   }
@@ -321,7 +333,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Antibiotics Release Tile ----------------
+  // ---------- Antibiotics Release Tile (live count) ----------
   Widget _tileAntibioticsRelease() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Release'),
@@ -343,15 +355,29 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               ],
             ),
             const Spacer(),
-            _miniStat('Today Releases', todayReleases.toString(),
-                AppColors.releasesCountColor),
+            StreamBuilder<QuerySnapshot>(
+              stream: _releasesCollection
+                  .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                  .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                  .snapshots(),
+              builder: (context, snapshot) {
+                int count = 0;
+                if (snapshot.hasData) {
+                  count = snapshot.data!.docs.length;
+                } else if (snapshot.hasError) {
+                  debugPrint('Error fetching releases: ${snapshot.error}');
+                }
+                return _miniStat('Today Releases', count.toString().padLeft(2, '0'),
+                    AppColors.releasesCountColor);
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ---------------- Antibiotics Returns Tile ----------------
+  // ---------- Antibiotics Returns Tile (live count) ----------
   Widget _tileAntibioticsReturns() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Returns'),
@@ -373,8 +399,22 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               ],
             ),
             const Spacer(),
-            _miniStat('Today Returns', todayReturns.toString(),
-                AppColors.returnsCountColor),
+            StreamBuilder<QuerySnapshot>(
+              stream: _returnsCollection
+                  .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                  .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                  .snapshots(),
+              builder: (context, snapshot) {
+                int count = 0;
+                if (snapshot.hasData) {
+                  count = snapshot.data!.docs.length;
+                } else if (snapshot.hasError) {
+                  debugPrint('Error fetching returns: ${snapshot.error}');
+                }
+                return _miniStat('Today Returns', count.toString().padLeft(2, '0'),
+                    AppColors.returnsCountColor);
+              },
+            ),
           ],
         ),
       ),
@@ -465,7 +505,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Usage Details Tile (static) ----------------
+  // ---------------- Usage Details Tile (live counts) ----------------
   Widget _tileUsageDetails() {
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
@@ -489,13 +529,37 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             Row(
               children: [
                 Expanded(
-                  child: _miniStat('Today\nReleases', todayReleases.toString(),
-                      AppColors.releasesCountColor),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _releasesCollection
+                        .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                        .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      }
+                      return _miniStat('Today\nReleases', count.toString(),
+                          AppColors.releasesCountColor);
+                    },
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _miniStat('Today\nReturns', todayReturns.toString(),
-                      AppColors.returnsCountColor),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _returnsCollection
+                        .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                        .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      }
+                      return _miniStat('Today\nReturns', count.toString(),
+                          AppColors.returnsCountColor);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -544,7 +608,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-                // Main Content
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -554,7 +617,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                         _buildSectionTitle('Home', Icons.home_rounded),
                         const SizedBox(height: 10),
                         _buildTilesGrid(),
-                        const SizedBox(height: 50), // space for footer
+                        const SizedBox(height: 50),
                       ],
                     ),
                   ),
@@ -562,7 +625,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               ],
             ),
           ),
-          // 📌 FULL‑WIDTH FOOTER
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
