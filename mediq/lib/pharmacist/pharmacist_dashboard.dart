@@ -8,6 +8,7 @@ import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
 import 'antibiotics_release_screen.dart';
+import 'return_antibiotics_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -135,6 +136,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       case 'Antibiotics Release':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
+        );
+        break;
+      
+      case 'Antibiotics Returns':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ReturnAntibioticsScreen()),
         );
         break;
 
