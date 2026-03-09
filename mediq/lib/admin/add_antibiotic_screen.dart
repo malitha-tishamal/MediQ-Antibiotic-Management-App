@@ -28,22 +28,22 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   final _nameController = TextEditingController();
   String? _selectedCategory;
 
-  // Unit options
-  final List<String> _unitOptions = [
-    'mg',
-    'g',
-    'mcg',
-    'U',
-    'IU',
-    'mL',
-    'cc',
-    'Tablets/Capsules',
-    'IV',
-    'U/mL',
-    'mg/kg',
-    '%',
-    'gtt'
-  ];
+  // Unit options with full names
+final List<String> _unitOptions = [
+  'mg - Milligram',
+  'g - Gram',
+  'mcg - Microgram',
+  'U - Unit',
+  'IU - International Unit',
+  'mL - Milliliter',
+  'cc - Cubic Centimeter',
+  'Tablets/Capsules - Tablet or Capsule Count',
+  'IV - Intravenous',
+  'U/mL - Units per Milliliter',
+  'mg/kg - Milligram per Kilogram',
+  '% - Percentage',
+  'gtt - Drops'
+];
 
   // For each dosage: [valueCtrl, unit, srCtrl]
   final List<Map<String, dynamic>> _dosageRows = [];
@@ -408,7 +408,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                       decoration: InputDecoration(
                                         labelText: 'Unit',
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
                                       ),
                                     ),
                                   ],

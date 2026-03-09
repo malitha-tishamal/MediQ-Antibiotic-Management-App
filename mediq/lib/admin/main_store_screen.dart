@@ -407,6 +407,263 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
     );
   }
 
+  // නවීන stock item card එක
+  Widget _buildStockItemCard({
+    required Map<String, dynamic> item,
+    required String srNumber,
+    required String drugName,
+    required String dosage,
+    required int quantity,
+    required String? stockId,
+    required String key,
+    required Color statusColor,
+    required String statusText,
+    required Timestamp? lastUpdated,
+  }) {
+    final controller = _getController(key);
+    final formattedDate = lastUpdated != null
+        ? DateFormat('dd MMM yyyy').format(lastUpdated.toDate())
+        : 'Not updated';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: statusColor,
+                  width: 8,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with drug name and status chip
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        drugName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: statusColor.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // SR and Dosage info with icons
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.qr_code, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('SR: $srNumber', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.medical_services_outlined, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text('Dosage: $dosage', style: const TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Current quantity with icon
+                Row(
+                  children: [
+                    const Icon(Icons.inventory, size: 18, color: AppColors.primaryPurple),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Current Quantity: $quantity',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Quantity input and buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Enter quantity',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (stockId == null) ...[
+                      // No stock entry yet: show Add button to create
+                      ElevatedButton(
+                        onPressed: () {
+                          final newQty = int.tryParse(controller.text);
+                          if (newQty != null && newQty >= 0) {
+                            _createStockEntry(
+                              antibioticId: item['antibioticId'],
+                              dosageIndex: item['dosageIndex'],
+                              srNumber: srNumber,
+                              drugName: drugName,
+                              dosage: dosage,
+                              initialQuantity: newQty,
+                            );
+                          } else {
+                            _showSnackBar('Please enter a valid quantity', false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.successGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        child: const Text('Add'),
+                      ),
+                    ] else ...[
+                      // Stock exists: show Add and Update buttons
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              final addQty = int.tryParse(controller.text);
+                              if (addQty != null && addQty > 0) {
+                                _addQuantity(stockId, quantity, addQty);
+                              } else {
+                                _showSnackBar('Please enter a positive number', false);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.successGreen,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            child: const Text('Add'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              final newQty = int.tryParse(controller.text);
+                              if (newQty != null && newQty >= 0) {
+                                _updateQuantity(stockId, newQty);
+                              } else {
+                                _showSnackBar('Please enter a valid quantity', false);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryPurple,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                            child: const Text('Update'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+                const Divider(height: 1, thickness: 1),
+                const SizedBox(height: 10),
+
+                // Footer with ID and last updated
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.fingerprint, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          stockId != null ? 'ID: ${stockId.substring(0, 6)}...' : 'ID: Not created',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.update, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          stockId != null ? formattedDate : 'Not updated',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -468,6 +725,7 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                           final stockEntry = stockMap[key];
                           final quantity = stockEntry?['quantity'] ?? 0;
                           final stockId = stockEntry?['stockId'];
+                          final lastUpdated = stockEntry?['lastUpdated'] as Timestamp?;
 
                           allItems.add({
                             'antibioticId': antibioticId,
@@ -478,6 +736,7 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                             'quantity': quantity,
                             'stockId': stockId,
                             'key': key,
+                            'lastUpdated': lastUpdated,
                           });
                         }
                       }
@@ -508,7 +767,16 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                           const SizedBox(height: 10),
                           Expanded(
                             child: filteredItems.isEmpty
-                                ? const Center(child: Text('No items found.'))
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.inventory, size: 64, color: Colors.grey[300]),
+                                        const SizedBox(height: 16),
+                                        const Text('No items found.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                                      ],
+                                    ),
+                                  )
                                 : ListView.builder(
                                     padding: const EdgeInsets.all(20),
                                     itemCount: filteredItems.length,
@@ -520,6 +788,7 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                                       final quantity = item['quantity'];
                                       final stockId = item['stockId'];
                                       final key = item['key'];
+                                      final lastUpdated = item['lastUpdated'] as Timestamp?;
 
                                       Color statusColor;
                                       String statusText;
@@ -534,139 +803,17 @@ class _MainStoreScreenState extends State<MainStoreScreen> {
                                         statusText = 'In Stock';
                                       }
 
-                                      // Get or create controller for this item (empty by default)
-                                      final controller = _getController(key);
-
-                                      return Card(
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      drugName,
-                                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: statusColor.withOpacity(0.1),
-                                                      borderRadius: BorderRadius.circular(20),
-                                                    ),
-                                                    child: Text(
-                                                      statusText,
-                                                      style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Row(
-                                                children: [
-                                                  Text('SR: $srNumber', style: const TextStyle(color: Colors.grey)),
-                                                  const SizedBox(width: 16),
-                                                  Text('Dosage: $dosage', style: const TextStyle(color: Colors.grey)),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Text('Current Quantity: $quantity', style: const TextStyle(fontSize: 16)),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 12),
-                                              // Quantity input and buttons
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: TextFormField(
-                                                      controller: controller,
-                                                      keyboardType: TextInputType.number,
-                                                      decoration: InputDecoration(
-                                                        labelText: 'Enter quantity',
-                                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  if (stockId == null) ...[
-                                                    // No stock entry yet: show Add button to create
-                                                    ElevatedButton(
-                                                      onPressed: () {
-                                                        final newQty = int.tryParse(controller.text);
-                                                        if (newQty != null && newQty >= 0) {
-                                                          _createStockEntry(
-                                                            antibioticId: item['antibioticId'],
-                                                            dosageIndex: item['dosageIndex'],
-                                                            srNumber: srNumber,
-                                                            drugName: drugName,
-                                                            dosage: dosage,
-                                                            initialQuantity: newQty,
-                                                          );
-                                                        } else {
-                                                          _showSnackBar('Please enter a valid quantity', false);
-                                                        }
-                                                      },
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: AppColors.successGreen,
-                                                        foregroundColor: Colors.white,
-                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                      ),
-                                                      child: const Text('Add'),
-                                                    ),
-                                                  ] else ...[
-                                                    // Stock exists: show Add and Update buttons
-                                                    Row(
-                                                      children: [
-                                                        ElevatedButton(
-                                                          onPressed: () {
-                                                            final addQty = int.tryParse(controller.text);
-                                                            if (addQty != null && addQty > 0) {
-                                                              _addQuantity(stockId, quantity, addQty);
-                                                            } else {
-                                                              _showSnackBar('Please enter a positive number', false);
-                                                            }
-                                                          },
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: AppColors.successGreen,
-                                                            foregroundColor: Colors.white,
-                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                          ),
-                                                          child: const Text('Add'),
-                                                        ),
-                                                        const SizedBox(width: 8),
-                                                        ElevatedButton(
-                                                          onPressed: () {
-                                                            final newQty = int.tryParse(controller.text);
-                                                            if (newQty != null && newQty >= 0) {
-                                                              _updateQuantity(stockId, newQty);
-                                                            } else {
-                                                              _showSnackBar('Please enter a valid quantity', false);
-                                                            }
-                                                          },
-                                                          style: ElevatedButton.styleFrom(
-                                                            backgroundColor: AppColors.primaryPurple,
-                                                            foregroundColor: Colors.white,
-                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                          ),
-                                                          child: const Text('Update'),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                      return _buildStockItemCard(
+                                        item: item,
+                                        srNumber: srNumber,
+                                        drugName: drugName,
+                                        dosage: dosage,
+                                        quantity: quantity,
+                                        stockId: stockId,
+                                        key: key,
+                                        statusColor: statusColor,
+                                        statusText: statusText,
+                                        lastUpdated: lastUpdated,
                                       );
                                     },
                                   ),

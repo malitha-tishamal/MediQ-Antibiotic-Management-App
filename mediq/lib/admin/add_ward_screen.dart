@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'manage_wards_screen.dart'; // still imported but not used for navigation now
-
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
@@ -226,7 +224,22 @@ class _AddWardScreenState extends State<AddWardScreen> {
                           labelText: 'Ward Name',
                           hintText: 'e.g., 3 & 5 (Surgical prof.)',
                           prefixIcon: const Icon(Icons.place, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Ward name is required' : null,
                       ),
@@ -239,7 +252,22 @@ class _AddWardScreenState extends State<AddWardScreen> {
                           labelText: 'Managed By (Team)',
                           hintText: 'Team',
                           prefixIcon: const Icon(Icons.group, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Team is required' : null,
                       ),
@@ -252,7 +280,22 @@ class _AddWardScreenState extends State<AddWardScreen> {
                           labelText: 'Managed By (Doctor\'s Name)',
                           hintText: 'Dr. Name',
                           prefixIcon: const Icon(Icons.person, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Doctor name is required' : null,
                       ),
@@ -260,11 +303,26 @@ class _AddWardScreenState extends State<AddWardScreen> {
 
                       // Category Dropdown
                       DropdownButtonFormField<String>(
-                        initialValue: _selectedCategory,
+                        value: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Category',
                           prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
                         ),
                         items: [
                           'Pediatrics',
@@ -289,7 +347,22 @@ class _AddWardScreenState extends State<AddWardScreen> {
                           labelText: 'Description',
                           hintText: 'Any Notice Details',
                           prefixIcon: const Icon(Icons.description, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.grey),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.red),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -305,7 +378,10 @@ class _AddWardScreenState extends State<AddWardScreen> {
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Add Ward', style: TextStyle(fontSize: 16, color: Colors.white)),
+                              child: Text(
+                                widget.wardId != null ? 'Update Ward' : 'Add Ward',
+                                style: const TextStyle(fontSize: 16, color: Colors.white),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),

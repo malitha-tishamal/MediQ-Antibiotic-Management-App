@@ -33,7 +33,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String _currentUserName = 'Loading...';
-  String? _profileImageUrl; // not used in header now, but kept for potential future use
+  String? _profileImageUrl;
 
   // Filter state
   String _selectedCategoryFilter = 'All';
@@ -79,81 +79,73 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
     }
   }
 
-Widget _buildHeader(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(30),
-        bottomRight: Radius.circular(30),
-      ),
-      boxShadow: [
-        BoxShadow(
-            color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-
-        const SizedBox(height: 5),
-        
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.arrow_back,
-                  color: AppColors.headerTextDark, size: 24),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        const SizedBox(height: 2),
-        
-
-        Center(
-          child: Column(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                _currentUserName,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.headerTextDark),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'Logged in as: Administrator',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.headerTextDark),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.headerTextDark, size: 24),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 8),
-        
-
-        const Text(
-          'Manage Wards',
-          style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark),
-        ),
-      ],
-    ),
-  );
-}
+          const SizedBox(height: 2),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.headerTextDark),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Manage Wards',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.headerTextDark),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _confirmDelete(String docId, String wardName) async {
     final confirm = await showDialog<bool>(
@@ -203,7 +195,6 @@ Widget _buildHeader(BuildContext context) {
     );
   }
 
-  /// Build search bar
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -230,7 +221,6 @@ Widget _buildHeader(BuildContext context) {
     );
   }
 
-  /// Build a modern summary card with counts (clickable stats)
   Widget _buildSummaryCard(AsyncSnapshot<QuerySnapshot> snapshot) {
     int total = 0;
     int pediatrics = 0, medicine = 0, icu = 0, surgery = 0, medSub = 0, surgSub = 0, other = 0;
@@ -298,7 +288,6 @@ Widget _buildHeader(BuildContext context) {
                   color: AppColors.darkText,
                 ),
               ),
-              // Total clickable
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -379,6 +368,25 @@ Widget _buildHeader(BuildContext context) {
     );
   }
 
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Pediatrics':
+        return Colors.blue;
+      case 'Medicine':
+        return Colors.green;
+      case 'ICU':
+        return Colors.orange;
+      case 'Surgery':
+        return Colors.purple;
+      case 'Medicine Subspecialty':
+        return Colors.teal;
+      case 'Surgery Subspecialty':
+        return Colors.brown;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -402,18 +410,14 @@ Widget _buildHeader(BuildContext context) {
                       }
 
                       final docs = snapshot.data?.docs ?? [];
-
-                      // Apply filters: category + search
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
-                        // Category filter
                         if (_selectedCategoryFilter != 'All') {
                           final category = data['category'] ?? '';
                           if (category != _selectedCategoryFilter) return false;
                         }
                         
-                        // Search filter (by ward name)
                         if (_searchQuery.isNotEmpty) {
                           final name = (data['wardName'] ?? '').toLowerCase();
                           if (!name.contains(_searchQuery)) return false;
@@ -427,33 +431,7 @@ Widget _buildHeader(BuildContext context) {
                           _buildSummaryCard(snapshot),
                           Expanded(
                             child: filteredDocs.isEmpty
-                                ? Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.local_hospital,
-                                            size: 64, color: Colors.grey[300]),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          _searchQuery.isNotEmpty
-                                              ? 'No wards match "$_searchQuery"'
-                                              : 'No ${_selectedCategoryFilter == 'All' ? '' : _selectedCategoryFilter} wards found.',
-                                          style: const TextStyle(
-                                              color: Colors.grey, fontSize: 16),
-                                        ),
-                                        if (_selectedCategoryFilter != 'All' || _searchQuery.isNotEmpty)
-                                          TextButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _selectedCategoryFilter = 'All';
-                                                _searchController.clear();
-                                              });
-                                            },
-                                            child: const Text('Clear filters'),
-                                          ),
-                                      ],
-                                    ),
-                                  )
+                                ? _buildEmptyState()
                                 : ListView.builder(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 20, vertical: 8),
@@ -473,90 +451,199 @@ Widget _buildHeader(BuildContext context) {
                                         createdDate = DateFormat('dd MMM yyyy').format(createdAt.toDate());
                                       }
 
+                                      // ----- නවීන Card එක (edit/delete buttons සහිත) -----
                                       return Container(
                                         margin: const EdgeInsets.only(bottom: 16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(24),
+                                          borderRadius: BorderRadius.circular(28),
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [Colors.white, Color(0xFFF9F7FF)],
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primaryPurple.withOpacity(0.08),
-                                              blurRadius: 20,
-                                              offset: const Offset(0, 6),
+                                              color: _getCategoryColor(category).withOpacity(0.2),
+                                              blurRadius: 18,
+                                              offset: const Offset(0, 8),
+                                              spreadRadius: -5,
+                                            ),
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
                                             ),
                                           ],
                                         ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(20),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(28),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  left: BorderSide(
+                                                    color: _getCategoryColor(category),
+                                                    width: 8,
+                                                  ),
+                                                ),
+                                              ),
+                                              padding: const EdgeInsets.all(18),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      wardName,
-                                                      style: const TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: AppColors.darkText,
+                                                  Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          wardName,
+                                                          style: const TextStyle(
+                                                            fontSize: 20,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: AppColors.darkText,
+                                                            letterSpacing: 0.5,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Container(
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.orange.withOpacity(0.1),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: IconButton(
+                                                              icon: const Icon(Icons.edit,
+                                                                  color: Colors.orange, size: 22),
+                                                              onPressed: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (_) =>
+                                                                        AddWardScreen(wardId: doc.id),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Container(
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.red.withOpacity(0.1),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: IconButton(
+                                                              icon: const Icon(Icons.delete,
+                                                                  color: Colors.red, size: 22),
+                                                              onPressed: () => _confirmDelete(doc.id, wardName),
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 8,
+                                                    children: [
+                                                      _buildInfoChip(icon: Icons.group, label: team),
+                                                      _buildInfoChip(icon: Icons.person, label: managedBy),
+                                                      _buildInfoChip(
+                                                        icon: Icons.category,
+                                                        label: category,
+                                                        color: _getCategoryColor(category),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  if (description.isNotEmpty)
+                                                    Container(
+                                                      padding: const EdgeInsets.all(12),
+                                                      decoration: BoxDecoration(
+                                                        color: AppColors.chipBackground,
+                                                        borderRadius: BorderRadius.circular(16),
+                                                      ),
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          const Icon(Icons.description,
+                                                              size: 16, color: Colors.grey),
+                                                          const SizedBox(width: 8),
+                                                          Expanded(
+                                                            child: Text(
+                                                              description,
+                                                              style: const TextStyle(fontSize: 13),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    )
+                                                  else
+                                                    Container(
+                                                      padding: const EdgeInsets.all(12),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey.shade50,
+                                                        borderRadius: BorderRadius.circular(16),
+                                                      ),
+                                                      child: const Row(
+                                                        children: [
+                                                          Icon(Icons.info_outline,
+                                                              size: 16, color: Colors.grey),
+                                                          SizedBox(width: 8),
+                                                          Text(
+                                                            'No description provided',
+                                                            style: TextStyle(color: Colors.grey),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
-                                                  ),
-                                                  IconButton(
-                                                    icon: const Icon(Icons.edit,
-                                                        color: Colors.orange, size: 22),
-                                                    onPressed: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) => AddWardScreen(wardId: doc.id),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  IconButton(
-                                                    icon: const Icon(Icons.delete,
-                                                        color: Colors.red, size: 22),
-                                                    onPressed: () => _confirmDelete(doc.id, wardName),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Wrap(
-                                                spacing: 8,
-                                                runSpacing: 8,
-                                                children: [
-                                                  _buildInfoChip('Team: $team'),
-                                                  _buildInfoChip('Doctor: $managedBy'),
-                                                  _buildInfoChip('Category: $category'),
-                                                ],
-                                              ),
-                                              if (description.isNotEmpty) ...[
-                                                const SizedBox(height: 12),
-                                                Text(
-                                                  'Description: $description',
-                                                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 12),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      'ID: ${doc.id.substring(0, 6)}...',
-                                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    createdDate,
-                                                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                                                  const SizedBox(height: 18),
+                                                  const Divider(height: 1, thickness: 1),
+                                                  const SizedBox(height: 10),
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          const Icon(Icons.fingerprint,
+                                                              size: 14, color: Colors.grey),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            'ID: ${doc.id.substring(0, 6)}...',
+                                                            style: const TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors.grey,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          const Icon(Icons.calendar_today,
+                                                              size: 12, color: Colors.grey),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            createdDate,
+                                                            style: const TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.grey,
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       );
@@ -571,7 +658,6 @@ Widget _buildHeader(BuildContext context) {
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -587,19 +673,60 @@ Widget _buildHeader(BuildContext context) {
           ),
         ],
       ),
-      
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  Widget _buildInfoChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.chipBackground,
-        borderRadius: BorderRadius.circular(20),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.local_hospital, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            _searchQuery.isNotEmpty
+                ? 'No wards match "$_searchQuery"'
+                : 'No ${_selectedCategoryFilter == 'All' ? '' : _selectedCategoryFilter} wards found.',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+          if (_selectedCategoryFilter != 'All' || _searchQuery.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedCategoryFilter = 'All';
+                  _searchController.clear();
+                });
+              },
+              child: const Text('Clear filters'),
+            ),
+        ],
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+    );
+  }
+
+  Widget _buildInfoChip({required IconData icon, required String label, Color? color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: (color ?? Colors.grey).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: (color ?? Colors.grey).withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color ?? Colors.grey),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color ?? Colors.grey,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
