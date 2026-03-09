@@ -392,7 +392,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             subtitle: 'Stock Types',
             value: stockTypesCount),
         _tileUsageDetails(),
-        _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst'),
+        _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst\n hh'),
         _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
         _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(

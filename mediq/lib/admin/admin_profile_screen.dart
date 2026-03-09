@@ -22,6 +22,9 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);  
   static const Color headerTextDark = Color(0xFF333333);
+  
+  // Added for consistent input styling
+  static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
 class AdminProfileScreen extends StatefulWidget {
@@ -66,6 +69,63 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _uploadingImage = false;
   bool _hasUnsavedChanges = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+    );
+  }
 
   @override
   void initState() {
@@ -785,36 +845,22 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
+  // Updated text field builder using modern input decoration
   Widget _buildTextField({
     required TextEditingController controller,
-    required String hint,
+    required String label,
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       enabled: enabled,
       style: TextStyle(color: enabled ? Colors.black : Colors.grey.shade600),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
-        filled: true,
-        fillColor: enabled ? Colors.white : Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15), 
-          borderSide: BorderSide(color: Colors.grey.shade300)
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15), 
-          borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2)
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15), 
-          borderSide: BorderSide(color: Colors.grey.shade200)
-        ),
+      decoration: _inputDecoration(
+        label: label,
+        enabled: enabled,
+        // No prefix icon for profile fields
       ),
     );
   }
@@ -874,7 +920,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: _isVerificationPending ? Colors.grey.shade300 : AppColors.primaryPurple,
+            color: _isVerificationPending ? Colors.grey.shade300 : AppColors.inputBorder,
             width: 1.5,
           ),
         ),
@@ -1022,7 +1068,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       drawer: AdminDrawer(
         userName: _displayName,
         userRole: _role.isNotEmpty ? _role : 'Administrator',
-        profileImageUrl: _profileImageUrl,   // ← FIX: pass image URL to drawer
+        profileImageUrl: _profileImageUrl,
         onNavTap: (title) {
           _showSnackBar('$title tapped');
         },
@@ -1068,49 +1114,51 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               _buildImagePreview(),
 
                               const SizedBox(height: 18),
-                              const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              const SizedBox(height: 8),
+
+                              // Full Name field with modern styling
                               _buildTextField(
-                                controller: _fullNameController, 
-                                hint: 'Full Name', 
-                                enabled: !_isVerificationPending
+                                controller: _fullNameController,
+                                label: 'Full Name',
+                                enabled: !_isVerificationPending,
                               ),
 
                               const SizedBox(height: 12),
-                              const Text('Email', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              const SizedBox(height: 8),
+
+                              // Email field
                               _buildTextField(
-                                controller: _emailController, 
-                                hint: 'Email', 
-                                keyboardType: TextInputType.emailAddress, 
-                                enabled: !_isVerificationPending
+                                controller: _emailController,
+                                label: 'Email',
+                                keyboardType: TextInputType.emailAddress,
+                                enabled: !_isVerificationPending,
                               ),
 
                               const SizedBox(height: 12),
-                              const Text('NIC', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              const SizedBox(height: 8),
+
+                              // NIC field
                               _buildTextField(
-                                controller: _nicController, 
-                                hint: 'NIC', 
-                                enabled: !_isVerificationPending
+                                controller: _nicController,
+                                label: 'NIC',
+                                enabled: !_isVerificationPending,
                               ),
 
                               const SizedBox(height: 12),
-                              const Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              const SizedBox(height: 8),
+
+                              // Mobile Number field
                               _buildTextField(
-                                controller: _mobileController, 
-                                hint: 'Mobile Number', 
-                                keyboardType: TextInputType.phone, 
-                                enabled: !_isVerificationPending
+                                controller: _mobileController,
+                                label: 'Mobile Number',
+                                keyboardType: TextInputType.phone,
+                                enabled: !_isVerificationPending,
                               ),
 
                               const SizedBox(height: 24),
+
                               Center(
                                 child: _buildSaveButton(_disableFieldsAndButton),
                               ),
 
                               const SizedBox(height: 18),
+
                               Padding(
                                 padding: const EdgeInsets.only(left: 6.0),
                                 child: Text(
@@ -1124,6 +1172,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                               ),
 
                               const SizedBox(height: 30),
+
                               if (_error != null)
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
