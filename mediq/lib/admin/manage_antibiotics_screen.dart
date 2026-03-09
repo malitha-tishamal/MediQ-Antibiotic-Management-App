@@ -34,10 +34,10 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String _currentUserName = 'Loading...';
-  String? _profileImageUrl; // not used in header now
+  String? _profileImageUrl;
 
   // Filter state
-  String _selectedFilter = 'All'; // 'All', 'Access', 'Watch', 'Reserve', 'Other'
+  String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -103,7 +103,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 5),
-          // Back button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -137,7 +136,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // Page title
           const Text(
             'Manage Antibiotics',
             style: TextStyle(
@@ -198,7 +196,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     );
   }
 
-  /// Build search bar
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -225,7 +222,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     );
   }
 
-  /// Build a modern summary card with counts (clickable stats)
   Widget _buildSummaryCard(AsyncSnapshot<QuerySnapshot> snapshot) {
     int total = 0;
     int access = 0, watch = 0, reserve = 0, other = 0;
@@ -238,9 +234,13 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
         final category = data['category'] ?? '';
         if (category == 'Access') {
           access++;
-        } else if (category == 'Watch') watch++;
-        else if (category == 'Reserve') reserve++;
-        else other++;
+        } else if (category == 'Watch') {
+          watch++;
+        } else if (category == 'Reserve') {
+          reserve++;
+        } else {
+          other++;
+        }
       }
     }
 
@@ -276,7 +276,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                   color: AppColors.darkText,
                 ),
               ),
-              // Total clickable
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -362,7 +361,6 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
               children: [
                 _buildHeader(context),
                 _buildSearchBar(),
-
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _antibioticsCollection
@@ -377,26 +375,22 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                       }
 
                       final docs = snapshot.data?.docs ?? [];
-
-                      // Apply filters: category + search
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
-                        // Category filter
                         if (_selectedFilter != 'All') {
                           final category = data['category'] ?? '';
                           if (_selectedFilter == 'Other') {
-                            // Other category: anything not Access, Watch, Reserve
-                            if (category == 'Access' || category == 'Watch' || category == 'Reserve') {
+                            if (category == 'Access' || 
+                                category == 'Watch' || 
+                                category == 'Reserve') {
                               return false;
                             }
                           } else {
-                            // Specific category
                             if (category != _selectedFilter) return false;
                           }
                         }
                         
-                        // Search filter (by name)
                         if (_searchQuery.isNotEmpty) {
                           final name = (data['name'] ?? '').toLowerCase();
                           if (!name.contains(_searchQuery)) return false;
@@ -410,216 +404,271 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                           _buildSummaryCard(snapshot),
                           Expanded(
                             child: filteredDocs.isEmpty
-                                ? Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.medication,
-                                            size: 64, color: Colors.grey[300]),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          _searchQuery.isNotEmpty
-                                              ? 'No antibiotics match "$_searchQuery"'
-                                              : 'No ${_selectedFilter == 'All' ? '' : _selectedFilter} antibiotics found.',
-                                          style: const TextStyle(
-                                              color: Colors.grey, fontSize: 16),
-                                        ),
-                                        if (_selectedFilter != 'All' || _searchQuery.isNotEmpty)
-                                          TextButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _selectedFilter = 'All';
-                                                _searchController.clear();
-                                              });
-                                            },
-                                            child: const Text('Clear filters'),
-                                          ),
-                                      ],
-                                    ),
-                                  )
+                                ? _buildEmptyState()
                                 : ListView.builder(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 20, vertical: 8),
                                     itemCount: filteredDocs.length,
                                     itemBuilder: (context, index) {
                                       final doc = filteredDocs[index];
-                                      final data =
-                                          doc.data() as Map<String, dynamic>;
+                                      final data = doc.data() as Map<String, dynamic>;
 
                                       final name = data['name'] ?? 'Unnamed';
                                       final category = data['category'] ?? '-';
-                                      final dosages = data['dosages']
-                                              as List<dynamic>? ??
-                                          [];
+                                      final dosages = data['dosages'] as List<dynamic>? ?? [];
+                                      final Timestamp? createdAt = data['createdAt'] as Timestamp?;
+                                      final createdDate = createdAt != null
+                                          ? DateFormat('dd MMM yyyy').format(createdAt.toDate())
+                                          : '';
 
-                                      final Timestamp? createdAt =
-                                          data['createdAt'] as Timestamp?;
-                                      String createdDate = '';
-                                      if (createdAt != null) {
-                                        createdDate =
-                                            DateFormat('dd MMM yyyy')
-                                                .format(createdAt.toDate());
-                                      }
-
+                                      // ----- නවීන Card එක (edit/delete buttons සහිතව) -----
                                       return Container(
                                         margin: const EdgeInsets.only(bottom: 16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(24),
+                                          borderRadius: BorderRadius.circular(28),
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              Colors.white,
+                                              Color(0xFFF9F7FF),
+                                            ],
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.primaryPurple
-                                                  .withOpacity(0.08),
-                                              blurRadius: 20,
-                                              offset: const Offset(0, 6),
+                                              color: _getCategoryColor(category).withOpacity(0.2),
+                                              blurRadius: 18,
+                                              offset: const Offset(0, 8),
+                                              spreadRadius: -5,
+                                            ),
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
                                             ),
                                           ],
                                         ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(20),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      name,
-                                                      style: const TextStyle(
-                                                        fontSize: 18,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            AppColors.darkText,
-                                                      ),
-                                                    ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(28),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  left: BorderSide(
+                                                    color: _getCategoryColor(category),
+                                                    width: 8,
                                                   ),
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                        Icons.edit,
-                                                        color: Colors.orange,
-                                                        size: 22),
-                                                    onPressed: () {
-                                                      Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              AddAntibioticScreen(
-                                                                  antibioticId:
-                                                                      doc.id),
+                                                ),
+                                              ),
+                                              padding: const EdgeInsets.all(18),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          name,
+                                                          style: const TextStyle(
+                                                            fontSize: 20,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: AppColors.darkText,
+                                                            letterSpacing: 0.5,
+                                                          ),
                                                         ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                        Icons.delete,
-                                                        color: Colors.red,
-                                                        size: 22),
-                                                    onPressed: () =>
-                                                        _confirmDelete(
-                                                            doc.id, name),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: _getCategoryColor(
-                                                          category)
-                                                      .withOpacity(0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: Text(
-                                                  category,
-                                                  style: TextStyle(
-                                                    color:
-                                                        _getCategoryColor(
-                                                            category),
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              if (dosages.isNotEmpty) ...[
-                                                const Text(
-                                                  'Dosages',
-                                                  style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.grey,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Wrap(
-                                                  spacing: 8,
-                                                  runSpacing: 8,
-                                                  children:
-                                                      dosages.map<Widget>((d) {
-                                                    final dosage =
-                                                        d as Map<String, dynamic>;
-                                                    return Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8),
-                                                      decoration: BoxDecoration(
-                                                        color: AppColors
-                                                            .chipBackground,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(16),
                                                       ),
-                                                      child: Text(
-                                                        '${dosage['dosage']} (SR: ${dosage['srNumber']})',
-                                                        style: const TextStyle(
-                                                            fontSize: 12),
+                                                      Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Container(
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.orange.withOpacity(0.1),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                  Icons.edit,
+                                                                  color: Colors.orange,
+                                                                  size: 22),
+                                                              onPressed: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (_) =>
+                                                                        AddAntibioticScreen(
+                                                                            antibioticId:
+                                                                                doc.id),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Container(
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.red.withOpacity(0.1),
+                                                              borderRadius: BorderRadius.circular(12),
+                                                            ),
+                                                            child: IconButton(
+                                                              icon: const Icon(
+                                                                  Icons.delete,
+                                                                  color: Colors.red,
+                                                                  size: 22),
+                                                              onPressed: () =>
+                                                                  _confirmDelete(doc.id, name),
+                                                              padding: EdgeInsets.zero,
+                                                              constraints: const BoxConstraints(),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
-                                                    );
-                                                  }).toList(),
-                                                ),
-                                              ] else
-                                                const Text(
-                                                  'No dosages',
-                                                  style: TextStyle(
-                                                      color: Colors.grey),
-                                                ),
-                                              const SizedBox(height: 16),
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Expanded(
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                        horizontal: 12, vertical: 6),
+                                                    decoration: BoxDecoration(
+                                                      color: _getCategoryColor(category).withOpacity(0.15),
+                                                      borderRadius: BorderRadius.circular(30),
+                                                      border: Border.all(
+                                                        color: _getCategoryColor(category).withOpacity(0.3),
+                                                      ),
+                                                    ),
                                                     child: Text(
-                                                      'ID: ${doc.id.substring(0, 6)}...',
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color: Colors.grey,
+                                                      category,
+                                                      style: TextStyle(
+                                                        color: _getCategoryColor(category),
+                                                        fontWeight: FontWeight.w700,
+                                                        fontSize: 12,
                                                       ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
-                                                  Text(
-                                                    createdDate,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.grey,
-                                                      fontWeight:
-                                                          FontWeight.w500,
+                                                  const SizedBox(height: 16),
+                                                  if (dosages.isNotEmpty) ...[
+                                                    const Text(
+                                                      'Available Dosages',
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.grey,
+                                                        fontWeight: FontWeight.w600,
+                                                        letterSpacing: 0.3,
+                                                      ),
                                                     ),
+                                                    const SizedBox(height: 10),
+                                                    Wrap(
+                                                      spacing: 8,
+                                                      runSpacing: 8,
+                                                      children: dosages.map<Widget>((d) {
+                                                        final dosage = d as Map<String, dynamic>;
+                                                        return Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                              horizontal: 12, vertical: 8),
+                                                          decoration: BoxDecoration(
+                                                            color: AppColors.chipBackground,
+                                                            borderRadius: BorderRadius.circular(24),
+                                                            border: Border.all(
+                                                              color: Colors.grey.shade200,
+                                                            ),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              const Icon(
+                                                                Icons.medical_services_outlined,
+                                                                size: 14,
+                                                                color: AppColors.primaryPurple,
+                                                              ),
+                                                              const SizedBox(width: 6),
+                                                              Text(
+                                                                '${dosage['dosage']}',
+                                                                style: const TextStyle(
+                                                                    fontSize: 13,
+                                                                    fontWeight: FontWeight.w500),
+                                                              ),
+                                                              const SizedBox(width: 4),
+                                                              Container(
+                                                                width: 1,
+                                                                height: 14,
+                                                                color: Colors.grey.shade400,
+                                                              ),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                'SR: ${dosage['srNumber']}',
+                                                                style: const TextStyle(
+                                                                  fontSize: 11,
+                                                                  color: Colors.grey,
+                                                                  fontWeight: FontWeight.w400,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ),
+                                                  ] else
+                                                    Container(
+                                                      padding: const EdgeInsets.all(12),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey.shade50,
+                                                        borderRadius: BorderRadius.circular(16),
+                                                      ),
+                                                      child: const Row(
+                                                        children: [
+                                                          Icon(Icons.info_outline,
+                                                              size: 16, color: Colors.grey),
+                                                          SizedBox(width: 8),
+                                                          Text(
+                                                            'No dosages added yet',
+                                                            style: TextStyle(color: Colors.grey),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 18),
+                                                  const Divider(height: 1, thickness: 1),
+                                                  const SizedBox(height: 10),
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          const Icon(Icons.fingerprint,
+                                                              size: 14, color: Colors.grey),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            'ID: ${doc.id.substring(0, 6)}...',
+                                                            style: const TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors.grey,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          const Icon(Icons.calendar_today,
+                                                              size: 12, color: Colors.grey),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            createdDate,
+                                                            style: const TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.grey,
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       );
@@ -649,8 +698,34 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
           ),
         ],
       ),
-      
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.medication, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            _searchQuery.isNotEmpty
+                ? 'No antibiotics match "$_searchQuery"'
+                : 'No ${_selectedFilter == 'All' ? '' : _selectedFilter} antibiotics found.',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+          if (_selectedFilter != 'All' || _searchQuery.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedFilter = 'All';
+                  _searchController.clear();
+                });
+              },
+              child: const Text('Clear filters'),
+            ),
+        ],
+      ),
     );
   }
 
