@@ -139,7 +139,7 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  // 🌟 NEW COMPACT HEADER (without profile picture)
+  // Header
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -239,6 +239,87 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
+  /// නවීන filter chips row එක – gradient background සහ shadows සහිත
+  Widget _buildModernFilterChips() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryPurple.withOpacity(0.1),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: UserStatusFilter.values.map((filter) {
+          final isSelected = _currentFilter == filter;
+          Color color;
+          switch (filter) {
+            case UserStatusFilter.all:
+              color = AppColors.primaryPurple;
+              break;
+            case UserStatusFilter.approved:
+              color = AppColors.approvedColor;
+              break;
+            case UserStatusFilter.disabled:
+              color = AppColors.disabledColor;
+              break;
+            case UserStatusFilter.pending:
+              color = AppColors.pendingColor;
+              break;
+          }
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _currentFilter = filter;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? color : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    _getFilterName(filter),
+                    style: TextStyle(
+                      color: isSelected ? color : AppColors.darkText.withOpacity(0.6),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -251,102 +332,17 @@ class _UserListScreenState extends State<UserListScreen> {
               children: [
                 _buildHeader(context),
                 _buildSearchBar(),
-                // Modern Filter Chips
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: UserStatusFilter.values.map((filter) {
-                      final isSelected = _currentFilter == filter;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _currentFilter = filter;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primaryPurple : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _getFilterName(filter),
-                                style: TextStyle(
-                                  color: isSelected ? Colors.white : AppColors.darkText.withOpacity(0.6),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                _buildModernFilterChips(),
                 const SizedBox(height: 8),
-                // User List
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _userCollection.where('role', isEqualTo: widget.role).snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const CircularProgressIndicator(
-                                color: AppColors.primaryPurple,
-                                strokeWidth: 2,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading users...',
-                                style: TextStyle(
-                                  color: AppColors.darkText.withOpacity(0.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return _buildModernLoadingState();
                       }
                       if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                color: AppColors.disabledColor,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading data',
-                                style: TextStyle(
-                                  color: AppColors.darkText.withOpacity(0.7),
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return _buildModernErrorState(snapshot.error.toString());
                       }
                       final documents = snapshot.data?.docs ?? [];
 
@@ -354,13 +350,11 @@ class _UserListScreenState extends State<UserListScreen> {
                       final filteredDocs = documents.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
-                        // Status filter
                         if (_currentFilter != UserStatusFilter.all) {
                           final status = data['status'] ?? '';
                           if (status != _getFilterStatusValue(_currentFilter)) return false;
                         }
                         
-                        // Search filter
                         if (_searchQuery.isNotEmpty) {
                           final fullName = (data['fullName'] ?? '').toLowerCase();
                           final email = (data['email'] ?? '').toLowerCase();
@@ -377,26 +371,7 @@ class _UserListScreenState extends State<UserListScreen> {
                       }).toList();
 
                       if (filteredDocs.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.people_outline,
-                                color: AppColors.darkText.withOpacity(0.3),
-                                size: 64,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No ${widget.role} accounts found',
-                                style: TextStyle(
-                                  color: AppColors.darkText.withOpacity(0.5),
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
+                        return _buildModernEmptyState();
                       }
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -405,7 +380,7 @@ class _UserListScreenState extends State<UserListScreen> {
                           final doc = filteredDocs[index];
                           final data = doc.data() as Map<String, dynamic>;
                           final userId = doc.id;
-                          return _buildUserCard(userId, data);
+                          return _buildModernUserCard(userId, data);
                         },
                       );
                     },
@@ -436,7 +411,8 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  Widget _buildUserCard(String userId, Map<String, dynamic> data) {
+  /// නවීන user card – gradient background, left border (status color), double shadows
+  Widget _buildModernUserCard(String userId, Map<String, dynamic> data) {
     final fullName = data['fullName'] ?? 'Malitha Tishamal';
     final email = data['email'] ?? 'malithatishamal@gmail.com';
     final nic = data['nic'] ?? '200302202615';
@@ -474,187 +450,220 @@ class _UserListScreenState extends State<UserListScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
         boxShadow: [
           BoxShadow(
+            color: statusColor.withOpacity(0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // User Info Section
-            Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: statusColor,
+                  width: 8,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Modern Profile Avatar with Image
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: profileImageUrl == null 
-                        ? LinearGradient(
-                            colors: [
-                              AppColors.primaryPurple.withOpacity(0.8),
-                              AppColors.primaryPurple,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryPurple.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                // User Info Section
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Modern Profile Avatar with Image
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: profileImageUrl == null 
+                            ? LinearGradient(
+                                colors: [
+                                  AppColors.primaryPurple.withOpacity(0.8),
+                                  AppColors.primaryPurple,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        image: profileImageUrl != null 
+                            ? DecorationImage(
+                                image: NetworkImage(profileImageUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                    ],
-                    image: profileImageUrl != null 
-                        ? DecorationImage(
-                            image: NetworkImage(profileImageUrl),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: profileImageUrl == null 
-                      ? const Center(
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 16),
-                // User Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              fullName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkText,
+                      child: profileImageUrl == null 
+                          ? const Center(
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 28,
                               ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
-                            onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  statusIcon,
-                                  size: 14,
-                                  color: statusColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    fontSize: 12,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    // User Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  fullName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: statusColor,
+                                    color: AppColors.darkText,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              // Edit button with modern container
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryPurple.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
+                                  onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Status chip with border
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      statusIcon,
+                                      size: 14,
+                                      color: statusColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      statusText,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: statusColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _buildInfoRow(Icons.email, email),
+                          const SizedBox(height: 6),
+                          _buildInfoRow(Icons.badge, 'NIC: $nic'),
+                          const SizedBox(height: 6),
+                          _buildInfoRow(Icons.phone, 'Mobile: $mobile'),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 12,
+                                color: AppColors.darkText.withOpacity(0.4),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                formattedDate,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.darkText.withOpacity(0.4),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      _buildInfoRow(Icons.email, email),
-                      const SizedBox(height: 6),
-                      _buildInfoRow(Icons.badge, 'NIC: $nic'),
-                      const SizedBox(height: 6),
-                      _buildInfoRow(Icons.phone, 'Mobile: $mobile'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 12,
-                            color: AppColors.darkText.withOpacity(0.4),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            formattedDate,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.darkText.withOpacity(0.4),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Modern Action Buttons – disabled for current user
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildModernActionButton(
+                          'Approve',
+                          isCurrentUser ? Colors.grey : AppColors.successGreen,
+                          Icons.check_circle,
+                          isCurrentUser || status == 'Approved',
+                          isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildModernActionButton(
+                          'Disable',
+                          isCurrentUser ? Colors.grey : AppColors.disabledColor,
+                          Icons.lock,
+                          isCurrentUser || status == 'Disabled',
+                          isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildModernActionButton(
+                          'Delete',
+                          isCurrentUser ? Colors.grey : AppColors.warningOrange,
+                          Icons.delete_outline,
+                          isCurrentUser,
+                          isCurrentUser ? null : () => _confirmDelete(userId, fullName),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // Modern Action Buttons – disabled for current user
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildModernActionButton(
-                      'Approve',
-                      isCurrentUser ? Colors.grey : AppColors.successGreen,
-                      Icons.check_circle,
-                      isCurrentUser || status == 'Approved',
-                      isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildModernActionButton(
-                      'Disable',
-                      isCurrentUser ? Colors.grey : AppColors.disabledColor,
-                      Icons.lock,
-                      isCurrentUser || status == 'Disabled',
-                      isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildModernActionButton(
-                      'Delete',
-                      isCurrentUser ? Colors.grey : AppColors.warningOrange,
-                      Icons.delete_outline,
-                      isCurrentUser,
-                      isCurrentUser ? null : () => _confirmDelete(userId, fullName),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -690,18 +699,18 @@ class _UserListScreenState extends State<UserListScreen> {
     VoidCallback? onTap,
   ) {
     return Material(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       color: isDisabled ? Colors.grey.withOpacity(0.1) : color.withOpacity(0.1),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isDisabled ? Colors.grey.withOpacity(0.3) : color.withOpacity(0.5),
-              width: isDisabled ? 1 : 1,
+              width: isDisabled ? 1 : 1.5,
             ),
           ),
           child: Column(
@@ -723,6 +732,129 @@ class _UserListScreenState extends State<UserListScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Modern loading state
+  Widget _buildModernLoadingState() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryPurple.withOpacity(0.1),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              color: AppColors.primaryPurple,
+              strokeWidth: 3,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading users...',
+              style: TextStyle(
+                color: AppColors.darkText.withOpacity(0.6),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modern error state
+  Widget _buildModernErrorState(String error) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.1),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: AppColors.disabledColor,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Error loading data',
+              style: TextStyle(
+                color: AppColors.darkText,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.length > 100 ? '${error.substring(0, 100)}...' : error,
+              style: TextStyle(
+                color: AppColors.darkText.withOpacity(0.5),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modern empty state
+  Widget _buildModernEmptyState() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryPurple.withOpacity(0.1),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.people_outline,
+              color: AppColors.darkText.withOpacity(0.3),
+              size: 64,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No ${widget.role} accounts found',
+              style: TextStyle(
+                color: AppColors.darkText.withOpacity(0.5),
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );

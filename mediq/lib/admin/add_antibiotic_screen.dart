@@ -12,10 +12,11 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistent border
 }
 
 class AddAntibioticScreen extends StatefulWidget {
-  final String? antibioticId; // for editing
+  final String? antibioticId;
 
   const AddAntibioticScreen({super.key, this.antibioticId});
 
@@ -28,29 +29,25 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   final _nameController = TextEditingController();
   String? _selectedCategory;
 
-  // Unit options with full names
-final List<String> _unitOptions = [
-  'mg - Milligram',
-  'g - Gram',
-  'mcg - Microgram',
-  'U - Unit',
-  'IU - International Unit',
-  'mL - Milliliter',
-  'cc - Cubic Centimeter',
-  'Tablets/Capsules - Tablet or Capsule Count',
-  'IV - Intravenous',
-  'U/mL - Units per Milliliter',
-  'mg/kg - Milligram per Kilogram',
-  '% - Percentage',
-  'gtt - Drops'
-];
+  final List<String> _unitOptions = [
+    'mg - Milligram',
+    'g - Gram',
+    'mcg - Microgram',
+    'U - Unit',
+    'IU - International Unit',
+    'mL - Milliliter',
+    'cc - Cubic Centimeter',
+    'Tablets/Capsules - Tablet or Capsule Count',
+    'IV - Intravenous',
+    'U/mL - Units per Milliliter',
+    'mg/kg - Milligram per Kilogram',
+    '% - Percentage',
+    'gtt - Drops'
+  ];
 
-  // For each dosage: [valueCtrl, unit, srCtrl]
   final List<Map<String, dynamic>> _dosageRows = [];
-
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
@@ -66,6 +63,64 @@ final List<String> _unitOptions = [
     }
   }
 
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
+
+  // ---------- User details ----------
   Future<void> _fetchCurrentUserDetails() async {
     final user = _auth.currentUser;
     if (user != null) {
@@ -84,7 +139,6 @@ final List<String> _unitOptions = [
     }
   }
 
-  // Parse a stored dosage string like "10 mg" into numeric and unit
   Map<String, String> _parseDosage(String dosageStr) {
     dosageStr = dosageStr.trim();
     int lastSpace = dosageStr.lastIndexOf(' ');
@@ -303,32 +357,64 @@ final List<String> _unitOptions = [
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Antibiotic Name
+                          // Antibiotic Name with modern styling
                           TextFormField(
                             controller: _nameController,
-                            decoration: InputDecoration(
-                              labelText: 'Antibiotic Name',
+                            decoration: _inputDecoration(
+                              label: 'Antibiotic Name',
                               hintText: 'eg: Amoxicillin',
-                              prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              prefixIcon: Icons.medication,
                             ),
                             validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
                           ),
                           const SizedBox(height: 16),
 
-                          // Category Dropdown
-                          DropdownButtonFormField<String>(
-                            value: _selectedCategory,
-                            decoration: InputDecoration(
-                              labelText: 'Category',
-                              prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            items: ['Access', 'Watch', 'Reserve', 'Other'].map((category) {
-                              return DropdownMenuItem(value: category, child: Text(category));
-                            }).toList(),
-                            onChanged: (value) => setState(() => _selectedCategory = value),
-                            validator: (value) => value == null ? 'Please select a category' : null,
+                          // Category Dropdown with container border
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Category',
+                                style: TextStyle(
+                                  color: AppColors.darkText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                                  color: Colors.white,
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedCategory,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                  ),
+                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+                                  style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
+                                  dropdownColor: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  items: ['Access', 'Watch', 'Reserve', 'Other'].map((category) {
+                                    return DropdownMenuItem(
+                                      value: category,
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.category, color: AppColors.primaryPurple, size: 18),
+                                          const SizedBox(width: 10),
+                                          Text(category),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) => setState(() => _selectedCategory = value),
+                                  validator: (value) => value == null ? 'Please select a category' : null,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
 
@@ -356,10 +442,9 @@ final List<String> _unitOptions = [
                                           child: TextFormField(
                                             controller: valueCtrl,
                                             keyboardType: TextInputType.number,
-                                            decoration: InputDecoration(
-                                              labelText: 'Dosage',
+                                            decoration: _inputDecoration(
+                                              label: 'Dosage',
                                               hintText: 'e.g., 10',
-                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                             ),
                                             validator: (value) {
                                               if (index == 0 && (value == null || value.isEmpty)) return 'Dosage is required';
@@ -372,10 +457,9 @@ final List<String> _unitOptions = [
                                           flex: 2,
                                           child: TextFormField(
                                             controller: srCtrl,
-                                            decoration: InputDecoration(
-                                              labelText: 'SR Number',
+                                            decoration: _inputDecoration(
+                                              label: 'SR Number',
                                               hintText: 'e.g., 12345',
-                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                             ),
                                             validator: (value) {
                                               if (index == 0 && (value == null || value.isEmpty)) return 'SR Number is required';
@@ -394,22 +478,46 @@ final List<String> _unitOptions = [
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    // Row 2: Unit dropdown (full width)
-                                    DropdownButtonFormField<String>(
-                                      value: row['unit'],
-                                      items: _unitOptions.map((unit) {
-                                        return DropdownMenuItem(value: unit, child: Text(unit));
-                                      }).toList(),
-                                      onChanged: (newUnit) {
-                                        setState(() {
-                                          row['unit'] = newUnit!;
-                                        });
-                                      },
-                                      decoration: InputDecoration(
-                                        labelText: 'Unit',
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
-                                      ),
+                                    // Row 2: Unit dropdown with container border
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Unit',
+                                          style: TextStyle(
+                                            color: AppColors.darkText,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                                            color: Colors.white,
+                                          ),
+                                          child: DropdownButtonFormField<String>(
+                                            value: row['unit'],
+                                            decoration: const InputDecoration(
+                                              border: InputBorder.none,
+                                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                            ),
+                                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+                                            style: const TextStyle(color: AppColors.darkText, fontSize: 14),
+                                            dropdownColor: Colors.white,
+                                            borderRadius: BorderRadius.circular(12),
+                                            items: _unitOptions.map((unit) {
+                                              return DropdownMenuItem(value: unit, child: Text(unit));
+                                            }).toList(),
+                                            onChanged: (newUnit) {
+                                              setState(() {
+                                                row['unit'] = newUnit!;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

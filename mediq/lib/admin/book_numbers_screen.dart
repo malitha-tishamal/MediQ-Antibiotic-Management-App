@@ -104,7 +104,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
     }
   }
 
-  // 🌟 HEADER - with menu button instead of back arrow
+  // Header - with menu button
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -132,7 +132,6 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Menu button to open drawer
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
@@ -144,7 +143,6 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              // Profile Picture
               Container(
                 width: 70,
                 height: 70,
@@ -177,7 +175,6 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                     : null,
               ),
               const SizedBox(width: 15),
-              // User Info
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -202,7 +199,6 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
             ],
           ),
           const SizedBox(height: 25),
-          // Page Title
           const Text(
             'Manage Book Numbers',
             style: TextStyle(
@@ -244,7 +240,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
       await _bookNumbersCollection.add({
         'bookNumber': _addController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'active', // default status
+        'status': 'active',
       });
       _addController.clear();
       _showSnackBar('Book number added successfully', true);
@@ -270,19 +266,42 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit Book Number'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit, color: AppColors.primaryPurple),
+            SizedBox(width: 10),
+            Text('Edit Book Number'),
+          ],
+        ),
         content: TextField(
           controller: editController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Book Number',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.grey),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: AppColors.darkText.withOpacity(0.6))),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -303,6 +322,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryPurple,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Save'),
           ),
@@ -316,12 +336,19 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Book Number'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.warningOrange),
+            SizedBox(width: 12),
+            Text('Delete Book Number'),
+          ],
+        ),
         content: Text('Are you sure you want to delete "$bookNumber"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: AppColors.darkText.withOpacity(0.6))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -339,6 +366,236 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
         _showSnackBar('Delete failed: $e', false);
       }
     }
+  }
+
+  /// නවීන book number card එක (overflow fixed)
+  Widget _buildBookCard(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final bookNumber = data['bookNumber'] ?? 'N/A';
+    final status = data['status'] ?? 'active';
+    final createdAt = data['createdAt'] != null
+        ? (data['createdAt'] as Timestamp).toDate()
+        : null;
+    final formattedDate = createdAt != null
+        ? DateFormat('yyyy-MM-dd HH:mm').format(createdAt)
+        : '-';
+
+    final bool isActive = status == 'active';
+    final Color statusColor = isActive ? AppColors.successGreen : Colors.grey;
+    final String statusText = isActive ? 'Active' : 'Completed';
+    final IconData statusIcon = isActive ? Icons.check_circle : Icons.block;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: statusColor,
+                  width: 8,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.all(16), // slightly reduced to avoid overflow
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row with ID, Book Number, Date (overflow fixed)
+                Row(
+                  children: [
+                    // ID section
+                    Expanded(
+                      flex: 1,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.fingerprint, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'ID: ${doc.id.substring(0, 4)}...',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Book Number section
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.menu_book, size: 16, color: AppColors.primaryPurple),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              bookNumber,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkText,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Date section
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              formattedDate,
+                              style: const TextStyle(color: Colors.grey, fontSize: 12),
+                              textAlign: TextAlign.right,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Row with Status and Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Status chip with border
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: statusColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Action buttons
+                    Row(
+                      children: [
+                        // Toggle button
+                        Material(
+                          borderRadius: BorderRadius.circular(14),
+                          color: statusColor.withOpacity(0.1),
+                          child: InkWell(
+                            onTap: () => _toggleStatus(doc.id, status),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: statusColor.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isActive ? Icons.lock : Icons.lock_open,
+                                    size: 14,
+                                    color: statusColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isActive ? 'Disable' : 'Activate',
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Edit button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.orange, size: 20),
+                            onPressed: () => _editBookNumber(context, doc.id, bookNumber),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        // Delete button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                            onPressed: () => _deleteBookNumber(doc.id, bookNumber),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -359,7 +616,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
             child: Column(
               children: [
                 _buildHeader(context),
-                // Add book number section
+                // Add book number section (updated border)
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Row(
@@ -370,10 +627,24 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                           decoration: InputDecoration(
                             hintText: 'Enter Book Number',
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Colors.grey),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Colors.grey),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Colors.red),
                             ),
                             filled: true,
                             fillColor: Colors.white,
+                            prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
                           ),
                         ),
                       ),
@@ -384,7 +655,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                           backgroundColor: AppColors.successGreen,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(15),
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         ),
@@ -406,135 +677,32 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                       }
                       final docs = snapshot.data?.docs ?? [];
                       if (docs.isEmpty) {
-                        return const Center(child: Text('No book numbers found.'));
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.menu_book, size: 64, color: Colors.grey[300]),
+                              const SizedBox(height: 16),
+                              const Text('No book numbers found.'),
+                            ],
+                          ),
+                        );
                       }
                       return ListView.builder(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         itemCount: docs.length,
                         itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final bookNumber = data['bookNumber'] ?? 'N/A';
-                          final status = data['status'] ?? 'active';
-                          final createdAt = data['createdAt'] != null
-                              ? DateFormat('yyyy-MM-dd HH:mm').format((data['createdAt'] as Timestamp).toDate())
-                              : '-';
-
-                          // Status color
-                          Color statusColor = status == 'active' ? AppColors.successGreen : Colors.grey;
-                          String statusText = status == 'active' ? 'Active' : 'Completed';
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Row with ID, Book Number, Created At (like table columns)
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 1,
-                                        child: Text(
-                                          'ID: ${doc.id.substring(0, 4)}...',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          bookNumber,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          createdAt,
-                                          style: const TextStyle(color: Colors.grey),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Row with Status and Action buttons
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      // Status badge
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: statusColor.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: statusColor),
-                                        ),
-                                        child: Text(
-                                          statusText,
-                                          style: TextStyle(
-                                            color: statusColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      // Action buttons
-                                      Row(
-                                        children: [
-                                          // Toggle status button
-                                          ElevatedButton(
-                                            onPressed: () => _toggleStatus(doc.id, status),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: status == 'active'
-                                                  ? AppColors.disabledColor
-                                                  : AppColors.successGreen,
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(20),
-                                              ),
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            ),
-                                            child: Text(status == 'active' ? 'Disable' : 'Activate'),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          // Edit button
-                                          IconButton(
-                                            icon: const Icon(Icons.edit, color: Colors.orange),
-                                            onPressed: () => _editBookNumber(context, doc.id, bookNumber),
-                                          ),
-                                          // Delete button
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, color: Colors.red),
-                                            onPressed: () => _deleteBookNumber(doc.id, bookNumber),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
+                          return _buildBookCard(docs[index]);
                         },
                       );
                     },
                   ),
                 ),
-                // Bottom padding to avoid footer overlap
                 const SizedBox(height: 20),
               ],
             ),
           ),
-          // Footer (developed by)
+          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(

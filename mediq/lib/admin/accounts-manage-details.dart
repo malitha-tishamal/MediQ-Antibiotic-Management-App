@@ -106,7 +106,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     }
   }
 
-  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  // Header - Factory Owner Dashboard Style
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -186,7 +186,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // User Name
                   Text(
                     _currentUserName,
                     style: const TextStyle(
@@ -195,7 +194,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  // Role
                   Text(
                     'Logged in as: Administrator',
                     style: TextStyle(
@@ -239,7 +237,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
       drawer: AdminDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-        profileImageUrl: _profileImageUrl, // ✅ passed to drawer
+        profileImageUrl: _profileImageUrl,
         onNavTap: (title) => _handleNavTap(title, context),
         onLogout: () => _handleLogout(context),
       ),
@@ -249,7 +247,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
           SafeArea(
             child: Column(
               children: [
-                // 🌟 NEW HEADER
                 _buildDashboardHeader(context),
                 
                 // Main Content
@@ -267,6 +264,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                           role: 'Admin',
                           title: 'Manage Admin Accounts',
                           imagePath: 'assets/admin-default.jpg',
+                          borderColor: AppColors.primaryPurple,
                         ),
                         
                         const SizedBox(height: 24),
@@ -277,6 +275,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                           role: 'Pharmacist',
                           title: 'Manage Pharmacist Accounts',
                           imagePath: 'assets/pharmizist-default.jpg',
+                          borderColor: Colors.green, // or AppColors.approvedColor
                         ),
                         
                         const SizedBox(height: 30),
@@ -288,12 +287,12 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
             ),
           ),
           
-          // 📌 FULL‑WIDTH FOOTER
+          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              color: const Color.fromARGB(255, 255, 254, 254), // optional – remove if you don't want background
+              color: const Color.fromARGB(255, 255, 254, 254),
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
@@ -331,13 +330,13 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
+  /// නවීන account card එක – gradient background, left border, double shadows
   Widget _buildAccountCard({
     required String role,
     required String title,
     required String imagePath,
+    required Color borderColor,
   }) {
-    const double circularRadius = 40.0;
-
     return StreamBuilder<QuerySnapshot>(
       stream: _userCollection.where('role', isEqualTo: role).snapshots(),
       builder: (context, snapshot) {
@@ -356,17 +355,20 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
 
             if (userStatus == 'Approved') {
               approved++;
-            } else if (userStatus == 'Disabled') disabled++;
-            else if (userStatus == 'Pending') pending++;
+            } else if (userStatus == 'Disabled') {
+              disabled++;
+            } else if (userStatus == 'Pending') {
+              pending++;
+            }
           }
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingCard(title);
+          return _buildModernLoadingCard(title);
         }
 
         if (snapshot.hasError) {
-          return _buildErrorCard(title, snapshot.error.toString());
+          return _buildModernErrorCard(title, snapshot.error.toString());
         }
 
         return InkWell(
@@ -384,63 +386,99 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
             }
           },
           child: Container(
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white, Color(0xFFF9F7FF)],
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryPurple.withOpacity(0.08),
+                  color: borderColor.withOpacity(0.2),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                  spreadRadius: -5,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.lightBackground,
-                    borderRadius: BorderRadius.circular(circularRadius),
-                    border: Border.all(
-                      color: AppColors.primaryPurple.withOpacity(0.3),
-                      width: 1.5,
+                    border: Border(
+                      left: BorderSide(
+                        color: borderColor,
+                        width: 8,
+                      ),
                     ),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(circularRadius),
-                    child: Image.asset(
-                      imagePath,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(
-                            Icons.person_search,
-                            size: 40,
-                            color: AppColors.primaryPurple.withOpacity(0.8),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
                     children: [
-                      _buildStatRow('Total', total.toString(), AppColors.totalCountColor),
-                      _buildStatRow('Approved', approved.toString(), AppColors.approvedColor),
-                      _buildStatRow('Disabled', disabled.toString(), AppColors.disabledColor),
-                      _buildStatRow('Pending', pending.toString(), AppColors.pendingColor),
+                      // Image container with modern styling
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.lightBackground,
+                          borderRadius: BorderRadius.circular(40),
+                          border: Border.all(
+                            color: borderColor.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: borderColor.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(40),
+                          child: Image.asset(
+                            imagePath,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(
+                                  Icons.person_search,
+                                  size: 40,
+                                  color: borderColor.withOpacity(0.8),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      // Stats
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildStatRow('Total', total.toString(), AppColors.totalCountColor),
+                            _buildStatRow('Approved', approved.toString(), AppColors.approvedColor),
+                            _buildStatRow('Disabled', disabled.toString(), AppColors.disabledColor),
+                            _buildStatRow('Pending', pending.toString(), AppColors.pendingColor),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -475,16 +513,28 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  Widget _buildLoadingCard(String title) {
+  // Modern loading card (with gradient and shadow)
+  Widget _buildModernLoadingCard(String title) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
-      height: 160,
+      height: 140,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.08),
+            color: AppColors.primaryPurple.withOpacity(0.1),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -506,14 +556,33 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  Widget _buildErrorCard(String title, String error) {
+  // Modern error card
+  Widget _buildModernErrorCard(String title, String error) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
-      height: 160,
+      height: 140,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF9F7FF)],
+        ),
         border: Border.all(color: Colors.red.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withOpacity(0.1),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -5,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
