@@ -10,6 +10,8 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
+  static const Color darkText = Color(0xFF333333);
 }
 
 class AddWardScreen extends StatefulWidget {
@@ -33,6 +35,63 @@ class _AddWardScreenState extends State<AddWardScreen> {
 
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
 
   @override
   void initState() {
@@ -217,125 +276,95 @@ class _AddWardScreenState extends State<AddWardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ward Name
+                      // Ward Name with modern styling
                       TextFormField(
                         controller: _wardNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Ward Name',
+                        decoration: _inputDecoration(
+                          label: 'Ward Name',
                           hintText: 'e.g., 3 & 5 (Surgical prof.)',
-                          prefixIcon: const Icon(Icons.place, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
+                          prefixIcon: Icons.place,
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Ward name is required' : null,
                       ),
                       const SizedBox(height: 16),
 
-                      // Team
+                      // Team (Managed By Team)
                       TextFormField(
                         controller: _teamController,
-                        decoration: InputDecoration(
-                          labelText: 'Managed By (Team)',
+                        decoration: _inputDecoration(
+                          label: 'Managed By (Team)',
                           hintText: 'Team',
-                          prefixIcon: const Icon(Icons.group, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
+                          prefixIcon: Icons.group,
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Team is required' : null,
                       ),
                       const SizedBox(height: 16),
 
-                      // Managed By (Doctor)
+                      // Managed By (Doctor's Name)
                       TextFormField(
                         controller: _managedByController,
-                        decoration: InputDecoration(
-                          labelText: 'Managed By (Doctor\'s Name)',
+                        decoration: _inputDecoration(
+                          label: 'Managed By (Doctor\'s Name)',
                           hintText: 'Dr. Name',
-                          prefixIcon: const Icon(Icons.person, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
+                          prefixIcon: Icons.person,
                         ),
                         validator: (value) => value == null || value.isEmpty ? 'Doctor name is required' : null,
                       ),
                       const SizedBox(height: 16),
 
-                      // Category Dropdown
-                      DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Category',
-                          prefixIcon: const Icon(Icons.category, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
+                      // Category Dropdown with container border
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Category',
+                            style: TextStyle(
+                              color: AppColors.darkText,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
+                          const SizedBox(height: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                              color: Colors.white,
+                            ),
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedCategory,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              ),
+                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+                              style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
+                              dropdownColor: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              items: [
+                                'Pediatrics',
+                                'Medicine',
+                                'ICU',
+                                'Surgery',
+                                'Medicine Subspecialty',
+                                'Surgery Subspecialty',
+                              ].map((category) {
+                                return DropdownMenuItem(
+                                  value: category,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.category, color: AppColors.primaryPurple, size: 18),
+                                      const SizedBox(width: 10),
+                                      Text(category),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) => setState(() => _selectedCategory = value),
+                              validator: (value) => value == null ? 'Please select a category' : null,
+                            ),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
-                        ),
-                        items: [
-                          'Pediatrics',
-                          'Medicine',
-                          'ICU',
-                          'Surgery',
-                          'Medicine Subspecialty',
-                          'Surgery Subspecialty',
-                        ].map((category) {
-                          return DropdownMenuItem(value: category, child: Text(category));
-                        }).toList(),
-                        onChanged: (value) => setState(() => _selectedCategory = value),
-                        validator: (value) => value == null ? 'Please select a category' : null,
+                        ],
                       ),
                       const SizedBox(height: 16),
 
@@ -343,26 +372,10 @@ class _AddWardScreenState extends State<AddWardScreen> {
                       TextFormField(
                         controller: _descriptionController,
                         maxLines: 3,
-                        decoration: InputDecoration(
-                          labelText: 'Description',
+                        decoration: _inputDecoration(
+                          label: 'Description',
                           hintText: 'Any Notice Details',
-                          prefixIcon: const Icon(Icons.description, color: AppColors.primaryPurple),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.red),
-                          ),
+                          prefixIcon: Icons.description,
                         ),
                       ),
                       const SizedBox(height: 24),

@@ -17,6 +17,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF2D3748);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
 }
 
 class BookNumbersScreen extends StatefulWidget {
@@ -41,6 +42,63 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
 
   // Scaffold key for drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
 
   @override
   void initState() {
@@ -276,25 +334,9 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
         ),
         content: TextField(
           controller: editController,
-          decoration: InputDecoration(
-            labelText: 'Book Number',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
+          decoration: _inputDecoration(
+            label: 'Book Number',
+            prefixIcon: Icons.menu_book,
           ),
           autofocus: true,
         ),
@@ -616,7 +658,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
             child: Column(
               children: [
                 _buildHeader(context),
-                // Add book number section (updated border)
+                // Add book number section with modern styling
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Row(
@@ -624,27 +666,10 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                       Expanded(
                         child: TextField(
                           controller: _addController,
-                          decoration: InputDecoration(
+                          decoration: _inputDecoration(
+                            label: 'Book Number',
                             hintText: 'Enter Book Number',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: Colors.grey),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: Colors.grey),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: const BorderSide(color: Colors.red),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
+                            prefixIcon: Icons.menu_book,
                           ),
                         ),
                       ),
@@ -689,6 +714,7 @@ class _BookNumbersScreenState extends State<BookNumbersScreen> {
                         );
                       }
                       return ListView.builder(
+                        key: const PageStorageKey('book_numbers_list'), // preserves scroll position
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         itemCount: docs.length,
                         itemBuilder: (context, index) {

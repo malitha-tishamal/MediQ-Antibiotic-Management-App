@@ -1,3 +1,4 @@
+// stocks_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -175,51 +176,80 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
     );
   }
 
+  /// නවීන store card එක
   Widget _buildStoreButton({
     required String imagePath,
     required String label,
-    required String description, // description in English
+    required String description,
     required VoidCallback onTap,
+    Color borderColor = AppColors.primaryPurple, // default primary purple
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 250,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF9F7FF)],
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: borderColor.withOpacity(0.2),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: -5,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Image.asset(
-              imagePath,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.store, size: 60, color: Colors.grey);
-              },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: borderColor,
+                    width: 8,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Image.asset(
+                    imagePath,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.store, size: 60, color: borderColor.withOpacity(0.5));
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -252,6 +282,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                           imagePath: 'assets/main_store.jpg',
                           label: 'Main Store',
                           description: 'Store from which releases are made to wards',
+                          borderColor: AppColors.primaryPurple, // Main store uses primary purple
                           onTap: () {
                             Navigator.push(
                               context,
@@ -264,6 +295,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                           imagePath: 'assets/return_store.jpg',
                           label: 'Return Store',
                           description: 'Store where surplus antibiotics from wards are returned',
+                          borderColor: Colors.orange, // Return store uses orange for distinction
                           onTap: () {
                             Navigator.push(
                               context,

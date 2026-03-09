@@ -19,6 +19,7 @@ class AppColors {
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF2D3748);
   static const Color chipBackground = Color(0xFFEDF2F7);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
 }
 
 class ReturnStoreScreen extends StatefulWidget {
@@ -39,26 +40,83 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
 
+  // Search
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  final ValueNotifier<String> _searchNotifier = ValueNotifier<String>('');
 
   // Map to hold quantity controllers for each item (key: antibioticId_dosageIndex)
   final Map<String, TextEditingController> _quantityControllers = {};
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserDetails();
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      _searchNotifier.value = _searchController.text;
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchNotifier.dispose();
     for (var controller in _quantityControllers.values) {
       controller.dispose();
     }
@@ -92,10 +150,10 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     return '${antibioticId}_$dosageIndex';
   }
 
-  // Get or create quantity controller for an item (now empty by default)
+  // Get or create quantity controller for an item (empty by default)
   TextEditingController _getController(String key) {
     if (!_quantityControllers.containsKey(key)) {
-      _quantityControllers[key] = TextEditingController(); // No default value
+      _quantityControllers[key] = TextEditingController();
     }
     return _quantityControllers[key]!;
   }
@@ -342,23 +400,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                 'Overview',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
               ),
-              GestureDetector(
-                onTap: _exportToCSV,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.download, size: 16, color: AppColors.primaryPurple),
-                      SizedBox(width: 4),
-                      Text('CSV', style: TextStyle(color: AppColors.primaryPurple)),
-                    ],
-                  ),
-                ),
-              ),
+             
             ],
           ),
           const SizedBox(height: 12),
@@ -405,7 +447,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     );
   }
 
-  // නවීන stock item card එක
+  // Modern stock item card
   Widget _buildStockItemCard({
     required Map<String, dynamic> item,
     required String srNumber,
@@ -543,12 +585,8 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                       child: TextFormField(
                         controller: controller,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Enter quantity',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          filled: true,
-                          fillColor: Colors.white,
+                        decoration: _inputDecoration(
+                          label: 'Enter quantity',
                         ),
                       ),
                     ),
@@ -739,13 +777,6 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                         }
                       }
 
-                      // Apply search filter
-                      final filteredItems = allItems.where((item) {
-                        if (_searchQuery.isEmpty) return true;
-                        return (item['drugName'] as String).toLowerCase().contains(_searchQuery) ||
-                               (item['srNumber'] as String).toLowerCase().contains(_searchQuery);
-                      }).toList();
-
                       return Column(
                         children: [
                           _buildSummaryCard(allItems),
@@ -753,19 +784,26 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: TextField(
                               controller: _searchController,
-                              decoration: InputDecoration(
+                              decoration: _inputDecoration(
+                                label: 'Search',
                                 hintText: 'Search by drug name, SR number...',
-                                prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-                                filled: true,
-                                fillColor: Colors.white,
+                                prefixIcon: Icons.search,
                               ),
                             ),
                           ),
                           const SizedBox(height: 10),
                           Expanded(
-                            child: filteredItems.isEmpty
-                                ? Center(
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: _searchNotifier,
+                              builder: (context, searchQuery, _) {
+                                final filteredItems = allItems.where((item) {
+                                  if (searchQuery.isEmpty) return true;
+                                  return (item['drugName'] as String).toLowerCase().contains(searchQuery) ||
+                                      (item['srNumber'] as String).toLowerCase().contains(searchQuery);
+                                }).toList();
+
+                                if (filteredItems.isEmpty) {
+                                  return Center(
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
@@ -774,8 +812,12 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                                         const Text('No items found.', style: TextStyle(color: Colors.grey, fontSize: 16)),
                                       ],
                                     ),
-                                  )
-                                : ListView.builder(
+                                  );
+                                }
+
+                                return RepaintBoundary(
+                                  child: ListView.builder(
+                                    key: const PageStorageKey('return_store_list'), // preserves scroll position
                                     padding: const EdgeInsets.all(20),
                                     itemCount: filteredItems.length,
                                     itemBuilder: (context, index) {
@@ -815,6 +857,9 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                                       );
                                     },
                                   ),
+                                );
+                              },
+                            ),
                           ),
                         ],
                       );

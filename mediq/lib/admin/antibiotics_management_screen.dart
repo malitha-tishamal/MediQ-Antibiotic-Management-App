@@ -177,7 +177,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
     );
   }
 
-  /// Add Antibiotic button with description
+  /// නවීන Add Antibiotic card එක
   Widget _buildAddButton() {
     return GestureDetector(
       onTap: () {
@@ -188,47 +188,74 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
       },
       child: Container(
         width: 250,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(28),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF9F7FF)],
+          ),
           boxShadow: [
             BoxShadow(
               color: AppColors.primaryPurple.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: -5,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Image.asset(
-              'assets/add_antibiotic.jpg',
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.add, size: 60, color: Colors.grey);
-              },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: AppColors.primaryPurple,
+                    width: 8,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Image.asset(
+                    'assets/add_antibiotic.jpg',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.add, size: 60, color: Colors.grey);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Add Antibiotic',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Add a new antibiotic to the system',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'Add Antibiotic',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Add a new antibiotic to the system',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Manage Antibiotics button with live counts and description
+  /// නවීන Manage Antibiotics card එක (live counts සහිත)
   Widget _buildManageButtonWithCounts() {
     return StreamBuilder<QuerySnapshot>(
       stream: _antibioticsCollection.snapshots(),
@@ -260,52 +287,79 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
             width: 250,
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white, Color(0xFFF9F7FF)],
+              ),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primaryPurple.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                  spreadRadius: -5,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/manage_antibiotic.jpg',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.settings, size: 60, color: Colors.grey);
-                  },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: AppColors.primaryPurple,
+                        width: 8,
+                      ),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        'assets/manage_antibiotic.jpg',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(Icons.settings, size: 60, color: Colors.grey);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Manage Antibiotics',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'View, edit or delete existing antibiotics',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          _buildModernCountChip('Total', total, AppColors.primaryPurple),
+                          const SizedBox(height: 4),
+                          _buildModernCountChip('Access', access, AppColors.primaryPurple),
+                          _buildModernCountChip('Watch', watch, Colors.green),
+                          _buildModernCountChip('Reserve', reserve, Colors.orange),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Manage Antibiotics',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'View, edit or delete existing antibiotics',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    _buildCountChip('Total', total, AppColors.primaryPurple),
-                    const SizedBox(width: double.infinity), // forces next chips to new line
-                    _buildCountChip('Access', access, AppColors.primaryPurple),
-                    _buildCountChip('Watch', watch, Colors.green),
-                    _buildCountChip('Reserve', reserve, Colors.orange),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         );
@@ -313,18 +367,20 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
     );
   }
 
-  Widget _buildCountChip(String label, int count, Color color) {
+  /// නවීන count chip එක (border සහිත)
+  Widget _buildModernCountChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
         '$label: $count',
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: color,
         ),
       ),
