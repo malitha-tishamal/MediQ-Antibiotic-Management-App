@@ -4,6 +4,7 @@ import 'pharmacist_dashboard.dart';
 import 'pharmacist_developer_about_screen.dart';
 import 'antibiotics_release_screen.dart';
 import 'return_antibiotics_screen.dart';
+import 'view_antibiotics_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -294,6 +295,21 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   },
                 ),
                 // Wards
+
+                _buildModernDrawerItem(
+                  icon: Icons.medical_services_rounded,
+                  label: "Antibiotics",
+                  description: "Antibiotics inventory",
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ViewAntibioticsScreen(),
+                      ),
+                    );
+                  },
+                ),
+
                 _buildModernDrawerItem(
                   icon: Icons.local_hospital_rounded,
                   label: "Wards",
