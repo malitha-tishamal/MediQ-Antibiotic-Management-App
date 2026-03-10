@@ -47,8 +47,6 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final String stockTypesCount = '02';
-  final int todayReleases = 32;
-  final int todayReturns = 16;
 
   final CollectionReference _userCollection =
       FirebaseFirestore.instance.collection('users');
@@ -65,6 +63,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String? _profileImageUrl;
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+
+
+final List<String>Months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
   @override
   void initState() {
@@ -513,87 +527,84 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // ---------------- Antibiotics Tile (live count) ----------------
-// admin_dashboard.dart (excerpt of the modified _tileAntibiotics method)
-Widget _tileAntibiotics() {
-  return InkWell(
-    onTap: () => _onNavTap('Antibiotics'),
-    child: _smallCard(
-      child: StreamBuilder<QuerySnapshot>(
-        stream: _antibioticsCollection.snapshots(),
-        builder: (context, snapshot) {
-          int total = 0;
-          Set<String> categories = {};
+  // ---------------- Antibiotics Tile with dynamic categories count ----------------
+  Widget _tileAntibiotics() {
+    return InkWell(
+      onTap: () => _onNavTap('Antibiotics'),
+      child: _smallCard(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _antibioticsCollection.snapshots(),
+          builder: (context, snapshot) {
+            int total = 0;
+            Set<String> categories = {};
 
-          if (snapshot.hasData) {
-            final docs = snapshot.data!.docs;
-            total = docs.length;
-            for (var doc in docs) {
-              final data = doc.data() as Map<String, dynamic>;
-              final category = data['category'] ?? '';
-              if (category.isNotEmpty) {
-                categories.add(category);
+            if (snapshot.hasData) {
+              final docs = snapshot.data!.docs;
+              total = docs.length;
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final category = data['category'] ?? '';
+                if (category.isNotEmpty) {
+                  categories.add(category);
+                }
               }
             }
-          }
 
-         
-          int categoryCount = 4;
+            int categoryCount = categories.length;
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.medication_liquid,
+                      color: AppColors.primaryPurple,
+                      size: 28,
+                    ),
+                    Spacer(),
+                    Text('Antibiotics',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkText,
+                            fontSize: 14)),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStat('Total Found', total.toString().padLeft(2, '0'),
+                          AppColors.totalFoundColor),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple),
+                    ),
+                  ],
+                ),
+              ],
             );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(
-                    Icons.medication_liquid,
-                    color: AppColors.primaryPurple,
-                    size: 28,
-                  ),
-                  Spacer(),
-                  Text('Antibiotics',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.darkText,
-                          fontSize: 14)),
-                ],
-              ),
-              const Spacer(),
-              // Two stats in one row: Total Found and Categories count
-              Row(
-                children: [
-                  Expanded(
-                    child: _miniStat('Total Found', total.toString().padLeft(2, '0'),
-                        AppColors.totalFoundColor),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
-                        AppColors.primaryPurple),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  // ---------------- Wards Tile (live count) ----------------
-Widget _tileWards() {
+  // ---------------- Wards Tile with dynamic categories count ----------------
+  Widget _tileWards() {
     return InkWell(
       onTap: () => _onNavTap('Wards'),
       child: _smallCard(
@@ -615,7 +626,7 @@ Widget _tileWards() {
               }
             }
 
-            int categoryCount = 6;
+            int categoryCount = categories.length;
 
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -668,7 +679,6 @@ Widget _tileWards() {
     );
   }
 
-
   // ---------------- Simple Tiles ----------------
   Widget _tileSimple(
       {required IconData icon,
@@ -701,8 +711,14 @@ Widget _tileWards() {
     );
   }
 
-  // ---------------- Usage Details ----------------
+  // ---------------- Usage Details with live monthly counts andMonths month ----------------
   Widget _tileUsageDetails() {
+    final now = DateTime.now();
+    final currentMonthMonths =Months[now.month - 1];
+
+    final firstDayOfMonth = DateTime(now.year, now.month, 1);
+    final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
+
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
       child: _smallCard(
@@ -724,14 +740,46 @@ Widget _tileWards() {
             const Spacer(),
             Row(
               children: [
+                // Releases count for current month
                 Expanded(
-                  child: _miniStat('Today\nReleases', todayReleases.toString(),
-                      AppColors.releasesCountColor),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('releases')
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isLessThan: firstDayNextMonth)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      }
+                      return _miniStat(
+                          '$currentMonthMonths Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
+                    },
+                  ),
                 ),
                 const SizedBox(width: 8),
+                // Returns count for current month
                 Expanded(
-                  child: _miniStat('Today\nReturns', todayReturns.toString(),
-                      AppColors.returnsCountColor),
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('returns')
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isLessThan: firstDayNextMonth)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      }
+                      return _miniStat(
+                          '$currentMonthMonths Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -745,7 +793,7 @@ Widget _tileWards() {
   Widget _buildSmallTile({
     required IconData icon,
     required String title,
-    String? subtitle, // now accepts subtitle
+    String? subtitle,
   }) {
     return InkWell(
       onTap: () => _onNavTap(title),
