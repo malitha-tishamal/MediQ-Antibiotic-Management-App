@@ -392,12 +392,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
             subtitle: 'Stock Types',
             value: stockTypesCount),
         _tileUsageDetails(),
-        _buildSmallTile(icon: Icons.analytics_outlined, title: 'Usage Analyst\n hh'),
-        _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
-        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
         _buildSmallTile(
-            icon: Icons.developer_board, title: 'Developer About'),
-        // Logout tile එක ඉවත් කර ඇත
+            icon: Icons.analytics_outlined,
+            title: 'Usage Analyst',
+            subtitle: 'Usage Analyze Graphs and More'),
+        _buildSmallTile(
+            icon: Icons.menu_book,
+            title: 'Book Numbers',
+            subtitle: 'For Connecting Manual System'),
+        _buildSmallTile(
+            icon: Icons.person_outline,
+            title: 'Profile Manage',
+            subtitle: 'Manage Profile Details'),
+        _buildSmallTile(
+            icon: Icons.developer_board,
+            title: 'Developer About',
+            subtitle: 'Contact Developers'),
       ],
     );
   }
@@ -504,59 +514,119 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   // ---------------- Antibiotics Tile (live count) ----------------
-  Widget _tileAntibiotics() {
-    return InkWell(
-      onTap: () => _onNavTap('Antibiotics'),
-      child: _smallCard(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: _antibioticsCollection.snapshots(),
-          builder: (context, snapshot) {
-            int count = 0;
-            if (snapshot.hasData) {
-              count = snapshot.data!.docs.length;
+// admin_dashboard.dart (excerpt of the modified _tileAntibiotics method)
+Widget _tileAntibiotics() {
+  return InkWell(
+    onTap: () => _onNavTap('Antibiotics'),
+    child: _smallCard(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _antibioticsCollection.snapshots(),
+        builder: (context, snapshot) {
+          int total = 0;
+          Set<String> categories = {};
+
+          if (snapshot.hasData) {
+            final docs = snapshot.data!.docs;
+            total = docs.length;
+            for (var doc in docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              final category = data['category'] ?? '';
+              if (category.isNotEmpty) {
+                categories.add(category);
+              }
             }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.medication_liquid,
-                      color: AppColors.primaryPurple,
-                      size: 28,
-                    ),
-                    Spacer(),
-                    Text('Antibiotics',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkText,
-                            fontSize: 14)),
-                  ],
-                ),
-                const Spacer(),
-                _miniStat('Total Found', count.toString().padLeft(2, '0'),
-                    AppColors.totalFoundColor),
-              ],
+          }
+
+         
+          int categoryCount = 4;
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
             );
-          },
-        ),
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.medication_liquid,
+                    color: AppColors.primaryPurple,
+                    size: 28,
+                  ),
+                  Spacer(),
+                  Text('Antibiotics',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.darkText,
+                          fontSize: 14)),
+                ],
+              ),
+              const Spacer(),
+              // Two stats in one row: Total Found and Categories count
+              Row(
+                children: [
+                  Expanded(
+                    child: _miniStat('Total Found', total.toString().padLeft(2, '0'),
+                        AppColors.totalFoundColor),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
+                        AppColors.primaryPurple),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ---------------- Wards Tile (live count) ----------------
-  Widget _tileWards() {
+Widget _tileWards() {
     return InkWell(
       onTap: () => _onNavTap('Wards'),
       child: _smallCard(
         child: StreamBuilder<QuerySnapshot>(
           stream: _wardsCollection.snapshots(),
           builder: (context, snapshot) {
-            int count = 0;
+            int total = 0;
+            Set<String> categories = {};
+
             if (snapshot.hasData) {
-              count = snapshot.data!.docs.length;
+              final docs = snapshot.data!.docs;
+              total = docs.length;
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final category = data['category'] ?? '';
+                if (category.isNotEmpty) {
+                  categories.add(category);
+                }
+              }
             }
+
+            int categoryCount = 6;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -577,8 +647,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ],
                 ),
                 const Spacer(),
-                _miniStat('Total Wards', count.toString().padLeft(2, '0'),
-                    AppColors.totalFoundColor),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStat('Total Wards', total.toString().padLeft(2, '0'),
+                          AppColors.totalFoundColor),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple),
+                    ),
+                  ],
+                ),
               ],
             );
           },
@@ -586,6 +667,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+
 
   // ---------------- Simple Tiles ----------------
   Widget _tileSimple(
@@ -659,8 +741,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // ---------------- Small Tile ----------------
-  Widget _buildSmallTile({required IconData icon, required String title}) {
+  // ---------------- Small Tile with optional subtitle ----------------
+  Widget _buildSmallTile({
+    required IconData icon,
+    required String title,
+    String? subtitle, // now accepts subtitle
+  }) {
     return InkWell(
       onTap: () => _onNavTap(title),
       child: _smallCard(
@@ -669,11 +755,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             Icon(icon, color: AppColors.primaryPurple, size: 26),
             const SizedBox(height: 8),
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                    fontSize: 14)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.darkText,
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       ),

@@ -198,7 +198,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -217,6 +217,36 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
           prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  // Compact modern filter chip without dot
+  Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
+    final isSelected = _selectedFilter == filterValue;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = filterValue;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : color.withOpacity(0.3),
+          ),
+        ),
+        child: Text(
+          '$label $count',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected ? Colors.white : color,
+          ),
         ),
       ),
     );
@@ -245,7 +275,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -265,87 +295,27 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Antibiotics Overview',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkText,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedFilter = 'All';
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    'All: $total',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryPurple,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const Text(
+            'Antibiotics Overview',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkText,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 12,
+            spacing: 4,
+            runSpacing: 4,
             children: [
-              _buildStatItem('Access', access, const Color(0xFF9F7AEA), 'Access'),
-              _buildStatItem('Watch', watch, const Color(0xFF48BB78), 'Watch'),
-              _buildStatItem('Reserve', reserve, const Color(0xFFED8936), 'Reserve'),
-              _buildStatItem('Other', other, const Color(0xFF718096), 'Other'),
+              _buildFilterChip('All', total, AppColors.primaryPurple, 'All'),
+              _buildFilterChip('Access', access, AppColors.primaryPurple, 'Access'),
+              _buildFilterChip('Watch', watch, AppColors.successGreen, 'Watch'),
+              _buildFilterChip('Reserve', reserve, AppColors.warningOrange, 'Reserve'),
+              _buildFilterChip('Other', other, Colors.grey, 'Other'),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, int count, Color color, String filterValue) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filterValue;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '$label: $count',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -378,6 +348,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
+                        // Apply category filter
                         if (_selectedFilter != 'All') {
                           final category = data['category'] ?? '';
                           if (_selectedFilter == 'Other') {
@@ -391,6 +362,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                           }
                         }
                         
+                        // Apply search filter
                         if (_searchQuery.isNotEmpty) {
                           final name = (data['name'] ?? '').toLowerCase();
                           if (!name.contains(_searchQuery)) return false;
@@ -421,7 +393,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                           ? DateFormat('dd MMM yyyy').format(createdAt.toDate())
                                           : '';
 
-                                      // ----- නවීන Card එක (edit/delete buttons සහිතව) -----
+                                      // ----- Modern Card with edit/delete buttons -----
                                       return Container(
                                         margin: const EdgeInsets.only(bottom: 16),
                                         decoration: BoxDecoration(

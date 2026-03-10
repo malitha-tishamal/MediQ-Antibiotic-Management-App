@@ -36,7 +36,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
   String? _profileImageUrl;
 
   // Filter state
-  String _selectedCategoryFilter = 'All';
+  String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -197,7 +197,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
@@ -216,6 +216,36 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
           prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(vertical: 15),
+        ),
+      ),
+    );
+  }
+
+  // Compact modern filter chip without dot
+  Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
+    final isSelected = _selectedFilter == filterValue;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = filterValue;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : color.withOpacity(0.3),
+          ),
+        ),
+        child: Text(
+          '$label $count',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected ? Colors.white : color,
+          ),
         ),
       ),
     );
@@ -257,7 +287,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -277,93 +307,30 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Wards Overview',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.darkText,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedCategoryFilter = 'All';
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryPurple.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    'All: $total',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryPurple,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const Text(
+            'Wards Overview',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkText,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 12,
+            spacing: 4,
+            runSpacing: 4,
             children: [
-              _buildStatItem('Pediatrics', pediatrics, Colors.blue, 'Pediatrics'),
-              _buildStatItem('Medicine', medicine, Colors.green, 'Medicine'),
-              _buildStatItem('ICU', icu, Colors.orange, 'ICU'),
-              _buildStatItem('Surgery', surgery, Colors.purple, 'Surgery'),
-              _buildStatItem('Med Sub', medSub, Colors.teal, 'Medicine Subspecialty'),
-              _buildStatItem('Surg Sub', surgSub, Colors.brown, 'Surgery Subspecialty'),
-              if (other > 0) _buildStatItem('Other', other, Colors.grey, null),
+              _buildFilterChip('All', total, AppColors.primaryPurple, 'All'),
+              _buildFilterChip('Pediatrics', pediatrics, Colors.blue, 'Pediatrics'),
+              _buildFilterChip('Medicine', medicine, Colors.green, 'Medicine'),
+              _buildFilterChip('ICU', icu, Colors.orange, 'ICU'),
+              _buildFilterChip('Surgery', surgery, Colors.purple, 'Surgery'),
+              _buildFilterChip('Med Sub', medSub, Colors.teal, 'Medicine Subspecialty'),
+              _buildFilterChip('Surg Sub', surgSub, Colors.brown, 'Surgery Subspecialty'),
+              if (other > 0) _buildFilterChip('Other', other, Colors.grey, 'Other'),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, int count, Color color, String? filterValue) {
-    return GestureDetector(
-      onTap: filterValue != null
-          ? () {
-              setState(() {
-                _selectedCategoryFilter = filterValue;
-              });
-            }
-          : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              '$label: $count',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: color,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -413,11 +380,25 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
-                        if (_selectedCategoryFilter != 'All') {
+                        // Apply category filter
+                        if (_selectedFilter != 'All') {
                           final category = data['category'] ?? '';
-                          if (category != _selectedCategoryFilter) return false;
+                          if (_selectedFilter == 'Other') {
+                            // Other includes anything not in the main list
+                            if (category == 'Pediatrics' || 
+                                category == 'Medicine' || 
+                                category == 'ICU' || 
+                                category == 'Surgery' || 
+                                category == 'Medicine Subspecialty' || 
+                                category == 'Surgery Subspecialty') {
+                              return false;
+                            }
+                          } else {
+                            if (category != _selectedFilter) return false;
+                          }
                         }
                         
+                        // Apply search filter
                         if (_searchQuery.isNotEmpty) {
                           final name = (data['wardName'] ?? '').toLowerCase();
                           if (!name.contains(_searchQuery)) return false;
@@ -451,7 +432,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                         createdDate = DateFormat('dd MMM yyyy').format(createdAt.toDate());
                                       }
 
-                                      // ----- නවීන Card එක (edit/delete buttons සහිත) -----
+                                      // ----- Modern Card with edit/delete buttons -----
                                       return Container(
                                         margin: const EdgeInsets.only(bottom: 16),
                                         decoration: BoxDecoration(
@@ -686,14 +667,14 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
           Text(
             _searchQuery.isNotEmpty
                 ? 'No wards match "$_searchQuery"'
-                : 'No ${_selectedCategoryFilter == 'All' ? '' : _selectedCategoryFilter} wards found.',
+                : 'No ${_selectedFilter == 'All' ? '' : _selectedFilter} wards found.',
             style: const TextStyle(color: Colors.grey, fontSize: 16),
           ),
-          if (_selectedCategoryFilter != 'All' || _searchQuery.isNotEmpty)
+          if (_selectedFilter != 'All' || _searchQuery.isNotEmpty)
             TextButton(
               onPressed: () {
                 setState(() {
-                  _selectedCategoryFilter = 'All';
+                  _selectedFilter = 'All';
                   _searchController.clear();
                 });
               },
