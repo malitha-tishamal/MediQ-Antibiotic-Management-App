@@ -19,7 +19,7 @@ class AppColors {
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF2D3748);
   static const Color chipBackground = Color(0xFFEDF2F7);
-  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
+  static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
 class ReturnStoreScreen extends StatefulWidget {
@@ -354,7 +354,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     );
   }
 
-  // Summary card with counts (compact cards)
+  // Updated Summary card with all four indicators in a single row
   Widget _buildSummaryCard(List<Map<String, dynamic>> allItems) {
     int total = allItems.length;
     int inStock = 0;
@@ -374,7 +374,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
 
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12), // Reduced padding for compactness
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Colors.white, Color(0xFFF0F4FF)],
@@ -393,28 +393,18 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Overview',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-              ),
-             
-            ],
+          const Text(
+            'Overview',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
           ),
           const SizedBox(height: 12),
+          // Single row with all four indicators
           Row(
             children: [
-              Expanded(child: _buildCompactStatCard(total.toString(), 'Total Items', AppColors.primaryPurple)),
+              Expanded(child: _buildCompactStatCard(total.toString(), 'Total', AppColors.primaryPurple)),
               Expanded(child: _buildCompactStatCard(inStock.toString(), 'In Stock', AppColors.successGreen)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _buildCompactStatCard(lowStock.toString(), 'Low Stock', AppColors.warningOrange)),
-              Expanded(child: _buildCompactStatCard(outOfStock.toString(), 'Out of Stock', AppColors.disabledColor)),
+              Expanded(child: _buildCompactStatCard(lowStock.toString(), 'Low', AppColors.warningOrange)),
+              Expanded(child: _buildCompactStatCard(outOfStock.toString(), 'Out', AppColors.disabledColor)),
             ],
           ),
         ],
@@ -422,24 +412,24 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     );
   }
 
-  // Compact stat card with smaller size
+  // Compact stat card with smaller fonts for single‑row layout
   Widget _buildCompactStatCard(String value, String label, Color color) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 2), // Minimal margin
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
           Text(
             value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
           ),
           Text(
             label,
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -817,7 +807,7 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
 
                                 return RepaintBoundary(
                                   child: ListView.builder(
-                                    key: const PageStorageKey('return_store_list'), // preserves scroll position
+                                    key: const PageStorageKey('return_store_list'),
                                     padding: const EdgeInsets.all(20),
                                     itemCount: filteredItems.length,
                                     itemBuilder: (context, index) {
