@@ -13,6 +13,7 @@ import 'antibiotics_management_screen.dart';
 import 'wards_management_screen.dart';
 import 'stocks_management_screen.dart';
 import 'book_numbers_screen.dart';
+import 'antibiotic_usage_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -165,6 +166,12 @@ final List<String>Months = [
       case 'Book Numbers':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const BookNumbersScreen()),
+        );
+        break;
+
+      case 'Usage Details':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AntibioticUsageScreen()),
         );
         break;
 

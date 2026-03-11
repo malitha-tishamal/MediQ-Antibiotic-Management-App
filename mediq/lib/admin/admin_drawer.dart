@@ -8,6 +8,7 @@ import 'accounts-manage-details.dart';
 import 'wards_management_screen.dart';
 import 'stocks_management_screen.dart'; 
 import 'book_numbers_screen.dart'; 
+import 'antibiotic_usage_screen.dart'; 
 
 class AdminDrawer extends StatefulWidget {
   final String userName;
@@ -330,7 +331,14 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   icon: Icons.receipt_long_rounded,
                   label: "Usage Details",
                   description: "Medication usage records",
-                  onTap: () => widget.onNavTap('Usage Details'),
+                 onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AntibioticUsageScreen(),
+                        ),
+                      );
+                    },
                 ),
                 _buildModernDrawerItem(
                   icon: Icons.analytics_rounded,
