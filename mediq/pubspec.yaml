@@ -68,12 +68,20 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo2.png
+    
     - assets/developer/developer_photo.png
+
     - assets/admin-default.jpg
     - assets/pharmizist-default.jpg
+
     - assets/manage_antibiotic.jpg
     - assets/add_antibiotic.jpg
+
     - assets/add-ward.png
     - assets/manage-ward.png
+
     - assets/main_store.jpg
     - assets/return_store.jpg
+
+    - assets/release_details.png
+    - assets/return_details.jpg
