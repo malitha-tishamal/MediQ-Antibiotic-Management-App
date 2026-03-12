@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Import your actual usage screens when created
-// import 'release_usage_screen.dart';
-// import 'return_usage_screen.dart';
+// Import the new screens
+import 'antibiotic_release.dart';
+import 'antibiotic_return.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
@@ -222,10 +222,10 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
 
     return GestureDetector(
       onTap: () {
-        // TODO: Navigate to ReleaseUsageScreen
-        // Navigator.push(context, MaterialPageRoute(builder: (_) => const ReleaseUsageScreen()));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Release Usage (Main store → wards)')),
+        // Navigate to Release Usage Screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AntibioticReleaseScreen()),
         );
       },
       child: Container(
@@ -269,7 +269,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/release_details.png', // Adjust path as needed
+                    'assets/release_details.png',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
@@ -322,10 +322,10 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
 
     return GestureDetector(
       onTap: () {
-        // TODO: Navigate to ReturnUsageScreen
-        // Navigator.push(context, MaterialPageRoute(builder: (_) => const ReturnUsageScreen()));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Return Usage (wards → return stoke)')),
+        // Navigate to Return Usage Screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReturnReleasesScreen()),
         );
       },
       child: Container(
@@ -369,7 +369,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/return_details.jpg', // Adjust path as needed
+                    'assets/return_details.jpg',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
@@ -384,7 +384,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Wards to return stoke',
+                    'Wards to return storage',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
