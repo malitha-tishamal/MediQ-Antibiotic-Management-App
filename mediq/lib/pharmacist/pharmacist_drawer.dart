@@ -5,6 +5,7 @@ import 'pharmacist_developer_about_screen.dart';
 import 'antibiotics_release_screen.dart';
 import 'return_antibiotics_screen.dart';
 import 'view_antibiotics_screen.dart';
+import 'view_wards_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -314,9 +315,13 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   icon: Icons.local_hospital_rounded,
                   label: "Wards",
                   description: "Hospital wards & departments",
-                  onTap: () {
+                   onTap: () {
                     Navigator.of(context).pop();
-                    widget.onNavTap('Wards');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ViewWardsScreen(),
+                      ),
+                    );
                   },
                 ),
                 // Usage Details
