@@ -14,8 +14,9 @@ class AppColors {
   static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color successGreen = Color(0xFF00C853);
   static const Color warningOrange = Color(0xFFFF6D00);
+  static const Color inputBorder = Color(0xFFE0E0E0);
   
-  // Header gradient colors matching Factory Owner Dashboard
+  // Header gradient colors
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);  
   static const Color headerTextDark = Color(0xFF333333);
@@ -53,10 +54,67 @@ class _UserListScreenState extends State<UserListScreen> {
 
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Guest';
-  String? _profileImageUrl; // kept for potential use but not in header
+  String? _profileImageUrl;
   String? _currentUserId;
   bool _isUserLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
 
   @override
   void initState() {
@@ -239,29 +297,19 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  /// නවීන filter chips row එක – gradient background සහ shadows සහිත
+  // Compact filter chips row
   Widget _buildModernFilterChips() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Color(0xFFF9F7FF)],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryPurple.withOpacity(0.1),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-            spreadRadius: -5,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -292,23 +340,23 @@ class _UserListScreenState extends State<UserListScreen> {
                 });
               },
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+                  color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSelected ? color : Colors.transparent,
-                    width: 1.5,
+                    width: 1,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     _getFilterName(filter),
                     style: TextStyle(
-                      color: isSelected ? color : AppColors.darkText.withOpacity(0.6),
+                      color: isSelected ? color : AppColors.darkText.withOpacity(0.5),
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -333,7 +381,7 @@ class _UserListScreenState extends State<UserListScreen> {
                 _buildHeader(context),
                 _buildSearchBar(),
                 _buildModernFilterChips(),
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _userCollection.where('role', isEqualTo: widget.role).snapshots(),
@@ -374,7 +422,8 @@ class _UserListScreenState extends State<UserListScreen> {
                         return _buildModernEmptyState();
                       }
                       return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        key: const PageStorageKey('admin_user_list'),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                         itemCount: filteredDocs.length,
                         itemBuilder: (context, index) {
                           final doc = filteredDocs[index];
@@ -411,7 +460,7 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  /// නවීන user card – gradient background, left border (status color), double shadows
+  // ----- Updated User Card with larger avatar and horizontal action buttons -----
   Widget _buildModernUserCard(String userId, Map<String, dynamic> data) {
     final fullName = data['fullName'] ?? 'Malitha Tishamal';
     final email = data['email'] ?? 'malithatishamal@gmail.com';
@@ -448,9 +497,9 @@ class _UserListScreenState extends State<UserListScreen> {
     final bool isCurrentUser = userId == _currentUserId;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -458,20 +507,15 @@ class _UserListScreenState extends State<UserListScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.2),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-            spreadRadius: -5,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: statusColor.withOpacity(0.15),
+            blurRadius: 12,
             offset: const Offset(0, 4),
+            spreadRadius: -3,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -479,11 +523,11 @@ class _UserListScreenState extends State<UserListScreen> {
               border: Border(
                 left: BorderSide(
                   color: statusColor,
-                  width: 8,
+                  width: 6,
                 ),
               ),
             ),
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -491,7 +535,7 @@ class _UserListScreenState extends State<UserListScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Modern Profile Avatar with Image
+                    // Larger profile avatar (60x60)
                     Container(
                       width: 60,
                       height: 60,
@@ -509,9 +553,9 @@ class _UserListScreenState extends State<UserListScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: statusColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            color: statusColor.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                         image: profileImageUrl != null 
@@ -526,12 +570,12 @@ class _UserListScreenState extends State<UserListScreen> {
                               child: Icon(
                                 Icons.person,
                                 color: Colors.white,
-                                size: 28,
+                                size: 30,
                               ),
                             )
                           : null,
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     // User Details
                     Expanded(
                       child: Column(
@@ -543,7 +587,7 @@ class _UserListScreenState extends State<UserListScreen> {
                                 child: Text(
                                   fullName,
                                   style: const TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.darkText,
                                   ),
@@ -553,22 +597,22 @@ class _UserListScreenState extends State<UserListScreen> {
                               Container(
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryPurple.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Icons.edit, color: AppColors.primaryPurple, size: 20),
+                                  icon: const Icon(Icons.edit, color: AppColors.primaryPurple, size: 18),
                                   onPressed: () => _showEditDialog(userId, fullName, mobile, nic),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               // Status chip with border
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: statusColor.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(color: statusColor.withOpacity(0.3)),
                                 ),
                                 child: Row(
@@ -576,15 +620,15 @@ class _UserListScreenState extends State<UserListScreen> {
                                   children: [
                                     Icon(
                                       statusIcon,
-                                      size: 14,
+                                      size: 12,
                                       color: statusColor,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       statusText,
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
                                         color: statusColor,
                                       ),
                                     ),
@@ -593,25 +637,25 @@ class _UserListScreenState extends State<UserListScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          _buildInfoRow(Icons.email, email),
                           const SizedBox(height: 6),
-                          _buildInfoRow(Icons.badge, 'NIC: $nic'),
+                          _buildInfoRow(Icons.email, email, fontSize: 12),
+                          const SizedBox(height: 4),
+                          _buildInfoRow(Icons.badge, 'NIC: $nic', fontSize: 12),
+                          const SizedBox(height: 4),
+                          _buildInfoRow(Icons.phone, 'Mobile: $mobile', fontSize: 12),
                           const SizedBox(height: 6),
-                          _buildInfoRow(Icons.phone, 'Mobile: $mobile'),
-                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(
                                 Icons.calendar_today,
-                                size: 12,
+                                size: 10,
                                 color: AppColors.darkText.withOpacity(0.4),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Text(
                                 formattedDate,
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   color: AppColors.darkText.withOpacity(0.4),
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -623,43 +667,40 @@ class _UserListScreenState extends State<UserListScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                // Modern Action Buttons – disabled for current user
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildModernActionButton(
-                          'Approve',
-                          isCurrentUser ? Colors.grey : AppColors.successGreen,
-                          Icons.check_circle,
-                          isCurrentUser || status == 'Approved',
-                          isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
-                        ),
+                const SizedBox(height: 12),
+                // Horizontal Action Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildModernActionButton(
+                        'Approve',
+                        isCurrentUser ? Colors.grey : AppColors.successGreen,
+                        Icons.check_circle,
+                        isCurrentUser || status == 'Approved',
+                        isCurrentUser ? null : () => _updateStatus(userId, 'Approved'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildModernActionButton(
-                          'Disable',
-                          isCurrentUser ? Colors.grey : AppColors.disabledColor,
-                          Icons.lock,
-                          isCurrentUser || status == 'Disabled',
-                          isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildModernActionButton(
+                        'Disable',
+                        isCurrentUser ? Colors.grey : AppColors.disabledColor,
+                        Icons.lock,
+                        isCurrentUser || status == 'Disabled',
+                        isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildModernActionButton(
-                          'Delete',
-                          isCurrentUser ? Colors.grey : AppColors.warningOrange,
-                          Icons.delete_outline,
-                          isCurrentUser,
-                          isCurrentUser ? null : () => _confirmDelete(userId, fullName),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildModernActionButton(
+                        'Delete',
+                        isCurrentUser ? Colors.grey : AppColors.warningOrange,
+                        Icons.delete_outline,
+                        isCurrentUser,
+                        isCurrentUser ? null : () => _confirmDelete(userId, fullName),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -669,20 +710,20 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(IconData icon, String text, {double fontSize = 13}) {
     return Row(
       children: [
         Icon(
           icon,
-          size: 14,
+          size: 12,
           color: AppColors.darkText.withOpacity(0.5),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: fontSize,
               color: AppColors.darkText.withOpacity(0.7),
             ),
           ),
@@ -691,6 +732,7 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
+  // Horizontal action button
   Widget _buildModernActionButton(
     String label,
     Color color,
@@ -699,35 +741,36 @@ class _UserListScreenState extends State<UserListScreen> {
     VoidCallback? onTap,
   ) {
     return Material(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       color: isDisabled ? Colors.grey.withOpacity(0.1) : color.withOpacity(0.1),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isDisabled ? Colors.grey.withOpacity(0.3) : color.withOpacity(0.5),
               width: isDisabled ? 1 : 1.5,
             ),
           ),
-          child: Column(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 18,
+                size: 14,
                 color: isDisabled ? Colors.grey : color,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
                   color: isDisabled ? Colors.grey : color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 11,
+                  fontSize: 10,
                 ),
               ),
             ],
@@ -739,83 +782,24 @@ class _UserListScreenState extends State<UserListScreen> {
 
   // Modern loading state
   Widget _buildModernLoadingState() {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.1),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(
-              color: AppColors.primaryPurple,
-              strokeWidth: 3,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Loading users...',
-              style: TextStyle(
-                color: AppColors.darkText.withOpacity(0.6),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.primaryPurple),
     );
   }
 
   // Modern error state
   Widget _buildModernErrorState(String error) {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.withOpacity(0.1),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: AppColors.disabledColor,
-              size: 48,
-            ),
+            Icon(Icons.error_outline, size: 48, color: AppColors.disabledColor),
             const SizedBox(height: 16),
-            const Text(
-              'Error loading data',
-              style: TextStyle(
-                color: AppColors.darkText,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('Error loading data', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              error.length > 100 ? '${error.substring(0, 100)}...' : error,
-              style: TextStyle(
-                color: AppColors.darkText.withOpacity(0.5),
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            Text(error, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -825,37 +809,23 @@ class _UserListScreenState extends State<UserListScreen> {
   // Modern empty state
   Widget _buildModernEmptyState() {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.1),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text('No ${widget.role} accounts found', style: TextStyle(color: Colors.grey, fontSize: 16)),
+          if (_searchQuery.isNotEmpty || _currentFilter != UserStatusFilter.all)
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _currentFilter = UserStatusFilter.all;
+                });
+              },
+              child: const Text('Clear filters'),
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.people_outline,
-              color: AppColors.darkText.withOpacity(0.3),
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No ${widget.role} accounts found',
-              style: TextStyle(
-                color: AppColors.darkText.withOpacity(0.5),
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -885,30 +855,27 @@ class _UserListScreenState extends State<UserListScreen> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: const Icon(Icons.person, color: AppColors.primaryPurple),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  decoration: _inputDecoration(
+                    label: 'Full Name',
+                    prefixIcon: Icons.person,
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: mobileController,
-                  decoration: InputDecoration(
-                    labelText: 'Mobile Number',
-                    prefixIcon: const Icon(Icons.phone, color: AppColors.primaryPurple),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  decoration: _inputDecoration(
+                    label: 'Mobile Number',
+                    prefixIcon: Icons.phone,
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'Mobile is required' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: nicController,
-                  decoration: InputDecoration(
-                    labelText: 'NIC',
-                    prefixIcon: const Icon(Icons.badge, color: AppColors.primaryPurple),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  decoration: _inputDecoration(
+                    label: 'NIC',
+                    prefixIcon: Icons.badge,
                   ),
                   validator: (value) => value == null || value.isEmpty ? 'NIC is required' : null,
                 ),
