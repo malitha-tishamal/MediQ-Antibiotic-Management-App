@@ -437,7 +437,19 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
     );
   }
 
-  // Modern stock item card
+  // Compact info chip helper
+  Widget _infoChipCompact(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: AppColors.primaryPurple),
+        const SizedBox(width: 2),
+        Text(label, style: const TextStyle(fontSize: 10)),
+      ],
+    );
+  }
+
+  // Modern compact stock item card
   Widget _buildStockItemCard({
     required Map<String, dynamic> item,
     required String srNumber,
@@ -456,9 +468,9 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
         : 'Not updated';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -466,20 +478,15 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.2),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-            spreadRadius: -5,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: statusColor.withOpacity(0.15),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
+            spreadRadius: -2,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -487,11 +494,11 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
               border: Border(
                 left: BorderSide(
                   color: statusColor,
-                  width: 8,
+                  width: 5,
                 ),
               ),
             ),
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -503,70 +510,56 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                       child: Text(
                         drugName,
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.darkText,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: statusColor.withOpacity(0.3)),
                       ),
                       child: Text(
                         statusText,
                         style: TextStyle(
                           color: statusColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // SR and Dosage info with icons
                 Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
+                  spacing: 10,
+                  runSpacing: 4,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.qr_code, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text('SR: $srNumber', style: const TextStyle(color: Colors.grey)),
-                      ],
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.medical_services_outlined, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text('Dosage: $dosage', style: const TextStyle(color: Colors.grey)),
-                      ],
-                    ),
+                    _infoChipCompact(Icons.qr_code, 'SR: $srNumber'),
+                    _infoChipCompact(Icons.medical_services_outlined, 'Dosage: $dosage'),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // Current quantity with icon
                 Row(
                   children: [
-                    const Icon(Icons.inventory, size: 18, color: AppColors.primaryPurple),
-                    const SizedBox(width: 6),
+                    const Icon(Icons.inventory, size: 14, color: AppColors.primaryPurple),
+                    const SizedBox(width: 4),
                     Text(
-                      'Current Quantity: $quantity',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      'Current: $quantity',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
 
                 // Quantity input and buttons
                 Row(
@@ -576,11 +569,11 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                         controller: controller,
                         keyboardType: TextInputType.number,
                         decoration: _inputDecoration(
-                          label: 'Enter quantity',
-                        ),
+                          label: 'Qty',
+                        ).copyWith(contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8)),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     if (stockId == null) ...[
                       // No stock entry yet: show Add button to create
                       ElevatedButton(
@@ -602,10 +595,11 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.successGreen,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          minimumSize: const Size(40, 32),
                         ),
-                        child: const Text('Add'),
+                        child: const Text('Add', style: TextStyle(fontSize: 11)),
                       ),
                     ] else ...[
                       // Stock exists: show Add and Update buttons
@@ -623,12 +617,13 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.successGreen,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              minimumSize: const Size(36, 28),
                             ),
-                            child: const Text('Add'),
+                            child: const Text('Add', style: TextStyle(fontSize: 10)),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           ElevatedButton(
                             onPressed: () {
                               final newQty = int.tryParse(controller.text);
@@ -641,10 +636,11 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryPurple,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              minimumSize: const Size(36, 28),
                             ),
-                            child: const Text('Update'),
+                            child: const Text('Update', style: TextStyle(fontSize: 10)),
                           ),
                         ],
                       ),
@@ -652,9 +648,9 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 18),
-                const Divider(height: 1, thickness: 1),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                const Divider(height: 1, thickness: 0.5),
+                const SizedBox(height: 6),
 
                 // Footer with ID and last updated
                 Row(
@@ -662,21 +658,21 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.fingerprint, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.fingerprint, size: 12, color: Colors.grey),
+                        const SizedBox(width: 2),
                         Text(
-                          stockId != null ? 'ID: ${stockId.substring(0, 6)}...' : 'ID: Not created',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          stockId != null ? 'ID: ${stockId.substring(0, 4)}...' : 'ID: Not created',
+                          style: const TextStyle(fontSize: 9, color: Colors.grey),
                         ),
                       ],
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.update, size: 12, color: Colors.grey),
-                        const SizedBox(width: 4),
+                        const Icon(Icons.update, size: 10, color: Colors.grey),
+                        const SizedBox(width: 2),
                         Text(
                           stockId != null ? formattedDate : 'Not updated',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                          style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w400),
                         ),
                       ],
                     ),
@@ -824,13 +820,13 @@ class _ReturnStoreScreenState extends State<ReturnStoreScreen> {
                                       String statusText;
                                       if (quantity == 0) {
                                         statusColor = AppColors.disabledColor;
-                                        statusText = 'Out of Stock';
+                                        statusText = 'Out';
                                       } else if (quantity < 50) {
                                         statusColor = AppColors.warningOrange;
-                                        statusText = 'Low Stock';
+                                        statusText = 'Low';
                                       } else {
                                         statusColor = AppColors.successGreen;
-                                        statusText = 'In Stock';
+                                        statusText = 'In';
                                       }
 
                                       return _buildStockItemCard(
