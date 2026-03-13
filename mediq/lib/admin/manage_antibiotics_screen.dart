@@ -222,7 +222,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
     );
   }
 
-  // Compact modern filter chip without dot
+  // Compact modern filter chip
   Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
     final isSelected = _selectedFilter == filterValue;
     return GestureDetector(
@@ -378,6 +378,7 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                             child: filteredDocs.isEmpty
                                 ? _buildEmptyState()
                                 : ListView.builder(
+                                    key: const PageStorageKey('antibiotics_list'),
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 20, vertical: 8),
                                     itemCount: filteredDocs.length,
@@ -393,11 +394,11 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                           ? DateFormat('dd MMM yyyy').format(createdAt.toDate())
                                           : '';
 
-                                      // ----- Modern Card with edit/delete buttons -----
+                                      // ----- Modern Compact Card with edit/delete -----
                                       return Container(
-                                        margin: const EdgeInsets.only(bottom: 16),
+                                        margin: const EdgeInsets.only(bottom: 12),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(28),
+                                          borderRadius: BorderRadius.circular(24),
                                           gradient: const LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
@@ -408,20 +409,15 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: _getCategoryColor(category).withOpacity(0.2),
-                                              blurRadius: 18,
-                                              offset: const Offset(0, 8),
-                                              spreadRadius: -5,
-                                            ),
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.05),
-                                              blurRadius: 10,
+                                              color: _getCategoryColor(category).withOpacity(0.15),
+                                              blurRadius: 12,
                                               offset: const Offset(0, 4),
+                                              spreadRadius: -3,
                                             ),
                                           ],
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(28),
+                                          borderRadius: BorderRadius.circular(24),
                                           child: Material(
                                             color: Colors.transparent,
                                             child: Container(
@@ -429,11 +425,11 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                 border: Border(
                                                   left: BorderSide(
                                                     color: _getCategoryColor(category),
-                                                    width: 8,
+                                                    width: 6,
                                                   ),
                                                 ),
                                               ),
-                                              padding: const EdgeInsets.all(18),
+                                              padding: const EdgeInsets.all(12),
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
@@ -444,10 +440,10 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                         child: Text(
                                                           name,
                                                           style: const TextStyle(
-                                                            fontSize: 20,
+                                                            fontSize: 18,
                                                             fontWeight: FontWeight.bold,
                                                             color: AppColors.darkText,
-                                                            letterSpacing: 0.5,
+                                                            letterSpacing: 0.3,
                                                           ),
                                                         ),
                                                       ),
@@ -457,13 +453,13 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                           Container(
                                                             decoration: BoxDecoration(
                                                               color: Colors.orange.withOpacity(0.1),
-                                                              borderRadius: BorderRadius.circular(12),
+                                                              borderRadius: BorderRadius.circular(10),
                                                             ),
                                                             child: IconButton(
                                                               icon: const Icon(
                                                                   Icons.edit,
                                                                   color: Colors.orange,
-                                                                  size: 22),
+                                                                  size: 18),
                                                               onPressed: () {
                                                                 Navigator.push(
                                                                   context,
@@ -483,13 +479,13 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                           Container(
                                                             decoration: BoxDecoration(
                                                               color: Colors.red.withOpacity(0.1),
-                                                              borderRadius: BorderRadius.circular(12),
+                                                              borderRadius: BorderRadius.circular(10),
                                                             ),
                                                             child: IconButton(
                                                               icon: const Icon(
                                                                   Icons.delete,
                                                                   color: Colors.red,
-                                                                  size: 22),
+                                                                  size: 18),
                                                               onPressed: () =>
                                                                   _confirmDelete(doc.id, name),
                                                               padding: EdgeInsets.zero,
@@ -500,13 +496,13 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                  const SizedBox(height: 12),
+                                                  const SizedBox(height: 8),
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(
-                                                        horizontal: 12, vertical: 6),
+                                                        horizontal: 10, vertical: 4),
                                                     decoration: BoxDecoration(
                                                       color: _getCategoryColor(category).withOpacity(0.15),
-                                                      borderRadius: BorderRadius.circular(30),
+                                                      borderRadius: BorderRadius.circular(20),
                                                       border: Border.all(
                                                         color: _getCategoryColor(category).withOpacity(0.3),
                                                       ),
@@ -515,34 +511,33 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                       category,
                                                       style: TextStyle(
                                                         color: _getCategoryColor(category),
-                                                        fontWeight: FontWeight.w700,
-                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 11,
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 16),
+                                                  const SizedBox(height: 12),
                                                   if (dosages.isNotEmpty) ...[
                                                     const Text(
-                                                      'Available Dosages',
+                                                      'Dosages',
                                                       style: TextStyle(
-                                                        fontSize: 13,
+                                                        fontSize: 12,
                                                         color: Colors.grey,
                                                         fontWeight: FontWeight.w600,
-                                                        letterSpacing: 0.3,
                                                       ),
                                                     ),
-                                                    const SizedBox(height: 10),
+                                                    const SizedBox(height: 6),
                                                     Wrap(
-                                                      spacing: 8,
-                                                      runSpacing: 8,
+                                                      spacing: 6,
+                                                      runSpacing: 6,
                                                       children: dosages.map<Widget>((d) {
                                                         final dosage = d as Map<String, dynamic>;
                                                         return Container(
                                                           padding: const EdgeInsets.symmetric(
-                                                              horizontal: 12, vertical: 8),
+                                                              horizontal: 8, vertical: 4),
                                                           decoration: BoxDecoration(
                                                             color: AppColors.chipBackground,
-                                                            borderRadius: BorderRadius.circular(24),
+                                                            borderRadius: BorderRadius.circular(16),
                                                             border: Border.all(
                                                               color: Colors.grey.shade200,
                                                             ),
@@ -552,29 +547,28 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                             children: [
                                                               const Icon(
                                                                 Icons.medical_services_outlined,
-                                                                size: 14,
+                                                                size: 12,
                                                                 color: AppColors.primaryPurple,
                                                               ),
-                                                              const SizedBox(width: 6),
+                                                              const SizedBox(width: 4),
                                                               Text(
                                                                 '${dosage['dosage']}',
                                                                 style: const TextStyle(
-                                                                    fontSize: 13,
+                                                                    fontSize: 11,
                                                                     fontWeight: FontWeight.w500),
                                                               ),
                                                               const SizedBox(width: 4),
                                                               Container(
                                                                 width: 1,
-                                                                height: 14,
+                                                                height: 12,
                                                                 color: Colors.grey.shade400,
                                                               ),
                                                               const SizedBox(width: 4),
                                                               Text(
                                                                 'SR: ${dosage['srNumber']}',
                                                                 style: const TextStyle(
-                                                                  fontSize: 11,
+                                                                  fontSize: 10,
                                                                   color: Colors.grey,
-                                                                  fontWeight: FontWeight.w400,
                                                                 ),
                                                               ),
                                                             ],
@@ -584,38 +578,38 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                     ),
                                                   ] else
                                                     Container(
-                                                      padding: const EdgeInsets.all(12),
+                                                      padding: const EdgeInsets.all(8),
                                                       decoration: BoxDecoration(
                                                         color: Colors.grey.shade50,
-                                                        borderRadius: BorderRadius.circular(16),
+                                                        borderRadius: BorderRadius.circular(12),
                                                       ),
                                                       child: const Row(
                                                         children: [
                                                           Icon(Icons.info_outline,
-                                                              size: 16, color: Colors.grey),
-                                                          SizedBox(width: 8),
+                                                              size: 14, color: Colors.grey),
+                                                          SizedBox(width: 6),
                                                           Text(
-                                                            'No dosages added yet',
-                                                            style: TextStyle(color: Colors.grey),
+                                                            'No dosages',
+                                                            style: TextStyle(fontSize: 12, color: Colors.grey),
                                                           ),
                                                         ],
                                                       ),
                                                     ),
-                                                  const SizedBox(height: 18),
-                                                  const Divider(height: 1, thickness: 1),
                                                   const SizedBox(height: 10),
+                                                  const Divider(height: 1, thickness: 0.5),
+                                                  const SizedBox(height: 6),
                                                   Row(
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                     children: [
                                                       Row(
                                                         children: [
                                                           const Icon(Icons.fingerprint,
-                                                              size: 14, color: Colors.grey),
+                                                              size: 12, color: Colors.grey),
                                                           const SizedBox(width: 4),
                                                           Text(
                                                             'ID: ${doc.id.substring(0, 6)}...',
                                                             style: const TextStyle(
-                                                              fontSize: 11,
+                                                              fontSize: 10,
                                                               color: Colors.grey,
                                                             ),
                                                           ),
@@ -624,14 +618,14 @@ class _ManageAntibioticsScreenState extends State<ManageAntibioticsScreen> {
                                                       Row(
                                                         children: [
                                                           const Icon(Icons.calendar_today,
-                                                              size: 12, color: Colors.grey),
+                                                              size: 10, color: Colors.grey),
                                                           const SizedBox(width: 4),
                                                           Text(
                                                             createdDate,
                                                             style: const TextStyle(
-                                                              fontSize: 12,
+                                                              fontSize: 11,
                                                               color: Colors.grey,
-                                                              fontWeight: FontWeight.w500,
+                                                              fontWeight: FontWeight.w400,
                                                             ),
                                                           ),
                                                         ],
