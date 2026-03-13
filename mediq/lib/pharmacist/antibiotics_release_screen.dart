@@ -17,6 +17,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
 }
 
 class ReleaseAntibioticsScreen extends StatefulWidget {
@@ -64,6 +65,63 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   // ---------- Ward search data ----------
   final List<Map<String, String>> _wardSearchList = [];
   final Map<String, String> _wardMap = {}; // id -> name
+
+  // ---------- Helper for consistent input decoration ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+    bool enabled = true,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: TextStyle(
+        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Container(
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+              ),
+            ),
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+    );
+  }
 
   @override
   void initState() {
@@ -519,6 +577,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
+                                // TypeAhead for antibiotic – uses _inputDecoration
                                 TypeAheadFormField<String>(
                                   textFieldConfiguration: TextFieldConfiguration(
                                     controller: TextEditingController(
@@ -528,13 +587,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                               _antibioticMap[_selectedAntibioticKey]!['dosage']!
                                           : '',
                                     ),
-                                    decoration: InputDecoration(
-                                      prefixIcon: const Icon(Icons.medication, color: AppColors.primaryPurple),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                      filled: true,
-                                      fillColor: Colors.white,
+                                    decoration: _inputDecoration(
+                                      label: 'Antibiotic',
                                       hintText: '-- Type to search Antibiotic --',
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      prefixIcon: Icons.medication,
                                     ),
                                   ),
                                   suggestionsCallback: (pattern) {
@@ -575,19 +631,17 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 TextFormField(
                                   controller: TextEditingController(text: _dosage),
                                   readOnly: true,
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.medical_information, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    filled: true,
-                                    fillColor: Colors.grey.shade100,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
+                                  decoration: _inputDecoration(
+                                    label: 'Dosage',
+                                    prefixIcon: Icons.medical_information,
+                                  ).copyWith(fillColor: Colors.grey.shade100),
                                 ),
                                 const SizedBox(height: 12),
 
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
+                                // TypeAhead for ward – uses _inputDecoration
                                 TypeAheadFormField<String>(
                                   textFieldConfiguration: TextFieldConfiguration(
                                     controller: TextEditingController(
@@ -595,13 +649,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                           ? _wardMap[_selectedWardId] ?? ''
                                           : '',
                                     ),
-                                    decoration: InputDecoration(
-                                      prefixIcon: const Icon(Icons.local_hospital, color: AppColors.primaryPurple),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                      filled: true,
-                                      fillColor: Colors.white,
+                                    decoration: _inputDecoration(
+                                      label: 'Ward',
                                       hintText: '-- Type to search Ward --',
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      prefixIcon: Icons.local_hospital,
                                     ),
                                   ),
                                   suggestionsCallback: (pattern) {
@@ -695,7 +746,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.grey),
+                                        border: Border.all(color: AppColors.inputBorder),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Row(
@@ -723,34 +774,42 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                           const Text('Select Book Number',
                                               style: TextStyle(fontWeight: FontWeight.w600)),
                                           const SizedBox(height: 6),
-                                          DropdownButtonFormField<String>(
-                                            value: _selectedBookNumber,
-                                            items: _activeBooks.isEmpty
-                                                ? [
-                                                    DropdownMenuItem<String>(
-                                                      value: null,
-                                                      enabled: false,
-                                                      child: Text(
-                                                        'No active books',
-                                                        style: TextStyle(color: Colors.grey[600]),
-                                                      ),
-                                                    )
-                                                  ]
-                                                : _activeBooks.map((book) {
-                                                    return DropdownMenuItem<String>(
-                                                      value: book['bookNumber'],
-                                                      child: Text(book['bookNumber']),
-                                                    );
-                                                  }).toList(),
-                                            onChanged: _activeBooks.isEmpty
-                                                ? null
-                                                : (val) => setState(() => _selectedBookNumber = val),
-                                            decoration: InputDecoration(
-                                              prefixIcon: const Icon(Icons.menu_book, color: AppColors.primaryPurple),
-                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          // Book dropdown – wrap in container for border
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                                              color: Colors.white,
                                             ),
-                                            hint: const Text('-- Select --'),
+                                            child: DropdownButtonFormField<String>(
+                                              value: _selectedBookNumber,
+                                              items: _activeBooks.isEmpty
+                                                  ? [
+                                                      DropdownMenuItem<String>(
+                                                        value: null,
+                                                        enabled: false,
+                                                        child: Text(
+                                                          'No active books',
+                                                          style: TextStyle(color: Colors.grey[600]),
+                                                        ),
+                                                      )
+                                                    ]
+                                                  : _activeBooks.map((book) {
+                                                      return DropdownMenuItem<String>(
+                                                        value: book['bookNumber'],
+                                                        child: Text(book['bookNumber']),
+                                                      );
+                                                    }).toList(),
+                                              onChanged: _activeBooks.isEmpty
+                                                  ? null
+                                                  : (val) => setState(() => _selectedBookNumber = val),
+                                              decoration: const InputDecoration(
+                                                border: InputBorder.none,
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                              ),
+                                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+                                              hint: const Text('-- Select --'),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -765,11 +824,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                           TextFormField(
                                             controller: _pageNumberController,
                                             keyboardType: TextInputType.text,
-                                            decoration: InputDecoration(
+                                            decoration: _inputDecoration(
+                                              label: 'Page Number',
                                               hintText: 'Page number',
-                                              prefixIcon: const Icon(Icons.numbers, color: AppColors.primaryPurple),
-                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                              prefixIcon: Icons.numbers,
                                             ),
                                           ),
                                         ],
@@ -784,11 +842,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 TextFormField(
                                   controller: _itemCountController,
                                   keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
+                                  decoration: _inputDecoration(
+                                    label: 'Item Count',
                                     hintText: 'Enter item count',
-                                    prefixIcon: const Icon(Icons.production_quantity_limits, color: AppColors.primaryPurple),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    prefixIcon: Icons.production_quantity_limits,
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
