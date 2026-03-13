@@ -10,6 +10,7 @@ import 'pharmacist_developer_about_screen.dart';
 import 'antibiotics_release_screen.dart';
 import 'return_antibiotics_screen.dart';
 import 'view_antibiotics_screen.dart';
+import 'view_wards_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -60,6 +61,22 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   String? _profileImageUrl;
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+
+  // Month names (English)
+  final List<String> Months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   @override
   void initState() {
@@ -149,6 +166,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
        case 'Antibiotics':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ViewAntibioticsScreen()),
+        );
+        break;
+
+      case 'Wards':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ViewWardsScreen()),
         );
         break;
 
@@ -519,8 +542,14 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Usage Details Tile (live counts) ----------------
+  // ---------------- Usage Details Tile (live monthly counts) ----------------
   Widget _tileUsageDetails() {
+    final now = DateTime.now();
+    final currentMonth = Months[now.month - 1];
+
+    final firstDayOfMonth = DateTime(now.year, now.month, 1);
+    final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
+
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
       child: _smallCard(
@@ -542,36 +571,44 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             const Spacer(),
             Row(
               children: [
+                // Releases count for current month
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _releasesCollection
-                        .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                        .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                    stream: FirebaseFirestore.instance
+                        .collection('releases')
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isLessThan: firstDayNextMonth)
                         .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _miniStat('Today\nReleases', count.toString(),
-                          AppColors.releasesCountColor);
+                      return _miniStat(
+                          '$currentMonth Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
                     },
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Returns count for current month
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _returnsCollection
-                        .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                        .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                    stream: FirebaseFirestore.instance
+                        .collection('returns')
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isLessThan: firstDayNextMonth)
                         .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _miniStat('Today\nReturns', count.toString(),
-                          AppColors.returnsCountColor);
+                      return _miniStat(
+                          '$currentMonth Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
                     },
                   ),
                 ),
