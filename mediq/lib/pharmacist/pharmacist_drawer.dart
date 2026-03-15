@@ -6,6 +6,8 @@ import 'antibiotics_release_screen.dart';
 import 'return_antibiotics_screen.dart';
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
+import 'pharmacist_antibiotic_usage_screen.dart';
+import 'pharmacist_book_numbers_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -329,7 +331,14 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   icon: Icons.receipt_long_rounded,
                   label: "Usage Details",
                   description: "Medication usage records",
-                  onTap: () => widget.onNavTap('Usage Details'),
+                   onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PharmacistAntibioticUsageScreen(),
+                      ),
+                    );
+                  },
                 ),
                 // Record Books
                 _buildModernDrawerItem(
@@ -338,7 +347,11 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   description: "Medical record books",
                   onTap: () {
                     Navigator.of(context).pop();
-                    widget.onNavTap('Book Numbers');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PharmacistBookNumbersScreen(),
+                      ),
+                    );
                   },
                 ),
                 const SizedBox(height: 10),
