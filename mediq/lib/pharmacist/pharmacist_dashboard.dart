@@ -7,10 +7,12 @@ import 'dart:async';
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
-import 'antibiotics_release_screen.dart';
-import 'return_antibiotics_screen.dart';
+import 'release_antibiotics_details.dart';
+import 'return_antibiotics_details.dart';
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
+import 'pharmacist_antibiotic_usage_screen.dart';
+import 'pharmacist_book_numbers_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -51,7 +53,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   final CollectionReference _releasesCollection =
       FirebaseFirestore.instance.collection('releases');
   final CollectionReference _returnsCollection =
-      FirebaseFirestore.instance.collection('returns'); // adjust if needed
+      FirebaseFirestore.instance.collection('returns');
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -59,6 +61,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   String _currentUserName = '';
   String _currentUserRole = '';
   String? _profileImageUrl;
+  String? _currentUserId; // Added to store current user's UID
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
@@ -83,6 +86,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     super.initState();
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid; // Get current user ID
     _listenToUserChanges();
   }
 
@@ -153,13 +157,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     switch (title) {
       case 'Antibiotics Release':
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
+          MaterialPageRoute(builder: (_) => const ReleaseAntibioticsDetails()),
         );
         break;
       
       case 'Antibiotics Returns':
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ReturnAntibioticsScreen()),
+          MaterialPageRoute(builder: (_) => const ReturnAntibioticsDetails()),
         );
         break;
 
@@ -172,6 +176,18 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       case 'Wards':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ViewWardsScreen()),
+        );
+        break;
+
+      case 'Usage Details':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PharmacistAntibioticUsageScreen()),
+        );
+        break;
+
+      case 'Book Numbers':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PharmacistBookNumbersScreen()),
         );
         break;
 
@@ -323,16 +339,25 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       mainAxisSpacing: 10,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.50,
+      childAspectRatio: 1.5,
       children: [
         _tileAntibioticsRelease(),
         _tileAntibioticsReturns(),
         _tileAntibiotics(),
         _tileWards(),
         _tileUsageDetails(),
-        _buildSmallTile(icon: Icons.menu_book, title: 'Book Numbers'),
-        _buildSmallTile(icon: Icons.person_outline, title: 'Profile Manage'),
-        _buildSmallTile(icon: Icons.developer_board, title: 'Developer About'),
+        _buildSmallTile(
+            icon: Icons.menu_book,
+            title: 'Book Numbers',
+            subtitle: 'For Connecting Manual System'),
+        _buildSmallTile(
+            icon: Icons.person_outline,
+            title: 'Profile Manage',
+            subtitle: 'Manage Profile Details'),
+        _buildSmallTile(
+            icon: Icons.developer_board,
+            title: 'Developer About',
+            subtitle: 'Contact Developers'),
         const SizedBox.shrink(),
       ],
     );
@@ -370,95 +395,158 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------- Antibiotics Release Tile (live count) ----------
-  Widget _tileAntibioticsRelease() {
-    return InkWell(
-      onTap: () => _onNavTap('Antibiotics Release'),
-      child: _smallCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.receipt_long,
-                    color: AppColors.primaryPurple, size: 28),
-                Spacer(),
-                Text('Antibiotics\nRelease',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
-              ],
-            ),
-            const Spacer(),
-            StreamBuilder<QuerySnapshot>(
-              stream: _releasesCollection
-                  .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                  .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                  .snapshots(),
-              builder: (context, snapshot) {
-                int count = 0;
-                if (snapshot.hasData) {
-                  count = snapshot.data!.docs.length;
-                } else if (snapshot.hasError) {
-                  debugPrint('Error fetching releases: ${snapshot.error}');
-                }
-                return _miniStat('Today Releases', count.toString().padLeft(2, '0'),
-                    AppColors.releasesCountColor);
-              },
-            ),
-          ],
-        ),
+  // ---------- Antibiotics Release Tile (live count for current user) ----------
+  // ---------- Antibiotics Release Tile (total and user counts) ----------
+Widget _tileAntibioticsRelease() {
+  final userId = _currentUserId;
+  return InkWell(
+    onTap: () => _onNavTap('Antibiotics Release'),
+    child: _smallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.receipt_long,
+                  color: AppColors.primaryPurple, size: 28),
+              Spacer(),
+              Text('Antibiotics\nRelease',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                      fontSize: 14)),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              // Total releases today
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _releasesCollection
+                      .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                      .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+                    if (snapshot.hasData) {
+                      count = snapshot.data!.docs.length;
+                    } else if (snapshot.hasError) {
+                      debugPrint('Error fetching total releases: ${snapshot.error}');
+                    }
+                    return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
+                        AppColors.releasesCountColor);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Your releases today
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: userId != null
+                      ? _releasesCollection
+                          .where('createdBy', isEqualTo: userId)
+                          .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                          .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                          .snapshots()
+                      : Stream.empty(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+                    if (snapshot.hasData) {
+                      count = snapshot.data!.docs.length;
+                    } else if (snapshot.hasError) {
+                      debugPrint('Error fetching user releases: ${snapshot.error}');
+                    }
+                    return _miniStat('You Issued', count.toString().padLeft(2, '0'),
+                        AppColors.primaryPurple);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ---------- Antibiotics Returns Tile (live count) ----------
-  Widget _tileAntibioticsReturns() {
-    return InkWell(
-      onTap: () => _onNavTap('Antibiotics Returns'),
-      child: _smallCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.archive,
-                    color: AppColors.primaryPurple, size: 28),
-                Spacer(),
-                Text('Antibiotics\nReturns',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
-              ],
-            ),
-            const Spacer(),
-            StreamBuilder<QuerySnapshot>(
-              stream: _returnsCollection
-                  .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                  .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                  .snapshots(),
-              builder: (context, snapshot) {
-                int count = 0;
-                if (snapshot.hasData) {
-                  count = snapshot.data!.docs.length;
-                } else if (snapshot.hasError) {
-                  debugPrint('Error fetching returns: ${snapshot.error}');
-                }
-                return _miniStat('Today Returns', count.toString().padLeft(2, '0'),
-                    AppColors.returnsCountColor);
-              },
-            ),
-          ],
-        ),
+// ---------- Antibiotics Returns Tile (total and user counts) ----------
+Widget _tileAntibioticsReturns() {
+  final userId = _currentUserId;
+  return InkWell(
+    onTap: () => _onNavTap('Antibiotics Returns'),
+    child: _smallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.archive,
+                  color: AppColors.primaryPurple, size: 28),
+              Spacer(),
+              Text('Antibiotics\nReturns',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                      fontSize: 14)),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              // Total returns today
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _returnsCollection
+                      .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                      .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+                    if (snapshot.hasData) {
+                      count = snapshot.data!.docs.length;
+                    } else if (snapshot.hasError) {
+                      debugPrint('Error fetching total returns: ${snapshot.error}');
+                    }
+                    return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
+                        AppColors.returnsCountColor);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Your returns today
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: userId != null
+                      ? _returnsCollection
+                          .where('createdBy', isEqualTo: userId)
+                          .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                          .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                          .snapshots()
+                      : Stream.empty(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+                    if (snapshot.hasData) {
+                      count = snapshot.data!.docs.length;
+                    } else if (snapshot.hasError) {
+                      debugPrint('Error fetching user returns: ${snapshot.error}');
+                    }
+                    return _miniStat('You Issued', count.toString().padLeft(2, '0'),
+                        AppColors.primaryPurple);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  // ---------------- Antibiotics Tile (live count) ----------------
+  // ---------------- Antibiotics Tile with dynamic categories count ----------------
   Widget _tileAntibiotics() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics'),
@@ -466,10 +554,33 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         child: StreamBuilder<QuerySnapshot>(
           stream: _antibioticsCollection.snapshots(),
           builder: (context, snapshot) {
-            int count = 0;
+            int total = 0;
+            Set<String> categories = {};
+
             if (snapshot.hasData) {
-              count = snapshot.data!.docs.length;
+              final docs = snapshot.data!.docs;
+              total = docs.length;
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final category = data['category'] ?? '';
+                if (category.isNotEmpty) {
+                  categories.add(category);
+                }
+              }
             }
+
+            int categoryCount = categories.length;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -490,8 +601,19 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                   ],
                 ),
                 const Spacer(),
-                _miniStat('Total Found', count.toString().padLeft(2, '0'),
-                    AppColors.totalFoundColor),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStat('Total Found', total.toString().padLeft(2, '0'),
+                          AppColors.totalFoundColor),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple),
+                    ),
+                  ],
+                ),
               ],
             );
           },
@@ -500,7 +622,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Wards Tile (live count) ----------------
+  // ---------------- Wards Tile with dynamic categories count ----------------
   Widget _tileWards() {
     return InkWell(
       onTap: () => _onNavTap('Wards'),
@@ -508,10 +630,33 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         child: StreamBuilder<QuerySnapshot>(
           stream: _wardsCollection.snapshots(),
           builder: (context, snapshot) {
-            int count = 0;
+            int total = 0;
+            Set<String> categories = {};
+
             if (snapshot.hasData) {
-              count = snapshot.data!.docs.length;
+              final docs = snapshot.data!.docs;
+              total = docs.length;
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final category = data['category'] ?? '';
+                if (category.isNotEmpty) {
+                  categories.add(category);
+                }
+              }
             }
+
+            int categoryCount = categories.length;
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -532,8 +677,19 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                   ],
                 ),
                 const Spacer(),
-                _miniStat('Total Wards', count.toString().padLeft(2, '0'),
-                    AppColors.totalFoundColor),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _miniStat('Total Wards', total.toString().padLeft(2, '0'),
+                          AppColors.totalFoundColor),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple),
+                    ),
+                  ],
+                ),
               ],
             );
           },
@@ -542,13 +698,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Usage Details Tile (live monthly counts) ----------------
+  // ---------------- Usage Details Tile (live monthly counts for current user) ----------------
   Widget _tileUsageDetails() {
     final now = DateTime.now();
     final currentMonth = Months[now.month - 1];
-
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
+    final userId = _currentUserId;
 
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
@@ -571,16 +727,19 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             const Spacer(),
             Row(
               children: [
-                // Releases count for current month
+                // Releases count for current month (current user only)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('releases')
-                        .where('createdAt',
-                            isGreaterThanOrEqualTo: firstDayOfMonth)
-                        .where('createdAt',
-                            isLessThan: firstDayNextMonth)
-                        .snapshots(),
+                    stream: userId != null
+                        ? FirebaseFirestore.instance
+                            .collection('releases')
+                            .where('createdBy', isEqualTo: userId)
+                            .where('createdAt',
+                                isGreaterThanOrEqualTo: firstDayOfMonth)
+                            .where('createdAt',
+                                isLessThan: firstDayNextMonth)
+                            .snapshots()
+                        : Stream.empty(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
@@ -592,16 +751,19 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Returns count for current month
+                // Returns count for current month (current user only)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('returns')
-                        .where('createdAt',
-                            isGreaterThanOrEqualTo: firstDayOfMonth)
-                        .where('createdAt',
-                            isLessThan: firstDayNextMonth)
-                        .snapshots(),
+                    stream: userId != null
+                        ? FirebaseFirestore.instance
+                            .collection('returns')
+                            .where('createdBy', isEqualTo: userId)
+                            .where('createdAt',
+                                isGreaterThanOrEqualTo: firstDayOfMonth)
+                            .where('createdAt',
+                                isLessThan: firstDayNextMonth)
+                            .snapshots()
+                        : Stream.empty(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
@@ -620,8 +782,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Small Tile ----------------
-  Widget _buildSmallTile({required IconData icon, required String title}) {
+  // ---------------- Small Tile (with optional subtitle) ----------------
+  Widget _buildSmallTile({required IconData icon, required String title, String? subtitle}) {
     return InkWell(
       onTap: () => _onNavTap(title),
       child: _smallCard(
@@ -635,6 +797,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                     fontWeight: FontWeight.w600,
                     color: AppColors.darkText,
                     fontSize: 14)),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.darkText.withOpacity(0.6))),
+            ],
           ],
         ),
       ),
