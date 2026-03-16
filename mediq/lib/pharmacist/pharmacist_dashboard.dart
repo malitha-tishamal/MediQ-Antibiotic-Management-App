@@ -13,6 +13,7 @@ import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
 import 'pharmacist_antibiotic_usage_screen.dart';
 import 'pharmacist_book_numbers_screen.dart';
+import 'pharmacist_profile_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -190,6 +191,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           MaterialPageRoute(builder: (_) => const PharmacistBookNumbersScreen()),
         );
         break;
+
+       case 'Profile Manage':
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PharmacistProfileScreen()),
+        );
+        break;
+
 
       case 'Developer About':
         Navigator.of(context).push(
