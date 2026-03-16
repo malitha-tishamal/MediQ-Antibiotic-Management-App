@@ -8,6 +8,7 @@ import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
 import 'pharmacist_antibiotic_usage_screen.dart';
 import 'pharmacist_book_numbers_screen.dart';
+import 'pharmacist_profile_screen.dart';
 
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
@@ -364,7 +365,11 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   description: "Personal settings & profile",
                   onTap: () {
                     Navigator.of(context).pop();
-                    widget.onNavTap('Profile');
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PharmacistProfileScreen(),
+                      ),
+                    );
                   },
                 ),
                 // About & Help
