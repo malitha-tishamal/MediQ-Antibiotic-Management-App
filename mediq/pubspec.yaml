@@ -85,3 +85,6 @@ flutter:
 
     - assets/release_details.png
     - assets/return_details.jpg
+
+    - assets/antibiotic-usage.jpg
+    - assets/ward-usage.jpg
