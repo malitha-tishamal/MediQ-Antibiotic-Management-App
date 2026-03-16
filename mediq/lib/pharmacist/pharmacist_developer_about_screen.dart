@@ -572,6 +572,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
       drawer: PharmacistDrawer(
         userName: _userName,
         userRole: _userRole,
+        profileImageUrl: _profileImageUrl, // 👈 FIX: now passing the image URL
         onNavTap: _handleNavTap,
         onLogout: _handleLogout,
       ),
