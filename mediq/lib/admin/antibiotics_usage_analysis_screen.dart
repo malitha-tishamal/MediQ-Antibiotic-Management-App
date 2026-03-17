@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
+import 'antibiotics_analysis_screen.dart'; // Import the new screen
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -178,9 +179,10 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
   Widget _buildOverallUsageButton() {
     return GestureDetector(
       onTap: () {
-        // Navigate to overall usage analysis screen (to be implemented)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Overall Usage – Charts, Graphs, Tables (coming soon)')),
+        // Navigate to overall usage analysis screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AntibioticsAnalysisScreen()),
         );
       },
       child: Container(
@@ -235,7 +237,7 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Overall Usage',
+                    'Overall Antibiotic Usage',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
                   ),
                   const SizedBox(height: 4),
@@ -245,7 +247,6 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
-                  
                 ],
               ),
             ),
