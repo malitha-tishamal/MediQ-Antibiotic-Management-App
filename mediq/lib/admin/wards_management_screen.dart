@@ -227,9 +227,9 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/add-ward.png',
-                    width: 60,
-                    height: 60,
+                    'assets/wards/add-ward.png',
+                    width: 80,
+                    height: 80,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return const Icon(Icons.add, size: 60, color: Colors.grey);
@@ -342,7 +342,7 @@ class _WardsManagementScreenState extends State<WardsManagementScreen> {
                   child: Column(
                     children: [
                       Image.asset(
-                        'assets/manage-ward.png',
+                        'assets/wards/manage-ward.png',
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
