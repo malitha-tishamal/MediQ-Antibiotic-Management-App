@@ -263,7 +263,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                         _buildAccountCard(
                           role: 'Admin',
                           title: 'Manage Admin Accounts',
-                          imagePath: 'assets/admin-default.jpg',
+                          imagePath: 'assets/accounts/admin-default.jpg',
                           borderColor: AppColors.primaryPurple,
                         ),
                         
@@ -274,7 +274,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                         _buildAccountCard(
                           role: 'Pharmacist',
                           title: 'Manage Pharmacist Accounts',
-                          imagePath: 'assets/pharmizist-default.jpg',
+                          imagePath: 'assets/accounts/pharmizist-default.jpg',
                           borderColor: Colors.green, // or AppColors.approvedColor
                         ),
                         
