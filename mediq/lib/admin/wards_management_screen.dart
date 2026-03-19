@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'add_ward_screen.dart';
-import 'manage_wards_screen.dart';
+import 'wards/add_ward_screen.dart';
+import 'wards/manage_wards_screen.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
