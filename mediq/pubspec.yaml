@@ -66,25 +66,25 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.png
-    - assets/logo2.png
+    - assets/logo/logo.png
+    - assets/logo2/logo/.png
     
     - assets/developer/developer_photo.png
 
-    - assets/admin-default.jpg
-    - assets/pharmizist-default.jpg
+    - assets/accounts/admin-default.jpg
+    - assets/accounts/pharmizist-default.jpg
 
-    - assets/manage_antibiotic.jpg
-    - assets/add_antibiotic.jpg
+    - assets/antibiotics/manage_antibiotic.jpg
+    - assets/antibiotics/add_antibiotic.jpg
 
-    - assets/add-ward.png
-    - assets/manage-ward.png
+    - assets/wards/add-ward.png
+    - assets/wards/manage-ward.png
 
-    - assets/main_store.jpg
-    - assets/return_store.jpg
+    - assets/stores/main_store.jpg
+    - assets/stores/return_store.jpg
 
-    - assets/release_details.png
-    - assets/return_details.jpg
+    - assets/usages/release_details.png
+    - assets/usages/return_details.jpg
 
-    - assets/antibiotic-usage.jpg
-    - assets/ward-usage.jpg
+    - assets/analyst/antibiotic-usage.jpg
+    - assets/analyst/ward-usage.jpg
