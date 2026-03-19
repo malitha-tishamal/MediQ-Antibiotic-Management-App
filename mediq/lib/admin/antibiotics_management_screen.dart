@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'add_antibiotic_screen.dart';
-import 'manage_antibiotics_screen.dart';
+import 'antibiotics/add_antibiotic_screen.dart';
+import 'antibiotics/manage_antibiotics_screen.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
