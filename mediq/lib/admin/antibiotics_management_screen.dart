@@ -227,7 +227,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/add_antibiotic.jpg',
+                    'assets/antibiotics/add_antibiotic.jpg',
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
@@ -324,7 +324,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
                   child: Column(
                     children: [
                       Image.asset(
-                        'assets/manage_antibiotic.jpg',
+                        'assets/antibiotics/manage_antibiotic.jpg',
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
