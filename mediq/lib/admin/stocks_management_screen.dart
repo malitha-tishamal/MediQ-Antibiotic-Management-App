@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'main_store_screen.dart';
-import 'return_store_screen.dart';
+import 'stoks/main_store_screen.dart';
+import 'stoks/return_store_screen.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
@@ -279,7 +279,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildStoreButton(
-                          imagePath: 'assets/main_store.jpg',
+                          imagePath: 'assets/stores/main_store.jpg',
                           label: 'Main Store',
                           description: 'Store from which releases are made to wards',
                           borderColor: AppColors.primaryPurple, // Main store uses primary purple
@@ -292,7 +292,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                         ),
                         const SizedBox(height: 30),
                         _buildStoreButton(
-                          imagePath: 'assets/return_store.jpg',
+                          imagePath: 'assets/stores/return_store.jpg',
                           label: 'Return Store',
                           description: 'Store where surplus antibiotics from wards are returned',
                           borderColor: Colors.orange, // Return store uses orange for distinction
