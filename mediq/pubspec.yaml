@@ -67,7 +67,7 @@ flutter:
 
   assets:
     - assets/logo/logo.png
-    - assets/logo2/logo/.png
+    - assets/logo/logo2.png
     
     - assets/developer/developer_photo.png
 
@@ -88,3 +88,8 @@ flutter:
 
     - assets/analyst/antibiotic-usage.jpg
     - assets/analyst/ward-usage.jpg
+
+    - assets/analyst/cards/releases-all.jpg
+    - assets/analyst/cards/returns-all.jpg
+    - assets/analyst/cards/releases.jpg
+    - assets/analyst/cards/returns.png
