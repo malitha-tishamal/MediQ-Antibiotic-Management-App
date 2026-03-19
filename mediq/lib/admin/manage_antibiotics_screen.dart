@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'add_antibiotic_screen.dart';
+import 'antibiotics/add_antibiotic_screen.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
