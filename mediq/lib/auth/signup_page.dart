@@ -491,8 +491,8 @@ class _SignUpPageState extends State<SignUpPage> {
                           Hero(
                             tag: 'app-logo',
                             child: Image.asset(
-                              'assets/logo.png',
-                              height: 150,
+                              'assets/logo/logo.png',
+                              height: 180,
                               fit: BoxFit.contain,
                             ),
                           ),
