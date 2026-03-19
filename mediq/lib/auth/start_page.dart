@@ -46,7 +46,7 @@ class StartPage extends StatelessWidget {
     return Hero(
       tag: 'app-logo',
       child: Image.asset(
-        'assets/logo.png', // **CHANGE THIS TO YOUR LOGO PATH**
+        'assets/logo/logo.png', // **CHANGE THIS TO YOUR LOGO PATH**
         height: isSmallScreen ? 200 : 250,
         fit: BoxFit.contain,
       ),
