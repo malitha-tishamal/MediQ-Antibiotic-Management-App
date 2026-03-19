@@ -212,7 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: <Widget>[
                     const SizedBox(height: 30),
                     Image.asset(
-                      'assets/logo.png',
+                      'assets/logo/logo.png',
                       height: 200,
                       errorBuilder: (context, error, stackTrace) =>
                           const Icon(Icons.lock, size: 100, color: AppColors.primaryPurple),
