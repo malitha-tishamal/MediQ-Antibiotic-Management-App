@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
-import 'admin_accounts_manage.dart';
-import 'pharmacist_accounts_manage.dart';
+import 'accounts/admin_accounts_manage.dart';
+import 'accounts/pharmacist_accounts_manage.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
