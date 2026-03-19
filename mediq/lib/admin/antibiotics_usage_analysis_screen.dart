@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
-import 'antibiotics_analysis_screen.dart'; // Import the new screen
+import 'analyst/antibiotics_analysis_screen.dart'; 
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -227,7 +227,7 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                 children: [
                   // Image.asset for usage.png
                   Image.asset(
-                    'assets/antibiotic-usage.jpg',
+                    'assets/analyst/antibiotic-usage.jpg',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
@@ -307,7 +307,7 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                 children: [
                   // Image.asset for ward.jpg
                   Image.asset(
-                    'assets/ward-usage.jpg',
+                    'assets/analyst/ward-usage.jpg',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
