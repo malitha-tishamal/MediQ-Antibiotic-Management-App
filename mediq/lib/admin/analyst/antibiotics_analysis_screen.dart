@@ -1,10 +1,9 @@
-// antibiotics_analysis_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'admin_drawer.dart';
-import '../auth/login_page.dart';
+import '../admin_drawer.dart';
+import '../../auth/login_page.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -88,91 +87,90 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
     }
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+Widget _buildHeader(BuildContext context) {
+  return Container(
+    padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Back arrow instead of menu icon
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: _profileImageUrl == null
+                    ? const LinearGradient(
+                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
                     : null,
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentUserName,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
-                  ),
-                  Text(
-                    'Logged in as: Administrator',
-                    style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryPurple.withOpacity(0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
+                image: _profileImageUrl != null
+                    ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
+                    : null,
               ),
-            ],
-          ),
-          const SizedBox(height: 25),
-          const Text(
-            'Antibiotics Analysis',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
-          ),
-        ],
-      ),
-    );
-  }
+              child: _profileImageUrl == null
+                  ? const Icon(Icons.person, size: 40, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 15),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+                ),
+                Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 25),
+        const Text(
+          'Antibiotics Usage Analysis',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+        ),
+      ],
+    ),
+  );
+}
 
   /// Card with image, title, description, and dynamic content
   Widget _buildAnalysisCard({
@@ -183,9 +181,7 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
     required Widget child,
   }) {
     return Container(
-      width: 300,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
@@ -219,12 +215,12 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             ),
             padding: const EdgeInsets.all(12),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Image with fallback
                 Image.asset(
                   imageAsset,
-                  width: 60,
-                  height: 60,
+                  width: 50,
+                  height: 50,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Icon(Icons.image_not_supported, size: 40, color: color);
@@ -233,15 +229,16 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
                 const SizedBox(height: 8),
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 child,
               ],
             ),
@@ -262,11 +259,11 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
         }
         return _buildAnalysisCard(
           title: 'Releases Overview',
-          description: 'Total antibiotic releases across all wards.',
-          imageAsset: 'assets/releases.png', // Replace with your asset path
+          description: 'Graphical overview of releases by category, ward, and trends.',
+          imageAsset: 'assets/analyst/cards/releases.jpg',
           color: Colors.green,
           child: Column(
-            
+           
           ),
         );
       },
@@ -284,8 +281,8 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
         }
         return _buildAnalysisCard(
           title: 'Returns Overview',
-          description: 'Total antibiotic returns from all wards.',
-          imageAsset: 'assets/returns.png', // Replace with your asset path
+          description: 'Graphical overview returns by category, ward, and trends.',
+          imageAsset: 'assets/analyst/cards/returns.png',
           color: Colors.orange,
           child: Column(
             
@@ -299,29 +296,48 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
   Widget _buildReleasesByWardCard() {
     return StreamBuilder<QuerySnapshot>(
       stream: _releasesCollection.snapshots(),
-      builder: (context, snapshot) {
-        Map<String, int> wardCounts = {};
-        if (snapshot.hasData) {
-          for (var doc in snapshot.data!.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final ward = data['wardName'] ?? 'Unknown';
-            wardCounts[ward] = (wardCounts[ward] ?? 0) + 1;
-          }
-        }
-        return _buildAnalysisCard(
-          title: 'Releases by Ward',
-          description: 'Breakdown of releases per ward.',
-          imageAsset: 'assets/releases_ward.png',
-          color: Colors.blue,
-          child: wardCounts.isEmpty
-              ? const Text('No data', style: TextStyle(color: Colors.grey))
-              : Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: wardCounts.entries.map((entry) {
-                    return _buildCountChip(entry.key, entry.value, Colors.blue);
-                  }).toList(),
-                ),
+      builder: (context, releaseSnapshot) {
+        if (!releaseSnapshot.hasData) return const SizedBox();
+        final releases = releaseSnapshot.data!.docs;
+
+        return FutureBuilder<QuerySnapshot>(
+          future: _wardsCollection.get(),
+          builder: (context, wardSnapshot) {
+            // Build a map of wardId -> wardName
+            Map<String, String> wardNames = {};
+            if (wardSnapshot.hasData) {
+              for (var doc in wardSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                wardNames[doc.id] = data['wardName'] ?? 'Unknown';
+              }
+            }
+
+            // Count releases per ward using wardId
+            Map<String, int> wardCounts = {};
+            for (var doc in releases) {
+              final data = doc.data() as Map<String, dynamic>;
+              final wardId = data['wardId'] ?? '';
+              final wardName = wardNames[wardId] ?? 'Unknown';
+              wardCounts[wardName] = (wardCounts[wardName] ?? 0) + 1;
+            }
+
+            // Sort entries by count descending and take top 5
+            var sortedEntries = wardCounts.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+            var topEntries = sortedEntries.take(5).toList();
+
+            return _buildAnalysisCard(
+              title: 'Releases by Ward',
+              description: 'Full A–Z breakdown of ward releases with detailed table view.',
+              imageAsset: 'assets/analyst/cards/releases-all.jpg',
+              color: Colors.blue,
+              child: topEntries.isEmpty
+                  ? const Text('No data', style: TextStyle(color: Colors.grey))
+                  : Column(
+                      
+                    ),
+            );
+          },
         );
       },
     );
@@ -331,56 +347,58 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
   Widget _buildReturnsByWardCard() {
     return StreamBuilder<QuerySnapshot>(
       stream: _returnsCollection.snapshots(),
-      builder: (context, snapshot) {
-        Map<String, int> wardCounts = {};
-        if (snapshot.hasData) {
-          for (var doc in snapshot.data!.docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final ward = data['wardName'] ?? 'Unknown';
-            wardCounts[ward] = (wardCounts[ward] ?? 0) + 1;
-          }
-        }
-        return _buildAnalysisCard(
-          title: 'Returns by Ward',
-          description: 'Breakdown of returns per ward.',
-          imageAsset: 'assets/returns_ward.png', // Replace with your asset path
-          color: Colors.purple,
-          child: wardCounts.isEmpty
-              ? const Text('No data', style: TextStyle(color: Colors.grey))
-              : Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: wardCounts.entries.map((entry) {
-                    return _buildCountChip(entry.key, entry.value, Colors.purple);
-                  }).toList(),
-                ),
+      builder: (context, returnSnapshot) {
+        if (!returnSnapshot.hasData) return const SizedBox();
+        final returns = returnSnapshot.data!.docs;
+
+        return FutureBuilder<QuerySnapshot>(
+          future: _wardsCollection.get(),
+          builder: (context, wardSnapshot) {
+            Map<String, String> wardNames = {};
+            if (wardSnapshot.hasData) {
+              for (var doc in wardSnapshot.data!.docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                wardNames[doc.id] = data['wardName'] ?? 'Unknown';
+              }
+            }
+
+            Map<String, int> wardCounts = {};
+            for (var doc in returns) {
+              final data = doc.data() as Map<String, dynamic>;
+              final wardId = data['wardId'] ?? '';
+              final wardName = wardNames[wardId] ?? 'Unknown';
+              wardCounts[wardName] = (wardCounts[wardName] ?? 0) + 1;
+            }
+
+            var sortedEntries = wardCounts.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+            var topEntries = sortedEntries.take(5).toList();
+
+            return _buildAnalysisCard(
+              title: 'Returns by Ward',
+              description: 'Full A–Z breakdown of ward returns with detailed table view.',
+              imageAsset: 'assets/analyst/cards/returns-all.jpg',
+              color: Colors.purple,
+              child: topEntries.isEmpty
+                  ? const Text('No data', style: TextStyle(color: Colors.grey))
+                  : Column(
+                    ),
+            );
+          },
         );
       },
     );
   }
 
-  /// Count chip widget
-  Widget _buildCountChip(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        '$label: $count',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final List<Widget> cards = [
+      _buildReleasesCard(),
+      _buildReturnsCard(),
+      _buildReleasesByWardCard(),
+      _buildReturnsByWardCard(),
+    ];
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.lightBackground,
@@ -398,21 +416,22 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
               children: [
                 _buildHeader(context),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildReleasesCard(),
-                          const SizedBox(height: 20),
-                          _buildReturnsCard(),
-                          const SizedBox(height: 20),
-                          _buildReleasesByWardCard(),
-                          const SizedBox(height: 20),
-                          _buildReturnsByWardCard(),
-                          const SizedBox(height: 20), // Extra space at bottom
-                        ],
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.85, // Adjust as needed
+                          ),
+                          itemCount: cards.length,
+                          itemBuilder: (context, index) => cards[index],
+                        ),
                       ),
                     ),
                   ),
