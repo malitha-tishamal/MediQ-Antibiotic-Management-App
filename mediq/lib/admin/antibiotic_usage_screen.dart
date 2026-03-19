@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Import the new screens
-import 'antibiotic_release.dart';
-import 'antibiotic_return.dart';
+import 'usages/antibiotic_release.dart';
+import 'usages/antibiotic_return.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 
@@ -269,7 +269,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/release_details.png',
+                    'assets/usages/release_details.png',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
@@ -369,7 +369,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/return_details.jpg',
+                    'assets/usages/return_details.jpg',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
