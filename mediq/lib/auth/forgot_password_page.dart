@@ -112,8 +112,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           child: Hero(
                             tag: 'app-logo',
                             child: Image.asset(
-                              'assets/logo.png',
-                              height: 150,
+                              'assets/logo/logo.png',
+                              height: 200,
                               fit: BoxFit.contain,
                             ),
                           ),
