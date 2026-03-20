@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
+import 'pages/antibiotics_usage_charts_analysis.dart';
+
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
@@ -248,9 +250,16 @@ Widget _buildHeader(BuildContext context) {
     );
   }
 
-  /// Releases Card
-  Widget _buildReleasesCard() {
-    return StreamBuilder<QuerySnapshot>(
+/// Releases Card (now tappable)
+Widget _buildReleasesCard() {
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AntibioticsUsageChartsAnalysisScreen()),
+      );
+    },
+    child: StreamBuilder<QuerySnapshot>(
       stream: _releasesCollection.snapshots(),
       builder: (context, snapshot) {
         int totalReleases = 0;
@@ -263,12 +272,13 @@ Widget _buildHeader(BuildContext context) {
           imageAsset: 'assets/analyst/cards/releases.jpg',
           color: Colors.green,
           child: Column(
-           
+            // ... existing child (if any)
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   /// Returns Card
   Widget _buildReturnsCard() {
