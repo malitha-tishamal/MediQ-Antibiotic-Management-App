@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 // AppColors (match other admin screens)
 class AppColors {
@@ -12,6 +13,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
+  static const Color inputBorder = Color(0xFFE0E0E0); // Added for input decoration
 }
 
 class AntibioticsUsageChartsAnalysisScreen extends StatefulWidget {
@@ -30,11 +32,23 @@ class _AntibioticsUsageChartsAnalysisScreenState
       FirebaseFirestore.instance.collection('releases');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
+  final CollectionReference _wardsCollection =
+      FirebaseFirestore.instance.collection('wards');
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // User details for header
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
+
+  // Filter state
+  String? _selectedWardId;
+  String? _selectedAntibioticId;
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  // Lists for dropdowns
+  List<Map<String, dynamic>> _wards = [];
+  List<Map<String, dynamic>> _antibiotics = [];
 
   // Data maps (values in units: 1 unit = 1000 mg)
   Map<String, double> usagePerDrug = {}; // drugName -> total units
@@ -53,7 +67,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchCurrentUserDetails();
-    _fetchData();
+    _loadDropdownData();
+    _fetchData(); // initial load with no filters
   }
 
   @override
@@ -85,10 +100,62 @@ class _AntibioticsUsageChartsAnalysisScreenState
     }
   }
 
-  // Main data fetcher: reads releases and calculates units
-  Future<void> _fetchData() async {
+  // Load wards and antibiotics for dropdowns
+  Future<void> _loadDropdownData() async {
     try {
-      // 1. Fetch all antibiotics to map antibioticId to category
+      final wardSnapshot = await _wardsCollection.get();
+      _wards = wardSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {'id': doc.id, 'name': data['wardName'] ?? 'Unknown'};
+      }).toList();
+
+      final antibioticSnapshot = await _antibioticsCollection.get();
+      _antibiotics = antibioticSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {'id': doc.id, 'name': data['name'] ?? 'Unknown'};
+      }).toList();
+    } catch (e) {
+      debugPrint('Error loading dropdown data: $e');
+    }
+  }
+
+  // Main data fetcher: reads releases with applied filters and calculates units
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Clear previous data
+      usagePerDrug.clear();
+      usagePerCategory.forEach((key, value) => usagePerCategory[key] = 0);
+
+      // Build Firestore query with filters
+      Query query = _releasesCollection;
+
+      if (_selectedWardId != null) {
+        query = query.where('wardId', isEqualTo: _selectedWardId);
+      }
+      if (_selectedAntibioticId != null) {
+        query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
+      }
+      if (_startDate != null && _endDate != null) {
+        // Use releaseDateTime field for range filtering
+        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        query = query
+            .where('releaseDateTime', isGreaterThanOrEqualTo: start)
+            .where('releaseDateTime', isLessThanOrEqualTo: end);
+      } else if (_startDate != null) {
+        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        query = query.where('releaseDateTime', isGreaterThanOrEqualTo: start);
+      } else if (_endDate != null) {
+        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        query = query.where('releaseDateTime', isLessThanOrEqualTo: end);
+      }
+
+      // Fetch filtered releases
+      final releaseSnapshot = await query.get();
+
+      // Fetch all antibiotics to map antibioticId to category (still needed)
       final antibioticSnapshot = await _antibioticsCollection.get();
       Map<String, String> antibioticCategory = {};
       for (var doc in antibioticSnapshot.docs) {
@@ -96,38 +163,28 @@ class _AntibioticsUsageChartsAnalysisScreenState
         antibioticCategory[doc.id] = data['category'] ?? 'Other';
       }
 
-      // 2. Fetch all releases
-      final releaseSnapshot = await _releasesCollection.get();
       for (var doc in releaseSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
 
-        // itemCount (number of items released)
         final itemCount = (data['itemCount'] ?? 0).toDouble();
-        if (itemCount == 0) continue; // skip if no items
+        if (itemCount == 0) continue;
 
-        // Parse dosage string to milligrams
         final dosageStr = data['dosage'] ?? '';
         final dosageMg = _parseDosageToMg(dosageStr);
         if (dosageMg == 0) {
-          debugPrint('Warning: could not parse dosage "$dosageStr" for release ${doc.id}');
-          continue; // skip if dosage invalid
+          debugPrint('Warning: could not parse dosage "$dosageStr" for release ${doc.id} – skipping');
+          continue;
         }
 
-        // Total mg = itemCount * dosageMg, then convert to units (1 unit = 1000 mg)
         final totalMg = itemCount * dosageMg;
         final units = totalMg / 1000;
 
-        // Drug name is directly available in the release document
         final drugName = data['antibioticName'] ?? 'Unknown';
-
-        // Category from the antibioticId
         final antibioticId = data['antibioticId'] ?? '';
         final category = antibioticCategory[antibioticId] ?? 'Other';
 
-        // Update per‑drug map
         usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
 
-        // Update per‑category map
         if (usagePerCategory.containsKey(category)) {
           usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
@@ -143,20 +200,22 @@ class _AntibioticsUsageChartsAnalysisScreenState
     }
   }
 
-  /// Parses a dosage string like "1 g", "500 mg", "1.5 g" to milligrams.
-  /// Returns 0 if parsing fails.
+  // Parse dosage string to milligrams (supports g, mg, mcg, mL, cc)
   double _parseDosageToMg(String dosage) {
     if (dosage.isEmpty) return 0;
-    // Normalize: remove extra spaces and convert to lowercase
     final normalized = dosage.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-    // Match pattern: number (decimal allowed) followed by optional unit
-    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*(g|mg|ml|mcg|µg)?$');
+    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*([a-z%]+)?$');
     final match = regex.firstMatch(normalized);
     if (match == null) return 0;
 
     final numberStr = match.group(1) ?? '0';
-    final unit = match.group(2) ?? 'mg'; // default to mg if no unit? We'll handle.
+    final unit = match.group(2) ?? '';
     double value = double.tryParse(numberStr) ?? 0;
+
+    if (unit.isEmpty) {
+      debugPrint('Warning: no unit in dosage "$dosage", skipping');
+      return 0;
+    }
 
     switch (unit) {
       case 'g':
@@ -165,18 +224,247 @@ class _AntibioticsUsageChartsAnalysisScreenState
         return value;
       case 'mcg':
       case 'µg':
-        return value / 1000; // micrograms to mg
+        return value / 1000;
       case 'ml':
-        // For liquids, we assume 1 ml = 1000 mg (water density) – adjust if needed.
-        // In this context, likely only g and mg are used.
-        return value * 1000; // treat ml as grams? Actually 1 ml of water = 1 g = 1000 mg.
-        // If you want to ignore, return 0.
+      case 'cc':
+        return value * 1000; // assuming 1 mL = 1 g = 1000 mg
+      case '%':
+        debugPrint('Warning: percentage unit in dosage "$dosage" – cannot convert to mg without volume, skipping');
+        return 0;
+      case 'u':
+      case 'iu':
+        debugPrint('Warning: activity unit "$unit" in dosage "$dosage" – cannot convert to mg, skipping');
+        return 0;
       default:
+        debugPrint('Warning: unknown unit "$unit" in dosage "$dosage", skipping');
         return 0;
     }
   }
 
-  // ---------- Custom Header ----------
+  // ---------- Input Decoration Helper (for filter panel) ----------
+  InputDecoration _inputDecoration({
+    required String label,
+    IconData? prefixIcon,
+    String? hintText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      labelStyle: const TextStyle(color: AppColors.primaryPurple, fontSize: 13),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
+      ),
+      prefixIcon: prefixIcon == null
+          ? null
+          : Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+    );
+  }
+
+  // ---------- Filter Panel Bottom Sheet ----------
+  void _showFilterPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.9,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (context, scrollController) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Filter Releases',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          children: [
+                            // Ward dropdown
+                            DropdownButtonFormField<String>(
+                              value: _selectedWardId,
+                              decoration: _inputDecoration(
+                                label: 'Ward',
+                                prefixIcon: Icons.place,
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: null, child: Text('All Wards')),
+                                ..._wards.map((w) => DropdownMenuItem(
+                                      value: w['id'],
+                                      child: Text(w['name']),
+                                    )),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedWardId = value);
+                                setModalState(() {});
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Antibiotic dropdown
+                            DropdownButtonFormField<String>(
+                              value: _selectedAntibioticId,
+                              decoration: _inputDecoration(
+                                label: 'Antibiotic',
+                                prefixIcon: Icons.medication,
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: null, child: Text('All Antibiotics')),
+                                ..._antibiotics.map((a) => DropdownMenuItem(
+                                      value: a['id'],
+                                      child: Text(a['name']),
+                                    )),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedAntibioticId = value);
+                                setModalState(() {});
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Date range
+                            const Text('Range Filter ( Year: Month: Date )', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final date = await showDatePicker(
+                                        context: context,
+                                        initialDate: _startDate ?? DateTime.now(),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime.now(),
+                                      );
+                                      if (date != null) {
+                                        setState(() => _startDate = date);
+                                        setModalState(() {});
+                                      }
+                                    },
+                                    child: InputDecorator(
+                                      decoration: _inputDecoration(label: 'From'),
+                                      child: Text(_startDate != null
+                                          ? DateFormat('yyyy-MM-dd').format(_startDate!)
+                                          : 'Select'),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final date = await showDatePicker(
+                                        context: context,
+                                        initialDate: _endDate ?? DateTime.now(),
+                                        firstDate: DateTime(2020),
+                                        lastDate: DateTime.now(),
+                                      );
+                                      if (date != null) {
+                                        setState(() => _endDate = date);
+                                        setModalState(() {});
+                                      }
+                                    },
+                                    child: InputDecorator(
+                                      decoration: _inputDecoration(label: 'To'),
+                                      child: Text(_endDate != null
+                                          ? DateFormat('yyyy-MM-dd').format(_endDate!)
+                                          : 'Select'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Action buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedWardId = null;
+                                        _selectedAntibioticId = null;
+                                        _startDate = null;
+                                        _endDate = null;
+                                      });
+                                      setModalState(() {});
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primaryPurple,
+                                      side: const BorderSide(color: AppColors.primaryPurple),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: const Text('Clear All'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _fetchData(); // Apply filters and reload
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryPurple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: const Text('Apply'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ---------- Custom Header with Filter Button ----------
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -209,6 +497,11 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 icon: const Icon(Icons.arrow_back,
                     color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
+              ),
+              // Filter button
+              IconButton(
+                icon: const Icon(Icons.tune, color: AppColors.headerTextDark),
+                onPressed: _showFilterPanel,
               ),
             ],
           ),
