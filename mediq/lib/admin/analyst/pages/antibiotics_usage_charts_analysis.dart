@@ -2,6 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+// AppColors (match other admin screens)
+class AppColors {
+  static const Color primaryPurple = Color(0xFF9F7AEA);
+  static const Color lightBackground = Color(0xFFF3F0FF);
+  static const Color darkText = Color(0xFF333333);
+  static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
+  static const Color headerTextDark = Color(0xFF333333);
+}
 
 class AntibioticsUsageChartsAnalysisScreen extends StatefulWidget {
   const AntibioticsUsageChartsAnalysisScreen({super.key});
@@ -19,6 +30,11 @@ class _AntibioticsUsageChartsAnalysisScreenState
       FirebaseFirestore.instance.collection('releases');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // User details for header
+  String _currentUserName = 'Loading...';
+  String? _profileImageUrl;
 
   // Data maps (values in units: 1 unit = 1000 mg)
   Map<String, double> usagePerDrug = {}; // drugName -> total units
@@ -30,11 +46,13 @@ class _AntibioticsUsageChartsAnalysisScreenState
   };
 
   bool _isLoading = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchCurrentUserDetails();
     _fetchData();
   }
 
@@ -44,46 +62,76 @@ class _AntibioticsUsageChartsAnalysisScreenState
     super.dispose();
   }
 
+  // Fetch current user's name and profile image
+  Future<void> _fetchCurrentUserDetails() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          setState(() {
+            _currentUserName =
+                data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _profileImageUrl = data['profileImageUrl'];
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching user: $e');
+      }
+    }
+  }
+
+  // Main data fetcher: reads releases and calculates units
   Future<void> _fetchData() async {
     try {
-      // Fetch all antibiotics to map drugId to name and category
+      // 1. Fetch all antibiotics to map antibioticId to category
       final antibioticSnapshot = await _antibioticsCollection.get();
-      Map<String, Map<String, dynamic>> antibioticMap = {};
+      Map<String, String> antibioticCategory = {};
       for (var doc in antibioticSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        antibioticMap[doc.id] = {
-          'name': data['name'] ?? 'Unknown',
-          'category': data['category'] ?? 'Other',
-        };
+        antibioticCategory[doc.id] = data['category'] ?? 'Other';
       }
 
-      // Fetch all releases
+      // 2. Fetch all releases
       final releaseSnapshot = await _releasesCollection.get();
       for (var doc in releaseSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
+
+        // itemCount (number of items released)
+        final itemCount = (data['itemCount'] ?? 0).toDouble();
+        if (itemCount == 0) continue; // skip if no items
+
+        // Parse dosage string to milligrams
+        final dosageStr = data['dosage'] ?? '';
+        final dosageMg = _parseDosageToMg(dosageStr);
+        if (dosageMg == 0) {
+          debugPrint('Warning: could not parse dosage "$dosageStr" for release ${doc.id}');
+          continue; // skip if dosage invalid
+        }
+
+        // Total mg = itemCount * dosageMg, then convert to units (1 unit = 1000 mg)
+        final totalMg = itemCount * dosageMg;
+        final units = totalMg / 1000;
+
+        // Drug name is directly available in the release document
+        final drugName = data['antibioticName'] ?? 'Unknown';
+
+        // Category from the antibioticId
         final antibioticId = data['antibioticId'] ?? '';
-        // Convert quantity from mg to units (1 unit = 1000 mg)
-        final quantityMg = (data['quantity'] ?? 1).toDouble();
-        final quantityUnits = quantityMg / 1000;
+        final category = antibioticCategory[antibioticId] ?? 'Other';
 
-        final antibioticInfo = antibioticMap[antibioticId];
-        if (antibioticInfo != null) {
-          final drugName = antibioticInfo['name'];
-          final category = antibioticInfo['category'];
+        // Update per‑drug map
+        usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
 
-          // Update per drug
-          usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + quantityUnits;
-
-          // Update per category
-          if (usagePerCategory.containsKey(category)) {
-            usagePerCategory[category] = (usagePerCategory[category] ?? 0) + quantityUnits;
-          } else {
-            usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + quantityUnits;
-          }
+        // Update per‑category map
+        if (usagePerCategory.containsKey(category)) {
+          usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
-          // If antibiotic not found, treat as "Unknown" drug and "Other" category
-          usagePerDrug['Unknown'] = (usagePerDrug['Unknown'] ?? 0) + quantityUnits;
-          usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + quantityUnits;
+          usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + units;
         }
       }
     } catch (e) {
@@ -95,32 +143,109 @@ class _AntibioticsUsageChartsAnalysisScreenState
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Antibiotics Usage Analysis'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.pie_chart), text: 'Pie Charts'),
-            Tab(icon: Icon(Icons.bar_chart), text: 'Bar Charts'),
-          ],
+  /// Parses a dosage string like "1 g", "500 mg", "1.5 g" to milligrams.
+  /// Returns 0 if parsing fails.
+  double _parseDosageToMg(String dosage) {
+    if (dosage.isEmpty) return 0;
+    // Normalize: remove extra spaces and convert to lowercase
+    final normalized = dosage.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    // Match pattern: number (decimal allowed) followed by optional unit
+    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*(g|mg|ml|mcg|µg)?$');
+    final match = regex.firstMatch(normalized);
+    if (match == null) return 0;
+
+    final numberStr = match.group(1) ?? '0';
+    final unit = match.group(2) ?? 'mg'; // default to mg if no unit? We'll handle.
+    double value = double.tryParse(numberStr) ?? 0;
+
+    switch (unit) {
+      case 'g':
+        return value * 1000;
+      case 'mg':
+        return value;
+      case 'mcg':
+      case 'µg':
+        return value / 1000; // micrograms to mg
+      case 'ml':
+        // For liquids, we assume 1 ml = 1000 mg (water density) – adjust if needed.
+        // In this context, likely only g and mg are used.
+        return value * 1000; // treat ml as grams? Actually 1 ml of water = 1 g = 1000 mg.
+        // If you want to ignore, return 0.
+      default:
+        return 0;
+    }
+  }
+
+  // ---------- Custom Header ----------
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.headerTextDark, size: 24),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Center(
+            child: Column(
               children: [
-                _buildPieCharts(),
-                _buildBarCharts(),
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.headerTextDark),
+                ),
               ],
             ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Antibiotics Usage Analysis',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.headerTextDark),
+          ),
+        ],
+      ),
     );
   }
 
-  /// Builds a legend row for a chart item
+  // ---------- Chart Helper Widgets ----------
   Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
@@ -152,7 +277,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  /// Builds a card with chart and legend
   Widget _buildChartCard({
     required String title,
     required Widget chart,
@@ -190,7 +314,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  /// Pie Charts Tab
+  // ---------- Pie Charts ----------
   Widget _buildPieCharts() {
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -228,7 +352,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  /// Build pie sections with percentage labels
   List<PieChartSectionData> _buildPieSections(Map<String, double> data, double total, {int limit = 8}) {
     if (total == 0) {
       return [
@@ -285,7 +408,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return sections;
   }
 
-  /// Build legend for pie charts
   List<Widget> _buildPieLegend(Map<String, double> data, double total, {int limit = 8}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -326,7 +448,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return items;
   }
 
-  /// Bar Charts Tab
+  // ---------- Bar Charts ----------
   Widget _buildBarCharts() {
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -435,7 +557,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  /// Build bar groups with value labels
   List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total, {int limit = 8}) {
     final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -497,7 +618,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return groups;
   }
 
-  /// Build legend for bar charts (shows value and percentage)
   List<Widget> _buildBarLegend(Map<String, double> data, double total, {int limit = 8}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
@@ -541,7 +661,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
   double _getMaxY(Map<String, double> data) {
     if (data.isEmpty) return 10;
     final maxEntry = data.entries.reduce((a, b) => a.value > b.value ? a : b);
-    return maxEntry.value * 1.2; // leave some headroom
+    return maxEntry.value * 1.2;
   }
 
   String _shortenName(String name, {int maxLength = 8}) {
@@ -561,5 +681,64 @@ class _AntibioticsUsageChartsAnalysisScreenState
       Colors.amber,
     ];
     return colors[index % colors.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: AppColors.lightBackground,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                // TabBar
+                Container(
+                  color: Colors.white,
+                  child: TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(icon: Icon(Icons.pie_chart), text: 'Pie Charts'),
+                      Tab(icon: Icon(Icons.bar_chart), text: 'Bar Charts'),
+                    ],
+                    labelColor: AppColors.primaryPurple,
+                    unselectedLabelColor: Colors.grey,
+                    indicatorColor: AppColors.primaryPurple,
+                  ),
+                ),
+                // Tab content
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildPieCharts(),
+                            _buildBarCharts(),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+          // Footer
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.all(8.0),
+              child: const Text(
+                'Developed By Malitha Tishamal',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
