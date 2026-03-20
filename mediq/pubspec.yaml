@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  fl_chart: ^0.66.0
+
   flutter_typeahead: ^4.0.0
 
   csv: ^5.0.1
