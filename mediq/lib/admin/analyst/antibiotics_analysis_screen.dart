@@ -6,6 +6,7 @@ import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
 import 'pages/antibiotics_usage_charts_analysis.dart';
+import 'pages/antibiotics_returns_charts_analysis.dart'; // new import
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -89,90 +90,89 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
     }
   }
 
-Widget _buildHeader(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(30),
-        bottomRight: Radius.circular(30),
-      ),
-      boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Back arrow instead of menu icon
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: _profileImageUrl == null
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryPurple.withOpacity(0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-                image: _profileImageUrl != null
-                    ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _profileImageUrl == null
+                      ? const LinearGradient(
+                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                  image: _profileImageUrl != null
+                      ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
+                      : null,
+                ),
+                child: _profileImageUrl == null
+                    ? const Icon(Icons.person, size: 40, color: Colors.white)
                     : null,
               ),
-              child: _profileImageUrl == null
-                  ? const Icon(Icons.person, size: 40, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 15),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
-                ),
-                Text(
-                  'Logged in as: Administrator',
-                  style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 25),
-        const Text(
-          'Antibiotics Usage Analysis',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
-        ),
-      ],
-    ),
-  );
-}
+              const SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+                  ),
+                  Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 25),
+          const Text(
+            'Antibiotics Usage Analysis',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Card with image, title, description, and dynamic content
   Widget _buildAnalysisCard({
@@ -250,55 +250,59 @@ Widget _buildHeader(BuildContext context) {
     );
   }
 
-/// Releases Card (now tappable)
-Widget _buildReleasesCard() {
-  return GestureDetector(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const AntibioticsUsageChartsAnalysisScreen()),
-      );
-    },
-    child: StreamBuilder<QuerySnapshot>(
-      stream: _releasesCollection.snapshots(),
-      builder: (context, snapshot) {
-        int totalReleases = 0;
-        if (snapshot.hasData) {
-          totalReleases = snapshot.data!.docs.length;
-        }
-        return _buildAnalysisCard(
-          title: 'Releases Overview',
-          description: 'Graphical overview of releases by category, ward, and trends.',
-          imageAsset: 'assets/analyst/cards/releases.jpg',
-          color: Colors.green,
-          child: Column(
-            // ... existing child (if any)
-          ),
+  /// Releases Card (navigates to releases charts)
+  Widget _buildReleasesCard() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AntibioticsUsageChartsAnalysisScreen()),
         );
       },
-    ),
-  );
-}
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _releasesCollection.snapshots(),
+        builder: (context, snapshot) {
+          int totalReleases = 0;
+          if (snapshot.hasData) {
+            totalReleases = snapshot.data!.docs.length;
+          }
+          return _buildAnalysisCard(
+            title: 'Releases Overview',
+            description: 'Graphical overview of releases by category, ward, and trends.',
+            imageAsset: 'assets/analyst/cards/releases.jpg',
+            color: Colors.green,
+            child: const SizedBox(), // can be extended later
+          );
+        },
+      ),
+    );
+  }
 
-  /// Returns Card
+  /// Returns Card (navigates to returns charts)
   Widget _buildReturnsCard() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _returnsCollection.snapshots(),
-      builder: (context, snapshot) {
-        int totalReturns = 0;
-        if (snapshot.hasData) {
-          totalReturns = snapshot.data!.docs.length;
-        }
-        return _buildAnalysisCard(
-          title: 'Returns Overview',
-          description: 'Graphical overview returns by category, ward, and trends.',
-          imageAsset: 'assets/analyst/cards/returns.png',
-          color: Colors.orange,
-          child: Column(
-            
-          ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AntibioticsReturnsAnalysisScreen()),
         );
       },
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _returnsCollection.snapshots(),
+        builder: (context, snapshot) {
+          int totalReturns = 0;
+          if (snapshot.hasData) {
+            totalReturns = snapshot.data!.docs.length;
+          }
+          return _buildAnalysisCard(
+            title: 'Returns Overview',
+            description: 'Graphical overview returns by category, ward, and trends.',
+            imageAsset: 'assets/analyst/cards/returns.png',
+            color: Colors.orange,
+            child: const SizedBox(),
+          );
+        },
+      ),
     );
   }
 
@@ -313,7 +317,6 @@ Widget _buildReleasesCard() {
         return FutureBuilder<QuerySnapshot>(
           future: _wardsCollection.get(),
           builder: (context, wardSnapshot) {
-            // Build a map of wardId -> wardName
             Map<String, String> wardNames = {};
             if (wardSnapshot.hasData) {
               for (var doc in wardSnapshot.data!.docs) {
@@ -322,7 +325,6 @@ Widget _buildReleasesCard() {
               }
             }
 
-            // Count releases per ward using wardId
             Map<String, int> wardCounts = {};
             for (var doc in releases) {
               final data = doc.data() as Map<String, dynamic>;
@@ -331,7 +333,6 @@ Widget _buildReleasesCard() {
               wardCounts[wardName] = (wardCounts[wardName] ?? 0) + 1;
             }
 
-            // Sort entries by count descending and take top 5
             var sortedEntries = wardCounts.entries.toList()
               ..sort((a, b) => b.value.compareTo(a.value));
             var topEntries = sortedEntries.take(5).toList();
@@ -392,6 +393,7 @@ Widget _buildReleasesCard() {
               child: topEntries.isEmpty
                   ? const Text('No data', style: TextStyle(color: Colors.grey))
                   : Column(
+                      
                     ),
             );
           },
@@ -437,7 +439,7 @@ Widget _buildReleasesCard() {
                             crossAxisCount: 2,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
-                            childAspectRatio: 0.85, // Adjust as needed
+                            childAspectRatio: 0.85,
                           ),
                           itemCount: cards.length,
                           itemBuilder: (context, index) => cards[index],
