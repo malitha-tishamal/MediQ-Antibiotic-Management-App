@@ -29,7 +29,7 @@ class _AntibioticsReturnsAnalysisScreenState
   late TabController _tabController;
 
   final CollectionReference _returnsCollection =
-      FirebaseFirestore.instance.collection('returns'); // changed to returns
+      FirebaseFirestore.instance.collection('returns');
   final CollectionReference _antibioticsCollection =
       FirebaseFirestore.instance.collection('antibiotics');
   final CollectionReference _wardsCollection =
@@ -131,9 +131,10 @@ class _AntibioticsReturnsAnalysisScreenState
       // Build Firestore query with filters
       Query query = _returnsCollection;
 
-      if (_selectedWardId != null) {
-        query = query.where('wardId', isEqualTo: _selectedWardId);
-      }
+      // Ward filter disabled – commented out
+      // if (_selectedWardId != null) {
+      //   query = query.where('wardId', isEqualTo: _selectedWardId);
+      // }
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
@@ -313,26 +314,26 @@ class _AntibioticsReturnsAnalysisScreenState
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Ward dropdown
-                            DropdownButtonFormField<String>(
-                              value: _selectedWardId,
-                              decoration: _inputDecoration(
-                                label: 'Ward',
-                                prefixIcon: Icons.place,
-                              ),
-                              items: [
-                                const DropdownMenuItem(value: null, child: Text('All Wards')),
-                                ..._wards.map((w) => DropdownMenuItem(
-                                      value: w['id'],
-                                      child: Text(w['name']),
-                                    )),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _selectedWardId = value);
-                                setModalState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 16),
+                            // Ward dropdown - COMMENTED OUT
+                            // DropdownButtonFormField<String>(
+                            //   value: _selectedWardId,
+                            //   decoration: _inputDecoration(
+                            //     label: 'Ward',
+                            //     prefixIcon: Icons.place,
+                            //   ),
+                            //   items: [
+                            //     const DropdownMenuItem(value: null, child: Text('All Wards')),
+                            //     ..._wards.map((w) => DropdownMenuItem(
+                            //           value: w['id'],
+                            //           child: Text(w['name']),
+                            //         )),
+                            //   ],
+                            //   onChanged: (value) {
+                            //     setState(() => _selectedWardId = value);
+                            //     setModalState(() {});
+                            //   },
+                            // ),
+                            // const SizedBox(height: 16),
 
                             // Antibiotic dropdown
                             DropdownButtonFormField<String>(
@@ -538,7 +539,7 @@ class _AntibioticsReturnsAnalysisScreenState
     );
   }
 
-  // ---------- Chart Helper Widgets ----------
+  // ---------- Chart Helper Widgets (unchanged) ----------
   Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
