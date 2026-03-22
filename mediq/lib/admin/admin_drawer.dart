@@ -146,7 +146,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                   height: 60,
 
                   child: Image.asset(
-                    'assets/logo2.png',
+                    'assets/logo/logo2.png',
                     width: 60,
                     height: 60,
                     fit: BoxFit.contain,
