@@ -6,7 +6,9 @@ import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
 import 'pages/antibiotics_usage_charts_analysis.dart';
-import 'pages/antibiotics_returns_charts_analysis.dart'; // new import
+import 'pages/antibiotics_returns_charts_analysis.dart';
+import 'pages/released_usage_summary.dart';
+
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -267,8 +269,8 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             totalReleases = snapshot.data!.docs.length;
           }
           return _buildAnalysisCard(
-            title: 'Releases Overview',
-            description: 'Graphical overview of releases by category, ward, and trends.',
+            title: 'Releases Overview Chats',
+            description: 'Graphical overview of Antibiotics releases and Category Wise.',
             imageAsset: 'assets/analyst/cards/releases.jpg',
             color: Colors.green,
             child: const SizedBox(), // can be extended later
@@ -295,8 +297,8 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             totalReturns = snapshot.data!.docs.length;
           }
           return _buildAnalysisCard(
-            title: 'Returns Overview',
-            description: 'Graphical overview returns by category, ward, and trends.',
+            title: 'Returns Overview Charts',
+            description: 'Graphical overview Antibiotics Returns and Category Wise.',
             imageAsset: 'assets/analyst/cards/returns.png',
             color: Colors.orange,
             child: const SizedBox(),
@@ -308,7 +310,14 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
 
   /// Releases by Ward Card
   Widget _buildReleasesByWardCard() {
-    return StreamBuilder<QuerySnapshot>(
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ReleasedUsageSummaryScreen()),
+      );
+    },
+    child: StreamBuilder<QuerySnapshot>(
       stream: _releasesCollection.snapshots(),
       builder: (context, releaseSnapshot) {
         if (!releaseSnapshot.hasData) return const SizedBox();
@@ -338,8 +347,8 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             var topEntries = sortedEntries.take(5).toList();
 
             return _buildAnalysisCard(
-              title: 'Releases by Ward',
-              description: 'Full A–Z breakdown of ward releases with detailed table view.',
+              title: 'Releases Details Analyst',
+              description: 'Full A–Z breakdown Antibiotics releases detailes.',
               imageAsset: 'assets/analyst/cards/releases-all.jpg',
               color: Colors.blue,
               child: topEntries.isEmpty
@@ -351,8 +360,9 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
           },
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   /// Returns by Ward Card
   Widget _buildReturnsByWardCard() {
@@ -386,8 +396,8 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             var topEntries = sortedEntries.take(5).toList();
 
             return _buildAnalysisCard(
-              title: 'Returns by Ward',
-              description: 'Full A–Z breakdown of ward returns with detailed table view.',
+              title: 'Returns Details Analyst',
+              description: 'Full A–Z breakdown of Antibiotics returns detailes.',
               imageAsset: 'assets/analyst/cards/returns-all.jpg',
               color: Colors.purple,
               child: topEntries.isEmpty
