@@ -131,14 +131,14 @@ class _AntibioticsUsageChartsAnalysisScreenState
       // Build Firestore query with filters
       Query query = _releasesCollection;
 
-      if (_selectedWardId != null) {
-        query = query.where('wardId', isEqualTo: _selectedWardId);
-      }
+      // Ward filter disabled – commented out
+      // if (_selectedWardId != null) {
+      //   query = query.where('wardId', isEqualTo: _selectedWardId);
+      // }
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
       if (_startDate != null && _endDate != null) {
-        // Use releaseDateTime field for range filtering
         final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
         final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
         query = query
@@ -313,26 +313,26 @@ class _AntibioticsUsageChartsAnalysisScreenState
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Ward dropdown
-                            DropdownButtonFormField<String>(
-                              value: _selectedWardId,
-                              decoration: _inputDecoration(
-                                label: 'Ward',
-                                prefixIcon: Icons.place,
-                              ),
-                              items: [
-                                const DropdownMenuItem(value: null, child: Text('All Wards')),
-                                ..._wards.map((w) => DropdownMenuItem(
-                                      value: w['id'],
-                                      child: Text(w['name']),
-                                    )),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _selectedWardId = value);
-                                setModalState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 16),
+                            // Ward dropdown - COMMENTED OUT
+                            // DropdownButtonFormField<String>(
+                            //   value: _selectedWardId,
+                            //   decoration: _inputDecoration(
+                            //     label: 'Ward',
+                            //     prefixIcon: Icons.place,
+                            //   ),
+                            //   items: [
+                            //     const DropdownMenuItem(value: null, child: Text('All Wards')),
+                            //     ..._wards.map((w) => DropdownMenuItem(
+                            //           value: w['id'],
+                            //           child: Text(w['name']),
+                            //         )),
+                            //   ],
+                            //   onChanged: (value) {
+                            //     setState(() => _selectedWardId = value);
+                            //     setModalState(() {});
+                            //   },
+                            // ),
+                            // const SizedBox(height: 16),
 
                             // Antibiotic dropdown
                             DropdownButtonFormField<String>(
