@@ -242,7 +242,7 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Analyze total antibiotic releases and returns using charts, graphs & tables',
+                    'Analyze total antibiotic releases and returns using charts, graphs A-Z Details',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
@@ -317,12 +317,12 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Ward-wise Usage',
+                   'Overall Wards Usage',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Analyze antibiotic usage per ward using charts, graphs & tables',
+                    'Analyze antibiotic usage per ward using charts, graphs & A-Z Detaiils',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
