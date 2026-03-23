@@ -90,6 +90,7 @@ flutter:
 
     - assets/analyst/antibiotic-usage.jpg
     - assets/analyst/ward-usage.jpg
+    - assets/analyst/all-usage.jpg
 
     - assets/analyst/cards/releases-all.jpg
     - assets/analyst/cards/returns-all.jpg
