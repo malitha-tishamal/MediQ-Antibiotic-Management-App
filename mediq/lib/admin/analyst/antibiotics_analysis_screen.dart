@@ -5,9 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
-import 'pages/antibiotics_usage_charts_analysis.dart';
-import 'pages/antibiotics_returns_charts_analysis.dart';
-import 'pages/released_usage_summary.dart';
+import 'overall_usage overview/antibiotics_usage_charts_analysis.dart';
+import 'overall_usage overview/antibiotics_returns_charts_analysis.dart';
+import 'overall_usage overview/released_usage_summary.dart';
+import 'overall_usage overview/return_usage_summary.dart';
 
 
 class AppColors {
@@ -168,7 +169,7 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
           ),
           const SizedBox(height: 25),
           const Text(
-            'Antibiotics Usage Analysis',
+            'Overall Antibiotics Usage Analysis',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
           ),
         ],
@@ -366,7 +367,14 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
 
   /// Returns by Ward Card
   Widget _buildReturnsByWardCard() {
-    return StreamBuilder<QuerySnapshot>(
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ReturnUsageSummaryScreen()),
+      );
+    },
+    child: StreamBuilder<QuerySnapshot>(
       stream: _returnsCollection.snapshots(),
       builder: (context, returnSnapshot) {
         if (!returnSnapshot.hasData) return const SizedBox();
@@ -409,8 +417,9 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
           },
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
