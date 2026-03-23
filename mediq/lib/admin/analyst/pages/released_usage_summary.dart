@@ -51,11 +51,11 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   String _selectedCategory = 'All';
   String _selectedStockType = 'All';
   String _searchQuery = '';
-  String _sortOption = 'name'; // 'most', 'lowest', 'name'
+  String _sortOption = 'most';
   final TextEditingController _searchController = TextEditingController();
 
   // Category tab sort
-  String _categorySortOption = 'most'; // 'most', 'lowest'
+  String _categorySortOption = 'most';
 
   // Lists for dropdowns
   List<Map<String, dynamic>> _antibiotics = [];
@@ -76,10 +76,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      // Rebuild when tab changes to show/hide filter button
-      setState(() {});
-    });
+    _tabController.addListener(() => setState(() {}));
     _fetchCurrentUserDetails();
     _loadDropdownData();
     _fetchData();
@@ -161,7 +158,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
 
       final releaseSnapshot = await query.get();
 
-      // Apply client‑side filters: category, stock type, search
       final filteredDocs = releaseSnapshot.docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
         final antibioticId = data['antibioticId'] ?? '';
@@ -236,7 +232,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         item['percentage'] = total > 0 ? (item['quantity'] / total * 100) : 0;
       }
 
-      // Apply sorting based on selected option
       _applySorting(summary);
 
       setState(() {
@@ -329,7 +324,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Filter Panel (Antibiotic Tab) ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -539,7 +533,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
                                         tempStartDate = null;
                                         tempEndDate = null;
                                         tempSearch = '';
-                                        tempSortOption = 'name';
+                                        tempSortOption = 'most';
                                       });
                                     },
                                     style: OutlinedButton.styleFrom(
@@ -593,9 +587,8 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Header (filter button only visible on Antibiotic tab) ----------
   Widget _buildHeader(BuildContext context) {
-    final showFilterButton = _tabController.index == 0; // 0 = Antibiotic Usage tab
+    final showFilterButton = _tabController.index == 0;
 
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -669,7 +662,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Summary Card ----------
   Widget _buildSummaryCard() {
     final totalRecords = _summaryData.length;
     final totalQuantity = _summaryData.fold(0.0, (sum, item) => sum + (item['quantity'] as double));
@@ -717,7 +709,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Antibiotic Usage Tab ----------
   Widget _buildAntibioticUsageTab() {
     return Column(
       children: [
@@ -758,7 +749,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Category Usage Tab with Filter Bar ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Access', 'color': AppColors.accessColor},
@@ -767,7 +757,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
       {'name': 'Other', 'color': AppColors.otherColor},
     ];
 
-    // Apply sorting to categories
     List<Map<String, dynamic>> sortedCategories = List.from(categories);
     if (_categorySortOption == 'most') {
       sortedCategories.sort((a, b) =>
@@ -780,7 +769,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     return Column(
       children: [
         _buildSummaryCard(),
-        // Compact filter bar for category tab
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -940,7 +928,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Table Header and Row Widgets for Antibiotic Tab ----------
   Widget _buildTableHeader() {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
