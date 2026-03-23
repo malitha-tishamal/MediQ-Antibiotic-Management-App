@@ -13,7 +13,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
-  static const Color inputBorder = Color(0xFFE0E0E0); // Added for input decoration
+  static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
 class AntibioticsUsageChartsAnalysisScreen extends StatefulWidget {
@@ -538,6 +538,76 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
+  // ---------- Enhanced modern dialog ----------
+  void _showItemDetails(String title, String details, Color accentColor) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 8,
+        backgroundColor: Colors.white,
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Gradient header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [accentColor, accentColor.withOpacity(0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Details
+              Text(
+                details,
+                style: const TextStyle(fontSize: 16, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // Action button
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text('OK', style: TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ---------- Chart Helper Widgets ----------
   Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
@@ -607,10 +677,16 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  // ---------- Pie Charts ----------
+  // ---------- Pie Charts with tooltip ----------
   Widget _buildPieCharts() {
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
+
+    // Prepare data for tooltips
+    final drugEntries = usagePerDrug.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -624,6 +700,36 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 sections: _buildPieSections(usagePerDrug, totalDrug, limit: 8),
                 sectionsSpace: 2,
                 centerSpaceRadius: 40,
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                      final sections = _buildPieSections(usagePerDrug, totalDrug, limit: 8);
+                      if (touchedIndex < sections.length) {
+                        if (touchedIndex < drugEntries.length) {
+                          final entry = drugEntries[touchedIndex];
+                          final percentage = (entry.value / totalDrug * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedIndex),
+                          );
+                        } else if (sections.length > drugEntries.length) {
+                          // "Others" section
+                          final otherSum = drugEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
+                          if (otherSum > 0) {
+                            final percentage = (otherSum / totalDrug * 100).toStringAsFixed(1);
+                            _showItemDetails(
+                              'Others',
+                              'Quantity: ${otherSum.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                              Colors.grey,
+                            );
+                          }
+                        }
+                      }
+                    }
+                  },
+                ),
               ),
             ),
             legendItems: _buildPieLegend(usagePerDrug, totalDrug, limit: 8),
@@ -636,6 +742,35 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 sections: _buildPieSections(usagePerCategory, totalCategory, limit: 4),
                 sectionsSpace: 2,
                 centerSpaceRadius: 40,
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                      final sections = _buildPieSections(usagePerCategory, totalCategory, limit: 4);
+                      if (touchedIndex < sections.length) {
+                        if (touchedIndex < categoryEntries.length) {
+                          final entry = categoryEntries[touchedIndex];
+                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedIndex),
+                          );
+                        } else if (sections.length > categoryEntries.length) {
+                          final otherSum = categoryEntries.skip(3).fold(0.0, (sum, e) => sum + e.value);
+                          if (otherSum > 0) {
+                            final percentage = (otherSum / totalCategory * 100).toStringAsFixed(1);
+                            _showItemDetails(
+                              'Others',
+                              'Quantity: ${otherSum.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                              Colors.grey,
+                            );
+                          }
+                        }
+                      }
+                    }
+                  },
+                ),
               ),
             ),
             legendItems: _buildPieLegend(usagePerCategory, totalCategory, limit: 4),
@@ -741,10 +876,15 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return items;
   }
 
-  // ---------- Bar Charts ----------
+  // ---------- Bar Charts with tooltip ----------
   Widget _buildBarCharts() {
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
+
+    final drugEntries = usagePerDrug.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -759,7 +899,34 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: _getMaxY(usagePerDrug),
-                  barTouchData: BarTouchData(enabled: true),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                        if (touchedBarGroupIndex < drugEntries.length) {
+                          final entry = drugEntries[touchedBarGroupIndex];
+                          final percentage = (entry.value / totalDrug * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedBarGroupIndex),
+                          );
+                        } else if (touchedBarGroupIndex == drugEntries.length && drugEntries.length > 7) {
+                          // "Others" bar
+                          final otherSum = drugEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
+                          if (otherSum > 0) {
+                            final percentage = (otherSum / totalDrug * 100).toStringAsFixed(1);
+                            _showItemDetails(
+                              'Others',
+                              'Quantity: ${otherSum.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                              Colors.grey,
+                            );
+                          }
+                        }
+                      }
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -774,13 +941,11 @@ class _AntibioticsUsageChartsAnalysisScreenState
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          final entries = usagePerDrug.entries.toList()
-                            ..sort((a, b) => b.value.compareTo(a.value));
-                          if (value.toInt() >= 0 && value.toInt() < entries.length) {
+                          if (value.toInt() >= 0 && value.toInt() < drugEntries.length) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                _shortenName(entries[value.toInt()].key),
+                                _shortenName(drugEntries[value.toInt()].key),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -807,7 +972,23 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
                   maxY: _getMaxY(usagePerCategory),
-                  barTouchData: BarTouchData(enabled: true),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                        if (touchedBarGroupIndex < categoryEntries.length) {
+                          final entry = categoryEntries[touchedBarGroupIndex];
+                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedBarGroupIndex),
+                          );
+                        }
+                      }
+                    },
+                  ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
