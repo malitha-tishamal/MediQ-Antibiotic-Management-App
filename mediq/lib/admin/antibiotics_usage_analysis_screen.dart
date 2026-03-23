@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
-import 'analyst/antibiotics_analysis_screen.dart'; 
+import 'analyst/antibiotics_analysis_screen.dart';
+import 'analyst/overall_usage overview/released_usage_summary.dart'; 
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -20,12 +21,15 @@ class AntibioticsUsageAnalysisScreen extends StatefulWidget {
   const AntibioticsUsageAnalysisScreen({super.key});
 
   @override
-  State<AntibioticsUsageAnalysisScreen> createState() => _AntibioticsUsageAnalysisScreenState();
+  State<AntibioticsUsageAnalysisScreen> createState() =>
+      _AntibioticsUsageAnalysisScreenState();
 }
 
-class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysisScreen> {
+class _AntibioticsUsageAnalysisScreenState
+    extends State<AntibioticsUsageAnalysisScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final CollectionReference _userCollection = FirebaseFirestore.instance.collection('users');
+  final CollectionReference _userCollection =
+      FirebaseFirestore.instance.collection('users');
 
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Administrator';
@@ -48,7 +52,8 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
         if (doc.exists) {
           final data = doc.data() as Map<String, dynamic>;
           setState(() {
-            _currentUserName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserName =
+                data['fullName'] ?? user.email?.split('@').first ?? 'User';
             _currentUserRole = data['role'] ?? 'Administrator';
             _profileImageUrl = data['profileImageUrl'];
           });
@@ -102,7 +107,10 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
-        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +119,8 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: const Icon(Icons.menu,
+                    color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
@@ -142,7 +151,9 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                     ),
                   ],
                   image: _profileImageUrl != null
-                      ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
+                      ? DecorationImage(
+                          image: NetworkImage(_profileImageUrl!),
+                          fit: BoxFit.cover)
                       : null,
                 ),
                 child: _profileImageUrl == null
@@ -155,11 +166,16 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                 children: [
                   Text(
                     _currentUserName,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+                    style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headerTextDark),
                   ),
                   Text(
                     'Logged in as: Administrator',
-                    style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.headerTextDark.withOpacity(0.7)),
                   ),
                 ],
               ),
@@ -168,189 +184,145 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
           const SizedBox(height: 25),
           const Text(
             'Antibiotics Usage Analysis',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.headerTextDark),
           ),
         ],
       ),
     );
   }
 
-  /// Card for Overall Antibiotic Usage with live counts
-  Widget _buildOverallUsageButton() {
+  // Common card builder for consistent and compact size
+  Widget _buildCard({
+    required String imageAsset,
+    required String title,
+    required String description,
+    required Color borderColor,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Color(0xFFF9F7FF)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryPurple.withOpacity(0.2),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+              spreadRadius: -5,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: borderColor, width: 8),
+                ),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Image.asset(
+                    imageAsset,
+                    width: 120,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.image_not_supported,
+                          size: 50, color: borderColor);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverallUsageButton() {
+    return _buildCard(
+      imageAsset: 'assets/analyst/antibiotic-usage.jpg',
+      title: 'Overall Usage Overview',
+      description:
+          'Analyze antibiotic Release & Returns by each Antibiotic.',
+      borderColor: const Color.fromARGB(255, 2, 21, 234),
       onTap: () {
-        // Navigate to overall usage analysis screen
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AntibioticsAnalysisScreen()),
         );
       },
-      child: Container(
-        width: 280,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFF9F7FF)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.2),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-              spreadRadius: -5,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: Colors.blue,
-                    width: 8,
-                  ),
-                ),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  // Image.asset for usage.png
-                  Image.asset(
-                    'assets/analyst/antibiotic-usage.jpg',
-                    width: 160,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.analytics, size: 60, color: Colors.green);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Overall Antibiotic Usage',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Analyze total antibiotic releases and returns using charts, graphs A-Z Details',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
-  /// Card for Ward-wise Usage with image
   Widget _buildWardWiseUsageButton() {
-    return GestureDetector(
+    return _buildCard(
+      imageAsset: 'assets/analyst/ward-usage.jpg',
+      title: 'Ward-wise Usage',
+      description:
+          'Analyze Antibiotic Release & Returns by each ward.',
+      borderColor: const Color.fromARGB(255, 1, 107, 228),
       onTap: () {
         // Navigate to ward-wise usage analysis screen (to be implemented)
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ward-wise Usage – Charts, Graphs, Tables (coming soon)')),
+          const SnackBar(
+              content: Text(
+                  'Ward-wise Usage – Charts, Graphs, Tables (coming soon)')),
         );
       },
-      child: Container(
-        width: 280,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFF9F7FF)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.2),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-              spreadRadius: -5,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: Colors.lightBlueAccent,
-                    width: 8,
-                  ),
-                ),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  // Image.asset for ward.jpg
-                  Image.asset(
-                    'assets/analyst/ward-usage.jpg',
-                    width: 160,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.place, size: 60, color: Colors.orange);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                   'Overall Wards Usage',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Analyze antibiotic usage per ward using charts, graphs & A-Z Detaiils',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildChip(String label, String count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        '$label: $count',
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
+  Widget _buildAdvancedAnalysisButton() {
+    return _buildCard(
+      imageAsset: 'assets/analyst/all-usage.jpg',
+      title: 'Advanced Analysis',
+      description:
+          'Filter by Antibiotic, Ward, and View Complete Detailed Insights.',
+      borderColor: const Color.fromARGB(255, 100, 170, 231),
+      onTap: () {
+        // Navigation enabled
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => const ReleasedUsageSummaryScreen()),
+        );
+      },
     );
   }
 
@@ -375,13 +347,15 @@ class _AntibioticsUsageAnalysisScreenState extends State<AntibioticsUsageAnalysi
                 Expanded(
                   child: Center(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildOverallUsageButton(),
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 20),
                           _buildWardWiseUsageButton(),
+                          const SizedBox(height: 20),
+                          _buildAdvancedAnalysisButton(),
                         ],
                       ),
                     ),
