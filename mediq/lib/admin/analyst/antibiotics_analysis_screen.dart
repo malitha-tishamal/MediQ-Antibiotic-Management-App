@@ -272,9 +272,9 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
           return _buildAnalysisCard(
             title: 'Releases Overview Chats',
             description: 'Graphical overview of Antibiotics releases and Category Wise.',
-            imageAsset: 'assets/analyst/cards/releases.jpg',
+            imageAsset: 'assets/analyst/cards/antibiotics-overviews/releases.jpg',
             color: Colors.green,
-            child: const SizedBox(), // can be extended later
+            child: const SizedBox(),
           );
         },
       ),
@@ -300,7 +300,7 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
           return _buildAnalysisCard(
             title: 'Returns Overview Charts',
             description: 'Graphical overview Antibiotics Returns and Category Wise.',
-            imageAsset: 'assets/analyst/cards/returns.png',
+            imageAsset: 'assets/analyst/cards/antibiotics-overviews/returns.png',
             color: Colors.orange,
             child: const SizedBox(),
           );
@@ -350,7 +350,7 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             return _buildAnalysisCard(
               title: 'Releases Details Analyst',
               description: 'Full A–Z breakdown Antibiotics releases detailes.',
-              imageAsset: 'assets/analyst/cards/releases-all.jpg',
+              imageAsset: 'assets/analyst/cards//antibiotics-overviews/releases-all.jpg',
               color: Colors.blue,
               child: topEntries.isEmpty
                   ? const Text('No data', style: TextStyle(color: Colors.grey))
@@ -406,7 +406,7 @@ class _AntibioticsAnalysisScreenState extends State<AntibioticsAnalysisScreen> {
             return _buildAnalysisCard(
               title: 'Returns Details Analyst',
               description: 'Full A–Z breakdown of Antibiotics returns detailes.',
-              imageAsset: 'assets/analyst/cards/returns-all.jpg',
+              imageAsset: 'assets/analyst/cards//antibiotics-overviews/returns-all.jpg',
               color: Colors.purple,
               child: topEntries.isEmpty
                   ? const Text('No data', style: TextStyle(color: Colors.grey))
