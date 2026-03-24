@@ -373,8 +373,8 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
   // Card 1: Ward-wise Releases – empty child replaced with SizedBox.shrink()
   Widget _buildWardReleasesCard() {
     return _buildAnalysisCard(
-      title: 'Ward-wise Releases',
-      description: 'Graphical overview of Antibiotics release Each Ward.',
+      title: 'Wards Releases Overview Chats',
+      description: 'Graphical Overview of Antibiotics release Each Ward.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/releases.jpg',
       color: Colors.green,
       onTap: () {
@@ -389,8 +389,8 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
   // Card 2: Ward-wise Returns – empty child replaced with SizedBox.shrink()
   Widget _buildWardReturnsCard() {
     return _buildAnalysisCard(
-      title: 'Ward-wise Returns',
-      description: 'Graphical overview of Antibiotics Returns Each Ward.',
+      title: 'Wards Returns Overview Chats',
+      description: 'Graphical Overview of Antibiotics Returns Each Ward.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/returns.jpg',
       color: Colors.orange,
       onTap: () {
