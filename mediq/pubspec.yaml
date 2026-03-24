@@ -92,7 +92,12 @@ flutter:
     - assets/analyst/ward-usage.jpg
     - assets/analyst/all-usage.jpg
 
-    - assets/analyst/cards/releases-all.jpg
-    - assets/analyst/cards/returns-all.jpg
-    - assets/analyst/cards/releases.jpg
-    - assets/analyst/cards/returns.png
+    - assets/analyst/cards/antibiotics-overviews/releases-all.jpg
+    - assets/analyst/cards/antibiotics-overviews/returns-all.jpg
+    - assets/analyst/cards/antibiotics-overviews/releases.jpg
+    - assets/analyst/cards/antibiotics-overviews/returns.png
+
+    - assets/analyst/cards/ward-wise-overviews/releases-all.jpg
+    - assets/analyst/cards/ward-wise-overviews/returns-all.jpg
+    - assets/analyst/cards/ward-wise-overviews/releases.jpg
+    - assets/analyst/cards/ward-wise-overviews/returns.jpg
