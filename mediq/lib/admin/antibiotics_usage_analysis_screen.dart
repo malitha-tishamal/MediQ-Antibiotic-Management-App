@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 import 'analyst/antibiotics_analysis_screen.dart';
+import 'analyst/ward_wise_usage_screen.dart';
 import 'analyst/overall_usage overview/released_usage_summary.dart'; 
 
 class AppColors {
@@ -298,11 +299,9 @@ class _AntibioticsUsageAnalysisScreenState
           'Analyze Antibiotic Release & Returns by each ward.',
       borderColor: const Color.fromARGB(255, 1, 107, 228),
       onTap: () {
-        // Navigate to ward-wise usage analysis screen (to be implemented)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Ward-wise Usage – Charts, Graphs, Tables (coming soon)')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WardWiseUsageScreen()),
         );
       },
     );
