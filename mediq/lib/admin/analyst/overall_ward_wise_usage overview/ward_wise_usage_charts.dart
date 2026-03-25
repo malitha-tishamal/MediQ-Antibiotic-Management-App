@@ -5,7 +5,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
-// AppColors (reused from other admin screens)
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
@@ -36,7 +35,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
       FirebaseFirestore.instance.collection('antibiotics');
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // User details for header
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
 
@@ -45,11 +43,31 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   DateTime? _startDate;
   DateTime? _endDate;
 
-  // Lists for dropdowns
   List<Map<String, dynamic>> _antibiotics = [];
 
-  // Data maps: wardName -> total units
+  // Convertible data (mg‑based, shown in units)
   Map<String, double> usagePerWard = {};
+  Map<String, double> usagePerCategory = {
+    'Pediatrics': 0,
+    'Medicine': 0,
+    'ICU': 0,
+    'Surgery': 0,
+    'Medicine Subspecialty': 0,
+    'Surgery Subspecialty': 0,
+    'Other': 0,
+  };
+
+  // Raw data (non‑convertible, shown as counts)
+  Map<String, double> rawUsagePerWard = {};
+  Map<String, double> rawUsagePerCategory = {
+    'Pediatrics': 0,
+    'Medicine': 0,
+    'ICU': 0,
+    'Surgery': 0,
+    'Medicine Subspecialty': 0,
+    'Surgery Subspecialty': 0,
+    'Other': 0,
+  };
 
   bool _isLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -60,7 +78,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     _tabController = TabController(length: 2, vsync: this);
     _fetchCurrentUserDetails();
     _loadDropdownData();
-    _fetchData(); // initial load with no filters
+    _fetchData();
   }
 
   @override
@@ -69,7 +87,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     super.dispose();
   }
 
-  // Fetch current user's name and profile image
   Future<void> _fetchCurrentUserDetails() async {
     final user = _auth.currentUser;
     if (user != null) {
@@ -92,7 +109,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     }
   }
 
-  // Load antibiotics for dropdowns
   Future<void> _loadDropdownData() async {
     try {
       final antibioticSnapshot = await _antibioticsCollection.get();
@@ -105,15 +121,33 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     }
   }
 
-  // Main data fetcher: reads releases with applied filters and calculates units per ward
+  // Map ward name to category using keyword matching
+  String _getWardCategory(String wardName) {
+    final lower = wardName.toLowerCase();
+    if (lower.contains('pediatric') || lower.contains('pedia')) return 'Pediatrics';
+    if (lower.contains('medicine')) return 'Medicine';
+    if (lower.contains('icu') || lower.contains('intensive')) return 'ICU';
+    if (lower.contains('surgery')) return 'Surgery';
+    if (lower.contains('med sub') || lower.contains('medicine sub')) return 'Medicine Subspecialty';
+    if (lower.contains('surg sub') || lower.contains('surgery sub')) return 'Surgery Subspecialty';
+    return 'Other';
+  }
+
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
 
     try {
-      // Clear previous data
+      // Clear convertible data
       usagePerWard.clear();
+      for (final key in usagePerCategory.keys) {
+        usagePerCategory[key] = 0;
+      }
+      // Clear raw data
+      rawUsagePerWard.clear();
+      for (final key in rawUsagePerCategory.keys) {
+        rawUsagePerCategory[key] = 0;
+      }
 
-      // Build Firestore query with filters
       Query query = _releasesCollection;
 
       if (_selectedAntibioticId != null) {
@@ -133,10 +167,8 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         query = query.where('releaseDateTime', isLessThanOrEqualTo: end);
       }
 
-      // Fetch filtered releases
       final releaseSnapshot = await query.get();
 
-      // Fetch all wards to map wardId to wardName
       final wardSnapshot = await _wardsCollection.get();
       final Map<String, String> wardNames = {};
       for (var doc in wardSnapshot.docs) {
@@ -151,19 +183,25 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         if (itemCount == 0) continue;
 
         final dosageStr = data['dosage'] ?? '';
-        final dosageMg = _parseDosageToMg(dosageStr);
-        if (dosageMg == 0) {
-          debugPrint('Warning: could not parse dosage "$dosageStr" for release ${doc.id} – skipping');
-          continue;
-        }
+        final parseResult = _parseDosageToMgWithRaw(dosageStr);
+        final dosageValue = parseResult['value']!;
+        final isConvertible = parseResult['convertible']!;
 
-        final totalMg = itemCount * dosageMg;
-        final units = totalMg / 1000;
+        final totalValue = itemCount * dosageValue; // mg if convertible, else raw count
 
         final wardId = data['wardId'] ?? '';
         final wardName = wardNames[wardId] ?? 'Unknown';
+        final category = _getWardCategory(wardName);
 
-        usagePerWard[wardName] = (usagePerWard[wardName] ?? 0) + units;
+        if (isConvertible) {
+          final units = totalValue / 1000; // convert mg to units (1 unit = 1000 mg)
+          usagePerWard[wardName] = (usagePerWard[wardName] ?? 0) + units;
+          usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
+        } else {
+          // raw count
+          rawUsagePerWard[wardName] = (rawUsagePerWard[wardName] ?? 0) + totalValue;
+          rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
+        }
       }
     } catch (e) {
       debugPrint('Error fetching data: $e');
@@ -174,41 +212,76 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     }
   }
 
-  // Parse dosage string to milligrams (supports g, mg, mcg, mL, cc)
-  double _parseDosageToMg(String dosage) {
-    if (dosage.isEmpty) return 0;
-    final normalized = dosage.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*([a-z%]+)?$');
+  // Enhanced dosage parser that returns value and convertible flag
+  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
+
+    final normalized = dosage.toLowerCase().trim();
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
     final match = regex.firstMatch(normalized);
-    if (match == null) return 0;
-
-    final numberStr = match.group(1) ?? '0';
-    final unit = match.group(2) ?? '';
-    double value = double.tryParse(numberStr) ?? 0;
-
-    if (unit.isEmpty) {
-      debugPrint('Warning: no unit in dosage "$dosage", skipping');
-      return 0;
+    if (match == null) {
+      debugPrint('Warning: no number-unit pair found in "$dosage"');
+      return {'value': 0.0, 'unit': '', 'convertible': false};
     }
 
-    switch (unit) {
-      case 'g':
-        return value * 1000;
-      case 'mg':
-        return value;
-      case 'mcg':
-      case 'µg':
-        return value / 1000;
-      case 'ml':
-      case 'cc':
-        return value * 1000; // assuming 1 mL = 1 g = 1000 mg
-      default:
-        debugPrint('Warning: unknown unit "$unit" in dosage "$dosage", skipping');
-        return 0;
+    final numberStr = match.group(1)!;
+    double value = double.tryParse(numberStr) ?? 0;
+    String rawUnit = match.group(2)!.trim();
+
+    final lowerUnit = rawUnit.toLowerCase();
+
+    final Map<String, double> conversion = {
+      'g': 1000,
+      'mg': 1,
+      'mcg': 0.001,
+      'µg': 0.001,
+      'ml': 1000,
+      'cc': 1000,
+      'l': 1000000,
+    };
+
+    String extractCoreUnit(String unit) {
+      final patterns = {
+        r'\bmg\b': 'mg',
+        r'\bmilligram\b': 'mg',
+        r'\bg\b': 'g',
+        r'\bgram\b': 'g',
+        r'\bmcg\b': 'mcg',
+        r'\bmicrogram\b': 'mcg',
+        r'µg': 'mcg',
+        r'\bml\b': 'ml',
+        r'\bmilliliter\b': 'ml',
+        r'\bcc\b': 'cc',
+        r'\bcubic\s*centimeter\b': 'cc',
+        r'\bl\b': 'l',
+        r'\bliter\b': 'l',
+      };
+      for (final entry in patterns.entries) {
+        if (RegExp(entry.key).hasMatch(unit)) {
+          return entry.value;
+        }
+      }
+      return unit;
+    }
+
+    final coreUnit = extractCoreUnit(lowerUnit);
+    if (conversion.containsKey(coreUnit)) {
+      return {
+        'value': value * conversion[coreUnit]!,
+        'unit': coreUnit,
+        'convertible': true,
+      };
+    } else {
+      debugPrint('Note: unit "$rawUnit" is not convertible – treating as raw count');
+      return {
+        'value': value,
+        'unit': rawUnit,
+        'convertible': false,
+      };
     }
   }
 
-  // ---------- Input Decoration Helper (for filter panel) ----------
+  // ---------- UI Helpers ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -240,7 +313,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Filter Panel Bottom Sheet ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -280,7 +352,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Antibiotic dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
                               decoration: _inputDecoration(
@@ -300,9 +371,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                               },
                             ),
                             const SizedBox(height: 16),
-
-                            // Date range
-                            const Text('Range Filter (Year: Month: Date)', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text('Range Filter', style: TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -354,8 +423,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                               ],
                             ),
                             const SizedBox(height: 24),
-
-                            // Action buttons
                             Row(
                               children: [
                                 Expanded(
@@ -382,7 +449,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                                   child: ElevatedButton(
                                     onPressed: () {
                                       Navigator.pop(context);
-                                      _fetchData(); // Apply filters and reload
+                                      _fetchData();
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primaryPurple,
@@ -409,7 +476,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Custom Header with Filter Button ----------
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -443,7 +509,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                     color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-              // Filter button
               IconButton(
                 icon: const Icon(Icons.tune, color: AppColors.headerTextDark),
                 onPressed: _showFilterPanel,
@@ -483,7 +548,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Enhanced modern dialog ----------
   void _showItemDetails(String title, String details, Color accentColor) {
     showDialog(
       context: context,
@@ -497,7 +561,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Gradient header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -526,14 +589,12 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              // Details
               Text(
                 details,
                 style: const TextStyle(fontSize: 16, height: 1.4),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              // Action button
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
@@ -553,9 +614,9 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Chart Helper Widgets ----------
+  // ---------- Chart Helpers ----------
   Widget _buildLegendItem(Color color, String label, double value, double total,
-      {bool showValue = true}) {
+      {bool showValue = true, String suffix = 'units'}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -572,7 +633,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
           ),
           if (showValue) ...[
             Text(
-              '${value.toStringAsFixed(1)} units',
+              '${value.toStringAsFixed(1)} $suffix',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
@@ -591,6 +652,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     required Widget chart,
     required List<Widget> legendItems,
     double? total,
+    String? totalSuffix,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
@@ -608,7 +670,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 12),
                 child: Text(
-                  'Total: ${total.toStringAsFixed(1)} units',
+                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ),
@@ -626,62 +688,83 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   // ---------- Pie Charts ----------
   Widget _buildPieCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
-    final wardEntries = usagePerWard.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
+
+    final wardEntries = usagePerWard.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Ward chart
           _buildChartCard(
-            title: 'Usage by Ward',
+            title: 'Usage by Ward (Convertable to Units)',
             total: totalWard,
             chart: PieChart(
               PieChartData(
-                sections: _buildPieSections(usagePerWard, totalWard, limit: 8),
+                sections: _buildPieSections(usagePerWard, totalWard),
                 sectionsSpace: 2,
                 centerSpaceRadius: 40,
                 pieTouchData: PieTouchData(
                   touchCallback: (FlTouchEvent event, pieTouchResponse) {
                     if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
                       final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
-                      final sections = _buildPieSections(usagePerWard, totalWard, limit: 8);
-                      if (touchedIndex < sections.length) {
-                        if (touchedIndex < wardEntries.length) {
-                          final entry = wardEntries[touchedIndex];
-                          final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
-                          _showItemDetails(
-                            entry.key,
-                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                            _getColorForIndex(touchedIndex),
-                          );
-                        } else if (sections.length > wardEntries.length) {
-                          // "Others" section
-                          final otherSum = wardEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
-                          if (otherSum > 0) {
-                            final percentage = (otherSum / totalWard * 100).toStringAsFixed(1);
-                            _showItemDetails(
-                              'Others',
-                              'Quantity: ${otherSum.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                              Colors.grey,
-                            );
-                          }
-                        }
+                      final sections = _buildPieSections(usagePerWard, totalWard);
+                      if (touchedIndex < sections.length && touchedIndex < wardEntries.length) {
+                        final entry = wardEntries[touchedIndex];
+                        final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
+                        _showItemDetails(
+                          entry.key,
+                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                          _getColorForIndex(touchedIndex),
+                        );
                       }
                     }
                   },
                 ),
               ),
             ),
-            legendItems: _buildPieLegend(usagePerWard, totalWard, limit: 8),
+            legendItems: _buildPieLegend(usagePerWard, totalWard),
           ),
+          // Category chart
+          _buildChartCard(
+            title: 'Usage by Category (Convertable to Units)',
+            total: totalCategory,
+            chart: PieChart(
+              PieChartData(
+                sections: _buildPieSections(usagePerCategory, totalCategory),
+                sectionsSpace: 2,
+                centerSpaceRadius: 40,
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                      final sections = _buildPieSections(usagePerCategory, totalCategory);
+                      if (touchedIndex < sections.length && touchedIndex < categoryEntries.length) {
+                        final entry = categoryEntries[touchedIndex];
+                        final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                        _showItemDetails(
+                          entry.key,
+                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                          _getCategoryColor(entry.key),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
+            ),
+            legendItems: _buildPieLegend(usagePerCategory, totalCategory, suffix: 'units'),
+          ),
+          // Raw data table
+          _buildRawUsageTable(),
         ],
       ),
     );
   }
 
-  List<PieChartSectionData> _buildPieSections(Map<String, double> data, double total,
-      {int limit = 8}) {
+  List<PieChartSectionData> _buildPieSections(Map<String, double> data, double total) {
     if (total == 0) {
       return [
         PieChartSectionData(
@@ -696,19 +779,8 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
 
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-    List<MapEntry<String, double>> mainEntries;
-    double otherSum = 0;
-
-    if (entries.length > limit) {
-      mainEntries = entries.take(limit - 1).toList();
-      otherSum = entries.skip(limit - 1).fold(0.0, (sum, e) => sum + e.value);
-    } else {
-      mainEntries = entries;
-    }
-
     final sections = <PieChartSectionData>[];
-
-    for (var entry in mainEntries) {
+    for (var entry in entries) {
       final percentage = (entry.value / total * 100).toStringAsFixed(1);
       sections.add(
         PieChartSectionData(
@@ -720,75 +792,41 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         ),
       );
     }
-
-    if (otherSum > 0) {
-      final percentage = (otherSum / total * 100).toStringAsFixed(1);
-      sections.add(
-        PieChartSectionData(
-          value: otherSum,
-          title: '$percentage%',
-          color: Colors.grey,
-          radius: 100,
-          titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-      );
-    }
-
     return sections;
   }
 
-  List<Widget> _buildPieLegend(Map<String, double> data, double total, {int limit = 8}) {
+  List<Widget> _buildPieLegend(Map<String, double> data, double total, {String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    List<MapEntry<String, double>> mainEntries;
-    double otherSum = 0;
-
-    if (entries.length > limit) {
-      mainEntries = entries.take(limit - 1).toList();
-      otherSum = entries.skip(limit - 1).fold(0.0, (sum, e) => sum + e.value);
-    } else {
-      mainEntries = entries;
-    }
-
     final items = <Widget>[];
-
-    for (int i = 0; i < mainEntries.length; i++) {
+    for (int i = 0; i < entries.length; i++) {
       items.add(
         _buildLegendItem(
           _getColorForIndex(i),
-          mainEntries[i].key,
-          mainEntries[i].value,
+          entries[i].key,
+          entries[i].value,
           total,
+          suffix: suffix,
         ),
       );
     }
-
-    if (otherSum > 0) {
-      items.add(
-        _buildLegendItem(
-          Colors.grey,
-          'Others',
-          otherSum,
-          total,
-        ),
-      );
-    }
-
     return items;
   }
 
   // ---------- Bar Charts ----------
   Widget _buildBarCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
-    final wardEntries = usagePerWard.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
+
+    final wardEntries = usagePerWard.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          // Ward bar chart
           _buildChartCard(
-            title: 'Usage by Ward',
+            title: 'Usage by Ward (Convertable to Units)',
             total: totalWard,
             chart: SizedBox(
               height: 300,
@@ -809,17 +847,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                             'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
                             _getColorForIndex(touchedBarGroupIndex),
                           );
-                        } else if (touchedBarGroupIndex == wardEntries.length && wardEntries.length > 7) {
-                          // "Others" bar
-                          final otherSum = wardEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
-                          if (otherSum > 0) {
-                            final percentage = (otherSum / totalWard * 100).toStringAsFixed(1);
-                            _showItemDetails(
-                              'Others',
-                              'Quantity: ${otherSum.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                              Colors.grey,
-                            );
-                          }
                         }
                       }
                     },
@@ -829,9 +856,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text(value.toInt().toString());
-                        },
+                        getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
                       ),
                     ),
                     bottomTitles: AxisTitles(
@@ -842,7 +867,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                _shortenName(wardEntries[value.toInt()].key),
+                                _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -854,40 +879,91 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                   ),
                   gridData: FlGridData(show: true),
                   borderData: FlBorderData(show: false),
-                  barGroups: _buildBarGroups(usagePerWard, totalWard, limit: 8),
+                  barGroups: _buildBarGroups(usagePerWard, totalWard),
                 ),
               ),
             ),
-            legendItems: _buildBarLegend(usagePerWard, totalWard, limit: 8),
+            legendItems: _buildBarLegend(usagePerWard, totalWard),
           ),
+          // Category bar chart
+          _buildChartCard(
+            title: 'Usage by Category (Convertable to Units)',
+            total: totalCategory,
+            chart: SizedBox(
+              height: 300,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: _getMaxY(usagePerCategory),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchCallback: (FlTouchEvent event, barTouchResponse) {
+                      if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                        if (touchedBarGroupIndex < categoryEntries.length) {
+                          final entry = categoryEntries[touchedBarGroupIndex];
+                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getCategoryColor(entry.key),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final categories = usagePerCategory.keys.toList();
+                          if (value.toInt() >= 0 && value.toInt() < categories.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                categories[value.toInt()],
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                  ),
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                  barGroups: _buildBarGroups(usagePerCategory, totalCategory),
+                ),
+              ),
+            ),
+            legendItems: _buildBarLegend(usagePerCategory, totalCategory, suffix: 'units'),
+          ),
+          // Raw data table
+          _buildRawUsageTable(),
         ],
       ),
     );
   }
 
-  List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total,
-      {int limit = 8}) {
+  List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total) {
     final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    List<MapEntry<String, double>> mainEntries;
-    double otherSum = 0;
-
-    if (entries.length > limit) {
-      mainEntries = entries.take(limit - 1).toList();
-      otherSum = entries.skip(limit - 1).fold(0.0, (sum, e) => sum + e.value);
-    } else {
-      mainEntries = entries;
-    }
-
     final groups = <BarChartGroupData>[];
-
-    for (int i = 0; i < mainEntries.length; i++) {
+    for (int i = 0; i < entries.length; i++) {
       groups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: mainEntries[i].value,
+              toY: entries[i].value,
               color: _getColorForIndex(i),
               width: 16,
               borderRadius: BorderRadius.circular(4),
@@ -902,69 +978,143 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         ),
       );
     }
-
-    if (otherSum > 0) {
-      groups.add(
-        BarChartGroupData(
-          x: mainEntries.length,
-          barRods: [
-            BarChartRodData(
-              toY: otherSum,
-              color: Colors.grey,
-              width: 16,
-              borderRadius: BorderRadius.circular(4),
-              backDrawRodData: BackgroundBarChartRodData(
-                show: true,
-                toY: _getMaxY(data),
-                color: Colors.grey.shade200,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return groups;
   }
 
-  List<Widget> _buildBarLegend(Map<String, double> data, double total, {int limit = 8}) {
+  List<Widget> _buildBarLegend(Map<String, double> data, double total, {String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-
-    List<MapEntry<String, double>> mainEntries;
-    double otherSum = 0;
-
-    if (entries.length > limit) {
-      mainEntries = entries.take(limit - 1).toList();
-      otherSum = entries.skip(limit - 1).fold(0.0, (sum, e) => sum + e.value);
-    } else {
-      mainEntries = entries;
-    }
-
     final items = <Widget>[];
-
-    for (int i = 0; i < mainEntries.length; i++) {
+    for (int i = 0; i < entries.length; i++) {
       items.add(
         _buildLegendItem(
           _getColorForIndex(i),
-          mainEntries[i].key,
-          mainEntries[i].value,
+          entries[i].key,
+          entries[i].value,
           total,
+          suffix: suffix,
         ),
       );
     }
-
-    if (otherSum > 0) {
-      items.add(
-        _buildLegendItem(
-          Colors.grey,
-          'Others',
-          otherSum,
-          total,
-        ),
-      );
-    }
-
     return items;
+  }
+
+  // ---------- Raw Usage Table ----------
+  Widget _buildRawUsageTable() {
+    final totalRawWard = rawUsagePerWard.values.fold(0.0, (a, b) => a + b);
+    if (totalRawWard == 0) {
+      return const Card(
+        margin: EdgeInsets.only(top: 16),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: Text('No non‑convertible usage data.'),
+          ),
+        ),
+      );
+    }
+
+    // Sort raw ward entries
+    final wardEntries = rawUsagePerWard.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Raw category entries
+    final categoryEntries = rawUsagePerCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Card(
+      margin: const EdgeInsets.only(top: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Non‑convertible Usage (Raw Counts)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'These items are not expressed in mg and are shown as raw counts.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            // Raw by Ward
+            const Text('By Ward', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: wardEntries.length,
+              itemBuilder: (context, index) {
+                final entry = wardEntries[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        color: _getColorForIndex(index),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Text(
+                        '${entry.value.toStringAsFixed(1)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            // Raw by Category
+            const Text('By Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: categoryEntries.length,
+              itemBuilder: (context, index) {
+                final entry = categoryEntries[index];
+                if (entry.value == 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        color: _getCategoryColor(entry.key),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Text(
+                        '${entry.value.toStringAsFixed(1)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   double _getMaxY(Map<String, double> data) {
@@ -980,16 +1130,24 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
 
   Color _getColorForIndex(int index) {
     const colors = [
-      Colors.red,
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.amber,
+      Colors.red, Colors.blue, Colors.green, Colors.orange,
+      Colors.purple, Colors.teal, Colors.pink, Colors.amber,
+      Colors.indigo, Colors.lime, Colors.cyan, Colors.brown,
+      Colors.deepOrange, Colors.lightGreen, Colors.deepPurple,
     ];
     return colors[index % colors.length];
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Pediatrics': return Colors.pink.shade300;
+      case 'Medicine': return Colors.blue.shade400;
+      case 'ICU': return Colors.red.shade400;
+      case 'Surgery': return Colors.green.shade600;
+      case 'Medicine Subspecialty': return Colors.orange.shade300;
+      case 'Surgery Subspecialty': return Colors.purple.shade300;
+      default: return Colors.grey;
+    }
   }
 
   @override
@@ -1003,7 +1161,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
             child: Column(
               children: [
                 _buildHeader(context),
-                // TabBar
                 Container(
                   color: Colors.white,
                   child: TabBar(
@@ -1017,7 +1174,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                     indicatorColor: AppColors.primaryPurple,
                   ),
                 ),
-                // Tab content
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -1032,7 +1188,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
