@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
+import 'overall_ward_wise_usage overview/ward_wise_usage_charts.dart';
+
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
@@ -378,8 +380,9 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/releases.jpg',
       color: Colors.green,
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Ward Releases Detail')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WardWiseUsageChartsScreen()),
         );
       },
       child: const SizedBox.shrink(), // removed empty text
