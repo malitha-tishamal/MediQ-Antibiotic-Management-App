@@ -50,9 +50,18 @@ class _AntibioticsReturnsAnalysisScreenState
   List<Map<String, dynamic>> _wards = [];
   List<Map<String, dynamic>> _antibiotics = [];
 
-  // Data maps (values in units: 1 unit = 1000 mg)
-  Map<String, double> usagePerDrug = {}; // drugName -> total units
+  // Data maps for CONVERTIBLE (mg) usage
+  Map<String, double> usagePerDrug = {};        // drugName -> total units (1000 mg)
   Map<String, double> usagePerCategory = {
+    'Access': 0,
+    'Watch': 0,
+    'Reserve': 0,
+    'Other': 0,
+  };
+
+  // Data maps for RAW (non‑convertible) usage
+  Map<String, double> rawUsagePerDrug = {};      // drugName -> total raw count
+  Map<String, double> rawUsagePerCategory = {
     'Access': 0,
     'Watch': 0,
     'Reserve': 0,
@@ -127,14 +136,18 @@ class _AntibioticsReturnsAnalysisScreenState
       // Clear previous data
       usagePerDrug.clear();
       usagePerCategory.forEach((key, value) => usagePerCategory[key] = 0);
+      rawUsagePerDrug.clear();
+      rawUsagePerCategory.forEach((key, value) => rawUsagePerCategory[key] = 0);
 
       // Build Firestore query with filters
       Query query = _returnsCollection;
 
-      // Ward filter disabled – commented out
-      // if (_selectedWardId != null) {
-      //   query = query.where('wardId', isEqualTo: _selectedWardId);
-      // }
+      // ========== UNCOMMENTED WARD FILTER ==========
+      if (_selectedWardId != null) {
+        query = query.where('wardId', isEqualTo: _selectedWardId);
+      }
+      // ============================================
+
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
@@ -171,25 +184,33 @@ class _AntibioticsReturnsAnalysisScreenState
         if (itemCount == 0) continue;
 
         final dosageStr = data['dosage'] ?? '';
-        final dosageMg = _parseDosageToMg(dosageStr);
-        if (dosageMg == 0) {
-          debugPrint('Warning: could not parse dosage "$dosageStr" for return ${doc.id} – skipping');
-          continue;
-        }
+        final parseResult = _parseDosageToMgWithRaw(dosageStr);
+        final dosageValue = parseResult['value']!;
+        final isConvertible = parseResult['convertible']!;
 
-        final totalMg = itemCount * dosageMg;
-        final units = totalMg / 1000;
+        final totalValue = itemCount * dosageValue; // value in mg if convertible, else raw count
 
         final drugName = data['antibioticName'] ?? 'Unknown';
         final antibioticId = data['antibioticId'] ?? '';
         final category = antibioticCategory[antibioticId] ?? 'Other';
 
-        usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
-
-        if (usagePerCategory.containsKey(category)) {
-          usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
+        if (isConvertible) {
+          // Add to mg-based totals
+          final units = totalValue / 1000; // convert mg to units (1 unit = 1000 mg)
+          usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
+          if (usagePerCategory.containsKey(category)) {
+            usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
+          } else {
+            usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + units;
+          }
         } else {
-          usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + units;
+          // Add to raw totals (no conversion)
+          rawUsagePerDrug[drugName] = (rawUsagePerDrug[drugName] ?? 0) + totalValue;
+          if (rawUsagePerCategory.containsKey(category)) {
+            rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
+          } else {
+            rawUsagePerCategory['Other'] = (rawUsagePerCategory['Other'] ?? 0) + totalValue;
+          }
         }
       }
     } catch (e) {
@@ -201,44 +222,80 @@ class _AntibioticsReturnsAnalysisScreenState
     }
   }
 
-  // Parse dosage string to milligrams (supports g, mg, mcg, mL, cc)
-  double _parseDosageToMg(String dosage) {
-    if (dosage.isEmpty) return 0;
-    final normalized = dosage.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*([a-z%]+)?$');
+  // ========== ENHANCED DOSAGE PARSER ==========
+  // Returns a map: {'value': double, 'unit': String, 'convertible': bool}
+  // - If unit is Convertable to Units, returns value in mg and convertible = true.
+  // - Otherwise, returns the raw numeric value (same as parsed) and convertible = false.
+  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
+
+    final normalized = dosage.toLowerCase().trim();
+
+    // Regex to capture the first number and the following unit (may include spaces)
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
     final match = regex.firstMatch(normalized);
-    if (match == null) return 0;
-
-    final numberStr = match.group(1) ?? '0';
-    final unit = match.group(2) ?? '';
-    double value = double.tryParse(numberStr) ?? 0;
-
-    if (unit.isEmpty) {
-      debugPrint('Warning: no unit in dosage "$dosage", skipping');
-      return 0;
+    if (match == null) {
+      debugPrint('Warning: no number-unit pair found in "$dosage"');
+      return {'value': 0.0, 'unit': '', 'convertible': false};
     }
 
-    switch (unit) {
-      case 'g':
-        return value * 1000;
-      case 'mg':
-        return value;
-      case 'mcg':
-      case 'µg':
-        return value / 1000;
-      case 'ml':
-      case 'cc':
-        return value * 1000; // assuming 1 mL = 1 g = 1000 mg
-      case '%':
-        debugPrint('Warning: percentage unit in dosage "$dosage" – cannot convert to mg without volume, skipping');
-        return 0;
-      case 'u':
-      case 'iu':
-        debugPrint('Warning: activity unit "$unit" in dosage "$dosage" – cannot convert to mg, skipping');
-        return 0;
-      default:
-        debugPrint('Warning: unknown unit "$unit" in dosage "$dosage", skipping');
-        return 0;
+    final numberStr = match.group(1)!;
+    double value = double.tryParse(numberStr) ?? 0;
+    String rawUnit = match.group(2)!.trim();
+
+    // Normalise the unit string: extract the core abbreviation
+    final lowerUnit = rawUnit.toLowerCase();
+
+    // Define conversion factors to mg (only for convertible units)
+    final Map<String, double> conversion = {
+      'g': 1000,
+      'mg': 1,
+      'mcg': 0.001,
+      'µg': 0.001,
+      'ml': 1000,   // assuming 1 mL = 1 g = 1000 mg
+      'cc': 1000,
+      'l': 1000000, // 1 L = 1000 g = 1,000,000 mg
+    };
+
+    // Helper to extract the core unit abbreviation
+    String extractCoreUnit(String unit) {
+      final patterns = {
+        r'\bmg\b': 'mg',
+        r'\bmilligram\b': 'mg',
+        r'\bg\b': 'g',
+        r'\bgram\b': 'g',
+        r'\bmcg\b': 'mcg',
+        r'\bmicrogram\b': 'mcg',
+        r'µg': 'mcg',
+        r'\bml\b': 'ml',
+        r'\bmilliliter\b': 'ml',
+        r'\bcc\b': 'cc',
+        r'\bcubic\s*centimeter\b': 'cc',
+        r'\bl\b': 'l',
+        r'\bliter\b': 'l',
+      };
+      for (final entry in patterns.entries) {
+        if (RegExp(entry.key).hasMatch(unit)) {
+          return entry.value;
+        }
+      }
+      return unit; // unknown
+    }
+
+    final coreUnit = extractCoreUnit(lowerUnit);
+    if (conversion.containsKey(coreUnit)) {
+      return {
+        'value': value * conversion[coreUnit]!,
+        'unit': coreUnit,
+        'convertible': true,
+      };
+    } else {
+      debugPrint('Note: unit "$rawUnit" (core: "$coreUnit") is not Convertable to Units – treating as raw count');
+      return {
+        'value': value, // raw numeric value
+        'unit': rawUnit,
+        'convertible': false,
+      };
     }
   }
 
@@ -314,28 +371,29 @@ class _AntibioticsReturnsAnalysisScreenState
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Ward dropdown - COMMENTED OUT
-                            // DropdownButtonFormField<String>(
-                            //   value: _selectedWardId,
-                            //   decoration: _inputDecoration(
-                            //     label: 'Ward',
-                            //     prefixIcon: Icons.place,
-                            //   ),
-                            //   items: [
-                            //     const DropdownMenuItem(value: null, child: Text('All Wards')),
-                            //     ..._wards.map((w) => DropdownMenuItem(
-                            //           value: w['id'],
-                            //           child: Text(w['name']),
-                            //         )),
-                            //   ],
-                            //   onChanged: (value) {
-                            //     setState(() => _selectedWardId = value);
-                            //     setModalState(() {});
-                            //   },
-                            // ),
-                            // const SizedBox(height: 16),
+                            // ========== NEW WARD DROPDOWN ==========
+                            DropdownButtonFormField<String>(
+                              value: _selectedWardId,
+                              decoration: _inputDecoration(
+                                label: 'Ward',
+                                prefixIcon: Icons.place,
+                              ),
+                              items: [
+                                const DropdownMenuItem(value: null, child: Text('All Wards')),
+                                ..._wards.map((w) => DropdownMenuItem(
+                                      value: w['id'],
+                                      child: Text(w['name']),
+                                    )),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedWardId = value);
+                                setModalState(() {});
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // =====================================
 
-                            // Antibiotic dropdown
+                            /* Antibiotic dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
                               decoration: _inputDecoration(
@@ -353,7 +411,7 @@ class _AntibioticsReturnsAnalysisScreenState
                                 setState(() => _selectedAntibioticId = value);
                                 setModalState(() {});
                               },
-                            ),
+                            ),*/
                             const SizedBox(height: 16),
 
                             // Date range
@@ -610,7 +668,7 @@ class _AntibioticsReturnsAnalysisScreenState
   }
 
   // ---------- Chart Helper Widgets ----------
-  Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true}) {
+  Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true, String suffix = 'units'}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -627,7 +685,7 @@ class _AntibioticsReturnsAnalysisScreenState
           ),
           if (showValue) ...[
             Text(
-              '${value.toStringAsFixed(1)} units',
+              '${value.toStringAsFixed(1)} $suffix',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
             const SizedBox(width: 8),
@@ -646,6 +704,7 @@ class _AntibioticsReturnsAnalysisScreenState
     required Widget chart,
     required List<Widget> legendItems,
     double? total,
+    String? totalSuffix,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
@@ -663,7 +722,7 @@ class _AntibioticsReturnsAnalysisScreenState
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 12),
                 child: Text(
-                  'Total: ${total.toStringAsFixed(1)} units',
+                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ),
@@ -694,8 +753,9 @@ class _AntibioticsReturnsAnalysisScreenState
       child: Column(
         children: [
           _buildChartCard(
-            title: 'Returns by Antibiotic',
+            title: 'Returns by Antibiotic (Convertable to Units)',
             total: totalDrug,
+            totalSuffix: 'units',
             chart: PieChart(
               PieChartData(
                 sections: _buildPieSections(usagePerDrug, totalDrug, limit: 8),
@@ -716,7 +776,6 @@ class _AntibioticsReturnsAnalysisScreenState
                             _getColorForIndex(touchedIndex),
                           );
                         } else if (sections.length > drugEntries.length) {
-                          // "Others" section
                           final otherSum = drugEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
                           if (otherSum > 0) {
                             final percentage = (otherSum / totalDrug * 100).toStringAsFixed(1);
@@ -736,8 +795,9 @@ class _AntibioticsReturnsAnalysisScreenState
             legendItems: _buildPieLegend(usagePerDrug, totalDrug, limit: 8),
           ),
           _buildChartCard(
-            title: 'Returns by Category',
+            title: 'Returns by Category (Convertable to Units)',
             total: totalCategory,
+            totalSuffix: 'units (1000 mg)',
             chart: PieChart(
               PieChartData(
                 sections: _buildPieSections(usagePerCategory, totalCategory, limit: 4),
@@ -776,6 +836,9 @@ class _AntibioticsReturnsAnalysisScreenState
             ),
             legendItems: _buildPieLegend(usagePerCategory, totalCategory, limit: 4),
           ),
+
+          // Raw (non‑convertible) data as a table
+          _buildRawUsageTable(),
         ],
       ),
     );
@@ -837,7 +900,7 @@ class _AntibioticsReturnsAnalysisScreenState
     return sections;
   }
 
-  List<Widget> _buildPieLegend(Map<String, double> data, double total, {int limit = 8}) {
+  List<Widget> _buildPieLegend(Map<String, double> data, double total, {int limit = 8, String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     List<MapEntry<String, double>> mainEntries;
@@ -859,6 +922,7 @@ class _AntibioticsReturnsAnalysisScreenState
           mainEntries[i].key,
           mainEntries[i].value,
           total,
+          suffix: suffix,
         ),
       );
     }
@@ -870,6 +934,7 @@ class _AntibioticsReturnsAnalysisScreenState
           'Others',
           otherSum,
           total,
+          suffix: suffix,
         ),
       );
     }
@@ -892,8 +957,9 @@ class _AntibioticsReturnsAnalysisScreenState
       child: Column(
         children: [
           _buildChartCard(
-            title: 'Returns by Antibiotic',
+            title: 'Returns by Antibiotic (Convertable to Units)',
             total: totalDrug,
+            totalSuffix: 'units (1000 mg)',
             chart: SizedBox(
               height: 300,
               child: BarChart(
@@ -914,7 +980,6 @@ class _AntibioticsReturnsAnalysisScreenState
                             _getColorForIndex(touchedBarGroupIndex),
                           );
                         } else if (touchedBarGroupIndex == drugEntries.length && drugEntries.length > 7) {
-                          // "Others" bar
                           final otherSum = drugEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
                           if (otherSum > 0) {
                             final percentage = (otherSum / totalDrug * 100).toStringAsFixed(1);
@@ -965,8 +1030,9 @@ class _AntibioticsReturnsAnalysisScreenState
             legendItems: _buildBarLegend(usagePerDrug, totalDrug, limit: 8),
           ),
           _buildChartCard(
-            title: 'Returns by Category',
+            title: 'Returns by Category (Convertable to Units)',
             total: totalCategory,
+            totalSuffix: 'units (1000 mg)',
             chart: SizedBox(
               height: 300,
               child: BarChart(
@@ -1027,7 +1093,85 @@ class _AntibioticsReturnsAnalysisScreenState
             ),
             legendItems: _buildBarLegend(usagePerCategory, totalCategory, limit: 4),
           ),
+
+          // Raw (non‑convertible) data as a table
+          _buildRawUsageTable(),
         ],
+      ),
+    );
+  }
+
+  // ---------- Raw Usage Table (no charts) ----------
+  Widget _buildRawUsageTable() {
+    final totalRaw = rawUsagePerDrug.values.fold(0.0, (a, b) => a + b);
+    if (totalRaw == 0) {
+      return const Card(
+        margin: EdgeInsets.only(top: 16),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(
+            child: Text('No non‑convertible returns data.'),
+          ),
+        ),
+      );
+    }
+
+    // Sort by raw count descending
+    final entries = rawUsagePerDrug.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Card(
+      margin: const EdgeInsets.only(top: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Non‑convertible Returns (Raw Counts)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'These items are not expressed in mg and are shown as raw counts.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: entries.length,
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        color: _getColorForIndex(index),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Text(
+                        '${entry.value.toStringAsFixed(1)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1093,7 +1237,7 @@ class _AntibioticsReturnsAnalysisScreenState
     return groups;
   }
 
-  List<Widget> _buildBarLegend(Map<String, double> data, double total, {int limit = 8}) {
+  List<Widget> _buildBarLegend(Map<String, double> data, double total, {int limit = 8, String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     List<MapEntry<String, double>> mainEntries;
@@ -1115,6 +1259,7 @@ class _AntibioticsReturnsAnalysisScreenState
           mainEntries[i].key,
           mainEntries[i].value,
           total,
+          suffix: suffix,
         ),
       );
     }
@@ -1126,6 +1271,7 @@ class _AntibioticsReturnsAnalysisScreenState
           'Others',
           otherSum,
           total,
+          suffix: suffix,
         ),
       );
     }
