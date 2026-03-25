@@ -866,14 +866,18 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                           if (value.toInt() >= 0 && value.toInt() < wardEntries.length) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
-                                style: const TextStyle(fontSize: 10),
+                              child: Transform.rotate(
+                                angle: -0.5, // slight tilt for long names
+                                child: Text(
+                                  _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
+                                  style: const TextStyle(fontSize: 10),
+                                ),
                               ),
                             );
                           }
                           return const Text('');
                         },
+                        reservedSize: 60,
                       ),
                     ),
                   ),
@@ -885,7 +889,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
             ),
             legendItems: _buildBarLegend(usagePerWard, totalWard),
           ),
-          // Category bar chart
+          // Category bar chart with rotated X labels
           _buildChartCard(
             title: 'Usage by Category (Convertable to Units)',
             total: totalCategory,
@@ -928,14 +932,18 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                           if (value.toInt() >= 0 && value.toInt() < categories.length) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                categories[value.toInt()],
-                                style: const TextStyle(fontSize: 11),
+                              child: Transform.rotate(
+                                angle: -90 * 3.14159 / 180, // rotate -90° (vertical)
+                                child: Text(
+                                  categories[value.toInt()],
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ),
                             );
                           }
                           return const Text('');
                         },
+                        reservedSize: 80, // extra space for rotated text
                       ),
                     ),
                   ),
