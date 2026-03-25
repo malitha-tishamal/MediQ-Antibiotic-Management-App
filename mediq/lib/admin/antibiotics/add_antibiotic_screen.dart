@@ -12,7 +12,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
-  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistent border
+  static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
 class AddAntibioticScreen extends StatefulWidget {
@@ -29,6 +29,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   final _nameController = TextEditingController();
   String? _selectedCategory;
 
+  // Unit options – ensure no duplicates
   final List<String> _unitOptions = [
     'mg - Milligram',
     'g - Gram',
@@ -42,7 +43,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     'U/mL - Units per Milliliter',
     'mg/kg - Milligram per Kilogram',
     '% - Percentage',
-    'gtt - Drops'
+    'gtt - Drops',
   ];
 
   final List<Map<String, dynamic>> _dosageRows = [];
@@ -61,6 +62,59 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     if (widget.antibioticId != null) {
       _loadAntibioticForEdit(widget.antibioticId!);
     }
+  }
+
+  // ---------- Helper: map any unit string to a valid option ----------
+  String _mapUnitToOption(String unit) {
+    final lowerUnit = unit.toLowerCase().trim();
+    for (final option in _unitOptions) {
+      final optionLower = option.toLowerCase();
+      // Check if option contains the unit or vice versa
+      if (optionLower.contains(lowerUnit) || lowerUnit.contains(optionLower)) {
+        return option;
+      }
+    }
+    // Fallback: try to match by known abbreviations
+    if (lowerUnit == 'mg') return 'mg - Milligram';
+    if (lowerUnit == 'milligram') return 'mg - Milligram';
+    if (lowerUnit == 'g') return 'g - Gram';
+    if (lowerUnit == 'gram') return 'g - Gram';
+    if (lowerUnit == 'mcg' || lowerUnit == 'microgram') return 'mcg - Microgram';
+    if (lowerUnit == 'ml' || lowerUnit == 'milliliter') return 'mL - Milliliter';
+    if (lowerUnit == 'cc') return 'cc - Cubic Centimeter';
+    if (lowerUnit == 'u' || lowerUnit == 'unit') return 'U - Unit';
+    if (lowerUnit == 'iu' || lowerUnit == 'international unit') return 'IU - International Unit';
+    // Default to first option
+    return _unitOptions.first;
+  }
+
+  // ---------- Improved dosage parser ----------
+  // Extracts the first numeric value and its unit from a string.
+  // Returns map with 'value' and 'unit'.
+  Map<String, String> _parseDosage(String dosageStr) {
+    if (dosageStr.isEmpty) return {'value': '', 'unit': ''};
+
+    // Regex: number (with optional decimal) followed by optional whitespace and a unit
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-zA-Z/%]+)');
+    final match = regex.firstMatch(dosageStr);
+    if (match != null) {
+      final value = match.group(1)!;
+      final unit = match.group(2)!;
+      // Map the unit to a full option string
+      final fullUnit = _mapUnitToOption(unit);
+      return {'value': value, 'unit': fullUnit};
+    }
+
+    // If regex fails, try splitting by last space (fallback)
+    final lastSpace = dosageStr.lastIndexOf(' ');
+    if (lastSpace != -1) {
+      final value = dosageStr.substring(0, lastSpace).trim();
+      final unit = dosageStr.substring(lastSpace + 1).trim();
+      return {'value': value, 'unit': _mapUnitToOption(unit)};
+    }
+
+    // No unit found
+    return {'value': dosageStr, 'unit': _unitOptions.first};
   }
 
   // ---------- Helper for consistent input decoration ----------
@@ -139,24 +193,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     }
   }
 
-  Map<String, String> _parseDosage(String dosageStr) {
-    dosageStr = dosageStr.trim();
-    int lastSpace = dosageStr.lastIndexOf(' ');
-    if (lastSpace != -1) {
-      return {
-        'value': dosageStr.substring(0, lastSpace).trim(),
-        'unit': dosageStr.substring(lastSpace + 1).trim(),
-      };
-    } else {
-      RegExp regex = RegExp(r'^([\d\.]+)(.*)$');
-      var match = regex.firstMatch(dosageStr);
-      if (match != null) {
-        return {'value': match.group(1)!, 'unit': match.group(2)!};
-      }
-    }
-    return {'value': dosageStr, 'unit': ''};
-  }
-
+  // ---------- Load antibiotic for editing ----------
   Future<void> _loadAntibioticForEdit(String id) async {
     final doc = await _antibioticsCollection.doc(id).get();
     if (doc.exists) {
@@ -169,12 +206,11 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
         _addDosageField();
       } else {
         for (var d in dosages) {
-          String dosageStr = d['dosage'] ?? '';
-          String srNumber = d['srNumber'] ?? '';
-          var parsed = _parseDosage(dosageStr);
-          String value = parsed['value']!;
-          String unit = parsed['unit']!;
-          if (unit.isEmpty) unit = _unitOptions.first;
+          final dosageStr = d['dosage'] ?? '';
+          final srNumber = d['srNumber'] ?? '';
+          final parsed = _parseDosage(dosageStr);
+          final value = parsed['value']!;
+          final unit = parsed['unit']!;
           _dosageRows.add({
             'valueCtrl': TextEditingController(text: value),
             'unit': unit,
@@ -232,7 +268,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
             'name': _nameController.text.trim(),
             'category': _selectedCategory,
             'dosages': dosages,
-            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
           });
           _showSnackBar('Antibiotic updated successfully', true);
         } else {
@@ -357,7 +393,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Antibiotic Name with modern styling
+                          // Antibiotic Name
                           TextFormField(
                             controller: _nameController,
                             decoration: _inputDecoration(
@@ -369,7 +405,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Category Dropdown with container border
+                          // Category Dropdown
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -478,7 +514,7 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 12),
-                                    // Row 2: Unit dropdown with container border
+                                    // Row 2: Unit dropdown
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -514,6 +550,10 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                               setState(() {
                                                 row['unit'] = newUnit!;
                                               });
+                                            },
+                                            validator: (value) {
+                                              if (index == 0 && value == null) return 'Unit is required';
+                                              return null;
                                             },
                                           ),
                                         ),
