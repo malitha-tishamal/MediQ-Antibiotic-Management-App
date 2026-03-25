@@ -62,7 +62,8 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
   Map<String, String> _antibioticCategory = {};
 
   // ----- Data for Antibiotic tab (filtered) -----
-  List<Map<String, dynamic>> _antibioticSummaryData = [];
+  List<Map<String, dynamic>> _antibioticSummaryData = [];       // convertible
+  List<Map<String, dynamic>> _rawAntibioticSummaryData = [];   // raw
   Map<String, double> _antibioticCategoryTotals = {
     'Access': 0,
     'Watch': 0,
@@ -72,6 +73,15 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
   double _antibioticTotalQuantity = 0;
   bool _isLoadingAntibiotic = true;
 
+  // Raw totals for the antibiotic tab (for display)
+  Map<String, double> _rawCategoryTotals = {
+    'Access': 0,
+    'Watch': 0,
+    'Reserve': 0,
+    'Other': 0,
+  };
+  double _rawTotalQuantity = 0;
+
   // ----- Data for Category tab (unfiltered, all returns) -----
   Map<String, double> _categoryTotals = {
     'Access': 0,
@@ -80,6 +90,16 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     'Other': 0,
   };
   double _categoryTotalQuantity = 0;
+
+  // Raw data for Category tab
+  Map<String, double> _rawCategoryTotalsGlobal = {
+    'Access': 0,
+    'Watch': 0,
+    'Reserve': 0,
+    'Other': 0,
+  };
+  double _rawTotalQuantityGlobal = 0;
+
   bool _isLoadingCategory = true;
 
   @override
@@ -108,8 +128,8 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
   Future<void> _loadInitialData() async {
     await _loadDropdownData();
     await Future.wait([
-      _fetchAntibioticData(), // filtered data
-      _fetchCategoryData(),   // unfiltered data
+      _fetchAntibioticData(),
+      _fetchCategoryData(),
     ]);
   }
 
@@ -160,18 +180,98 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     }
   }
 
+  // ---------- Enhanced Dosage Parser ----------
+  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
+
+    final normalized = dosage.toLowerCase().trim();
+
+    // Regex to capture the first number and the following unit (may include spaces)
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
+    final match = regex.firstMatch(normalized);
+    if (match == null) {
+      debugPrint('Warning: no number-unit pair found in "$dosage"');
+      return {'value': 0.0, 'unit': '', 'convertible': false};
+    }
+
+    final numberStr = match.group(1)!;
+    double value = double.tryParse(numberStr) ?? 0;
+    String rawUnit = match.group(2)!.trim();
+
+    final lowerUnit = rawUnit.toLowerCase();
+
+    // Define conversion factors to mg (only for convertible units)
+    final Map<String, double> conversion = {
+      'g': 1000,
+      'mg': 1,
+      'mcg': 0.001,
+      'µg': 0.001,
+      'ml': 1000,   // assuming 1 mL = 1 g = 1000 mg
+      'cc': 1000,
+      'l': 1000000, // 1 L = 1000 g = 1,000,000 mg
+    };
+
+    String extractCoreUnit(String unit) {
+      final patterns = {
+        r'\bmg\b': 'mg',
+        r'\bmilligram\b': 'mg',
+        r'\bg\b': 'g',
+        r'\bgram\b': 'g',
+        r'\bmcg\b': 'mcg',
+        r'\bmicrogram\b': 'mcg',
+        r'µg': 'mcg',
+        r'\bml\b': 'ml',
+        r'\bmilliliter\b': 'ml',
+        r'\bcc\b': 'cc',
+        r'\bcubic\s*centimeter\b': 'cc',
+        r'\bl\b': 'l',
+        r'\bliter\b': 'l',
+      };
+      for (final entry in patterns.entries) {
+        if (RegExp(entry.key).hasMatch(unit)) {
+          return entry.value;
+        }
+      }
+      return unit;
+    }
+
+    final coreUnit = extractCoreUnit(lowerUnit);
+    if (conversion.containsKey(coreUnit)) {
+      return {
+        'value': value * conversion[coreUnit]!,
+        'unit': coreUnit,
+        'convertible': true,
+      };
+    } else {
+      debugPrint('Note: unit "$rawUnit" is not convertible – treating as raw count');
+      return {
+        'value': value, // raw numeric value
+        'unit': rawUnit,
+        'convertible': false,
+      };
+    }
+  }
+
   // Fetches data for the Antibiotic tab – respects all filters
   Future<void> _fetchAntibioticData() async {
     setState(() {
       _isLoadingAntibiotic = true;
       _antibioticSummaryData = [];
+      _rawAntibioticSummaryData = [];
       _antibioticCategoryTotals = {
         'Access': 0,
         'Watch': 0,
         'Reserve': 0,
         'Other': 0,
       };
+      _rawCategoryTotals = {
+        'Access': 0,
+        'Watch': 0,
+        'Reserve': 0,
+        'Other': 0,
+      };
       _antibioticTotalQuantity = 0;
+      _rawTotalQuantity = 0;
     });
 
     try {
@@ -212,15 +312,23 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         return true;
       }).toList();
 
-      Map<String, double> categoryTotals = {
+      Map<String, double> convertibleCategoryTotals = {
         'Access': 0,
         'Watch': 0,
         'Reserve': 0,
         'Other': 0,
       };
-      double totalUnits = 0;
+      double totalConvertibleUnits = 0;
+      Map<String, Map<String, dynamic>> convertibleAggregated = {};
 
-      final Map<String, Map<String, dynamic>> aggregated = {};
+      Map<String, double> rawCategoryTotals = {
+        'Access': 0,
+        'Watch': 0,
+        'Reserve': 0,
+        'Other': 0,
+      };
+      double totalRawUnits = 0;
+      Map<String, Map<String, dynamic>> rawAggregated = {};
 
       for (var doc in filteredDocs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -229,53 +337,72 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         final itemCount = (data['itemCount'] ?? 0).toDouble();
         if (itemCount == 0) continue;
 
-        final dosageStr = data['dosage'] ?? '';
-        final dosageMg = _parseDosageToMg(dosageStr);
-        if (dosageMg == 0) continue;
+        final parseResult = _parseDosageToMgWithRaw(dosage);
+        final dosageValue = parseResult['value']!;
+        final isConvertible = parseResult['convertible']!;
 
-        final totalMg = itemCount * dosageMg;
-        final units = totalMg / 1000;
+        final totalValue = itemCount * dosageValue;
 
         final antibioticId = data['antibioticId'] ?? '';
         final category = _antibioticCategory[antibioticId] ?? 'Other';
-        if (categoryTotals.containsKey(category)) {
-          categoryTotals[category] = categoryTotals[category]! + units;
+
+        if (isConvertible) {
+          final units = totalValue / 1000; // mg -> units
+          convertibleCategoryTotals[category] = (convertibleCategoryTotals[category] ?? 0) + units;
+          totalConvertibleUnits += units;
+
+          final key = '$drugName|$dosage';
+          if (!convertibleAggregated.containsKey(key)) {
+            convertibleAggregated[key] = {
+              'drugName': drugName,
+              'dosage': dosage,
+              'quantity': 0.0,
+            };
+          }
+          convertibleAggregated[key]!['quantity'] += units;
         } else {
-          categoryTotals['Other'] = categoryTotals['Other']! + units;
-        }
-        totalUnits += units;
+          // raw count
+          rawCategoryTotals[category] = (rawCategoryTotals[category] ?? 0) + totalValue;
+          totalRawUnits += totalValue;
 
-        final key = '$drugName|$dosage';
-        if (!aggregated.containsKey(key)) {
-          aggregated[key] = {
-            'drugName': drugName,
-            'dosage': dosage,
-            'quantity': 0.0,
-          };
+          final key = '$drugName|$dosage';
+          if (!rawAggregated.containsKey(key)) {
+            rawAggregated[key] = {
+              'drugName': drugName,
+              'dosage': dosage,
+              'quantity': 0.0,
+            };
+          }
+          rawAggregated[key]!['quantity'] += totalValue;
         }
-        aggregated[key]!['quantity'] += units;
       }
 
-      final List<Map<String, dynamic>> summary = aggregated.values.toList();
-
+      // Build convertible list
+      List<Map<String, dynamic>> convertibleList = convertibleAggregated.values.toList();
       Map<String, double> drugTotal = {};
-      for (var item in summary) {
-        final drugName = item['drugName'] as String;
+      for (var item in convertibleList) {
+        final drug = item['drugName'] as String;
         final qty = item['quantity'] as double;
-        drugTotal[drugName] = (drugTotal[drugName] ?? 0) + qty;
+        drugTotal[drug] = (drugTotal[drug] ?? 0) + qty;
       }
-      for (var item in summary) {
-        final drugName = item['drugName'] as String;
-        final total = drugTotal[drugName] ?? 0;
+      for (var item in convertibleList) {
+        final drug = item['drugName'] as String;
+        final total = drugTotal[drug] ?? 0;
         item['percentage'] = total > 0 ? (item['quantity'] / total * 100) : 0;
       }
+      _applySorting(convertibleList);
 
-      _applySorting(summary);
+      // Build raw list – no percentages
+      List<Map<String, dynamic>> rawList = rawAggregated.values.toList();
+      _applySorting(rawList);
 
       setState(() {
-        _antibioticSummaryData = summary;
-        _antibioticCategoryTotals = categoryTotals;
-        _antibioticTotalQuantity = totalUnits;
+        _antibioticSummaryData = convertibleList;
+        _rawAntibioticSummaryData = rawList;
+        _antibioticCategoryTotals = convertibleCategoryTotals;
+        _rawCategoryTotals = rawCategoryTotals;
+        _antibioticTotalQuantity = totalConvertibleUnits;
+        _rawTotalQuantity = totalRawUnits;
         _isLoadingAntibiotic = false;
       });
     } catch (e) {
@@ -302,19 +429,33 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         'Reserve': 0,
         'Other': 0,
       };
-      _categoryTotalQuantity = 0;
-    });
-
-    try {
-      final returnSnapshot = await _returnsCollection.get();
-
-      Map<String, double> categoryTotals = {
+      _rawCategoryTotalsGlobal = {
         'Access': 0,
         'Watch': 0,
         'Reserve': 0,
         'Other': 0,
       };
-      double totalUnits = 0;
+      _categoryTotalQuantity = 0;
+      _rawTotalQuantityGlobal = 0;
+    });
+
+    try {
+      final returnSnapshot = await _returnsCollection.get();
+
+      Map<String, double> convertibleTotals = {
+        'Access': 0,
+        'Watch': 0,
+        'Reserve': 0,
+        'Other': 0,
+      };
+      Map<String, double> rawTotals = {
+        'Access': 0,
+        'Watch': 0,
+        'Reserve': 0,
+        'Other': 0,
+      };
+      double totalConvertibleUnits = 0;
+      double totalRawUnits = 0;
 
       for (var doc in returnSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -323,23 +464,29 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         final itemCount = (data['itemCount'] ?? 0).toDouble();
         if (itemCount == 0) continue;
 
-        final dosageMg = _parseDosageToMg(dosageStr);
-        if (dosageMg == 0) continue;
+        final parseResult = _parseDosageToMgWithRaw(dosageStr);
+        final dosageValue = parseResult['value']!;
+        final isConvertible = parseResult['convertible']!;
 
-        final units = (itemCount * dosageMg) / 1000;
+        final totalValue = itemCount * dosageValue;
 
         final category = _antibioticCategory[antibioticId] ?? 'Other';
-        if (categoryTotals.containsKey(category)) {
-          categoryTotals[category] = categoryTotals[category]! + units;
+
+        if (isConvertible) {
+          final units = totalValue / 1000;
+          convertibleTotals[category] = (convertibleTotals[category] ?? 0) + units;
+          totalConvertibleUnits += units;
         } else {
-          categoryTotals['Other'] = categoryTotals['Other']! + units;
+          rawTotals[category] = (rawTotals[category] ?? 0) + totalValue;
+          totalRawUnits += totalValue;
         }
-        totalUnits += units;
       }
 
       setState(() {
-        _categoryTotals = categoryTotals;
-        _categoryTotalQuantity = totalUnits;
+        _categoryTotals = convertibleTotals;
+        _rawCategoryTotalsGlobal = rawTotals;
+        _categoryTotalQuantity = totalConvertibleUnits;
+        _rawTotalQuantityGlobal = totalRawUnits;
         _isLoadingCategory = false;
       });
     } catch (e) {
@@ -368,38 +515,6 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
       default:
         data.sort((a, b) => (a['drugName'] as String).compareTo(b['drugName'] as String));
         break;
-    }
-  }
-
-  double _parseDosageToMg(String dosage) {
-    if (dosage.isEmpty) return 0;
-    final normalized = dosage.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-    final RegExp regex = RegExp(r'^([0-9]*\.?[0-9]+)\s*([a-z%]+)?$');
-    final match = regex.firstMatch(normalized);
-    if (match == null) return 0;
-
-    final numberStr = match.group(1) ?? '0';
-    final unit = match.group(2) ?? '';
-    double value = double.tryParse(numberStr) ?? 0;
-
-    if (unit.isEmpty) {
-      debugPrint('Warning: no unit in dosage "$dosage", skipping');
-      return 0;
-    }
-
-    switch (unit) {
-      case 'g':
-        return value * 1000;
-      case 'mg':
-        return value;
-      case 'mcg':
-      case 'µg':
-        return value / 1000;
-      case 'ml':
-      case 'cc':
-        return value * 1000;
-      default:
-        return 0;
     }
   }
 
@@ -434,6 +549,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
+  // ---------- Filter Panel (only affects antibiotic data) ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -471,7 +587,6 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
               _searchController.text = search;
               _sortOption = sortOption;
             });
-            // Only refresh the antibiotic data; category data remains unchanged
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _fetchAntibioticData();
             });
@@ -481,6 +596,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
+  // ---------- Header (no filter button) ----------
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -550,9 +666,10 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
-  // Summary card for Antibiotic tab (uses filtered data)
+  // ---------- Summary Card for Antibiotic tab (filtered data) ----------
   Widget _buildAntibioticSummaryCard() {
     final totalRecords = _antibioticSummaryData.length;
+    final totalRawRecords = _rawAntibioticSummaryData.length;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
@@ -574,17 +691,17 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem('Total Records', totalRecords.toString(), AppColors.primaryPurple),
-          _buildStatItem('Total Quantity', '${_antibioticTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
+          _buildStatItem('Convertible\n Records', totalRecords.toString(), AppColors.primaryPurple),
+          _buildStatItem('\n Quantity', '${_antibioticTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
+          _buildStatItem('Raw\n Records', totalRawRecords.toString(), AppColors.primaryPurple),
+          _buildStatItem('Raw \n', '${_rawTotalQuantity.toStringAsFixed(1)}', AppColors.successGreen),
         ],
       ),
     );
   }
 
-  // Summary card for Category tab (uses unfiltered data)
+  // ---------- Summary Card for Category tab (unfiltered data) ----------
   Widget _buildCategorySummaryCard() {
-    // Total records for category tab is not directly stored; we can compute from category totals
-    // But we don't have total number of return records. We'll just show total quantity.
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12),
@@ -607,7 +724,8 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildStatItem('Categories', '4', AppColors.primaryPurple),
-          _buildStatItem('Total Quantity', '${_categoryTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
+          _buildStatItem('Convertible Total', '${_categoryTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
+          _buildStatItem('Raw Total', '${_rawTotalQuantityGlobal.toStringAsFixed(1)}', AppColors.successGreen),
         ],
       ),
     );
@@ -628,6 +746,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
+  // ---------- Antibiotic Usage Tab (with filter button) ----------
   Widget _buildAntibioticUsageTab() {
     return Column(
       children: [
@@ -652,7 +771,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         Expanded(
           child: _isLoadingAntibiotic
               ? const Center(child: CircularProgressIndicator())
-              : _antibioticSummaryData.isEmpty
+              : (_antibioticSummaryData.isEmpty && _rawAntibioticSummaryData.isEmpty)
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -663,21 +782,55 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
                         ],
                       ),
                     )
-                  : Column(
+                  : ListView(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _buildTableHeader(),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
+                        // Convertible data table
+                        if (_antibioticSummaryData.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Convertible Returns (1unit = 1000 mg)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryPurple),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildTableHeader(),
+                          ),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: _antibioticSummaryData.length,
                             itemBuilder: (context, index) {
                               return _buildSummaryRow(_antibioticSummaryData[index]);
                             },
                           ),
-                        ),
+                        ],
+                        // Raw data table (no percentages)
+                        if (_rawAntibioticSummaryData.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Raw Returns (Non‑convertible)',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildRawTableHeader(),
+                          ),
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _rawAntibioticSummaryData.length,
+                            itemBuilder: (context, index) {
+                              return _buildRawSummaryRow(_rawAntibioticSummaryData[index]);
+                            },
+                          ),
+                        ],
+                        const SizedBox(height: 20),
                       ],
                     ),
         ),
@@ -685,6 +838,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
+  // ---------- Category Usage Tab (unfiltered) ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Access', 'color': AppColors.accessColor},
@@ -747,7 +901,8 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         Expanded(
           child: _isLoadingCategory
               ? const Center(child: CircularProgressIndicator())
-              : _categoryTotals.values.fold(0.0, (sum, v) => sum + v) == 0
+              : (_categoryTotals.values.fold(0.0, (sum, v) => sum + v) == 0 &&
+                    _rawCategoryTotalsGlobal.values.fold(0.0, (sum, v) => sum + v) == 0)
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -760,103 +915,189 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
                     )
                   : SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Colors.white, Color(0xFFF0F4FF)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryPurple.withOpacity(0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Category Overview',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryPurple.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        children: [
+                          // Convertible categories (with percentages)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.white, Color(0xFFF0F4FF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              child: Row(
-                                children: const [
-                                  Expanded(flex: 2, child: Text('Category', style: TextStyle(fontWeight: FontWeight.bold))),
-                                  Expanded(flex: 2, child: Text('Quantity (units)', style: TextStyle(fontWeight: FontWeight.bold))),
-                                  Expanded(flex: 1, child: Text('Percentage', style: TextStyle(fontWeight: FontWeight.bold))),
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryPurple.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Convertible Returns (units = 1000 mg)',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryPurple.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: const [
+                                      Expanded(flex: 2, child: Text('Category', style: TextStyle(fontWeight: FontWeight.bold))),
+                                      Expanded(flex: 2, child: Text('Quantity (units)', style: TextStyle(fontWeight: FontWeight.bold))),
+                                      Expanded(flex: 1, child: Text('Percentage', style: TextStyle(fontWeight: FontWeight.bold))),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Column(
+                                  children: sortedCategories.map((cat) {
+                                    final name = cat['name'] as String;
+                                    final color = cat['color'] as Color;
+                                    final quantity = _categoryTotals[name] ?? 0;
+                                    final percentage = _categoryTotalQuantity > 0 ? (quantity / _categoryTotalQuantity * 100) : 0;
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.02),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 2,
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
+                                              ],
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              quantity.toStringAsFixed(1),
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 1,
+                                            child: Text(
+                                              '${percentage.toStringAsFixed(1)}%',
+                                              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          // Raw categories (without percentages)
+                          if (_rawTotalQuantityGlobal > 0)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Colors.white, Color(0xFFF0F4FF)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryPurple.withOpacity(0.1),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Raw Returns (Non‑convertible)',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      children: const [
+                                        Expanded(flex: 2, child: Text('Category', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        Expanded(flex: 1, child: Text('Quantity', style: TextStyle(fontWeight: FontWeight.bold))),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Column(
+                                    children: sortedCategories.map((cat) {
+                                      final name = cat['name'] as String;
+                                      final quantity = _rawCategoryTotalsGlobal[name] ?? 0;
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.02),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey[700])),
+                                            ),
+                                            Expanded(
+                                              flex: 1,
+                                              child: Text(
+                                                quantity.toStringAsFixed(1),
+                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Column(
-                              children: sortedCategories.map((cat) {
-                                final name = cat['name'] as String;
-                                final color = cat['color'] as Color;
-                                final quantity = _categoryTotals[name] ?? 0;
-                                final percentage = _categoryTotalQuantity > 0 ? (quantity / _categoryTotalQuantity * 100) : 0;
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.02),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          quantity.toStringAsFixed(1),
-                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 1,
-                                        child: Text(
-                                          '${percentage.toStringAsFixed(1)}%',
-                                          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
         ),
@@ -864,6 +1105,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
     );
   }
 
+  // ---------- Table headers and rows ----------
   Widget _buildTableHeader() {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -943,6 +1185,81 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Colors.grey[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRawTableHeader() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: const [
+          Expanded(flex: 3, child: Text('Antibiotic', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(flex: 2, child: Text('Dosage', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(flex: 1, child: Text('Quantity', style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRawSummaryRow(Map<String, dynamic> item) {
+    final drugName = item['drugName'] as String;
+    final dosage = item['dosage'] as String;
+    final quantity = item['quantity'] as double;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Text(
+                drugName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppColors.darkText,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                dosage,
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Text(
+                quantity.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey,
                 ),
               ),
             ),
