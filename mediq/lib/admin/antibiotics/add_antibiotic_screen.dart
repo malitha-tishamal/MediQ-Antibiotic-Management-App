@@ -38,12 +38,8 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     'IU - International Unit',
     'mL - Milliliter',
     'cc - Cubic Centimeter',
-    'Tablets/Capsules - Tablet or Capsule Count',
     'IV - Intravenous',
-    'U/mL - Units per Milliliter',
     'mg/kg - Milligram per Kilogram',
-    '% - Percentage',
-    'gtt - Drops',
   ];
 
   final List<Map<String, dynamic>> _dosageRows = [];
