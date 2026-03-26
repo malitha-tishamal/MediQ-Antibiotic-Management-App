@@ -1,4 +1,5 @@
-// ward_wise_usage_charts.dart
+// ward_wise_usage_charts.dart (with corrected unit conversion)
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -44,6 +45,9 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   DateTime? _endDate;
 
   List<Map<String, dynamic>> _antibiotics = [];
+
+  // Antibiotic data cache (category, concentration)
+  Map<String, Map<String, dynamic>> _antibioticDataMap = {};
 
   // Convertible data (mg‑based, shown in units)
   Map<String, double> usagePerWard = {};
@@ -116,6 +120,15 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         final data = doc.data() as Map<String, dynamic>;
         return {'id': doc.id, 'name': data['name'] ?? 'Unknown'};
       }).toList();
+
+      // Build antibiotic data map (category, concentration)
+      for (var doc in antibioticSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        _antibioticDataMap[doc.id] = {
+          'category': data['category'] ?? 'Other',
+          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null, // optional
+        };
+      }
     } catch (e) {
       debugPrint('Error loading dropdown data: $e');
     }
@@ -132,6 +145,102 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     if (lower.contains('surg sub') || lower.contains('surgery sub')) return 'Surgery Subspecialty';
     return 'Other';
   }
+
+  // ----------------------------------------------------------------------
+  // UNIT CONVERSION LOGIC (based on provided formulas)
+  // ----------------------------------------------------------------------
+
+  /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
+  /// and a unit abbreviation.
+  Map<String, dynamic> _parseDosage(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
+
+    final normalized = dosage.toLowerCase().trim();
+
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
+    final match = regex.firstMatch(normalized);
+    if (match == null) {
+      debugPrint('Warning: no number-unit pair found in "$dosage"');
+      return {'value': 0.0, 'unit': ''};
+    }
+
+    final numberStr = match.group(1)!;
+    double value = double.tryParse(numberStr) ?? 0;
+    String rawUnit = match.group(2)!.trim();
+
+    // Extract core unit
+    final lowerUnit = rawUnit.toLowerCase();
+    final patterns = {
+      r'\bmg\b': 'mg',
+      r'\bmilligram\b': 'mg',
+      r'\bg\b': 'g',
+      r'\bgram\b': 'g',
+      r'\bmcg\b': 'mcg',
+      r'\bmicrogram\b': 'mcg',
+      r'µg': 'mcg',
+      r'\bml\b': 'ml',
+      r'\bmilliliter\b': 'ml',
+      r'\bcc\b': 'cc',
+      r'\bcubic\s*centimeter\b': 'cc',
+      r'\bu\b': 'U',
+      r'\bunit\b': 'U',
+      r'\biu\b': 'IU',
+      r'\binternational\s*unit\b': 'IU',
+      r'\biv\b': 'IV',
+      r'\bintravenous\b': 'IV',
+      r'\bmg/kg\b': 'mg/kg',
+    };
+
+    String coreUnit = '';
+    for (final entry in patterns.entries) {
+      if (RegExp(entry.key).hasMatch(lowerUnit)) {
+        coreUnit = entry.value;
+        break;
+      }
+    }
+
+    if (coreUnit.isEmpty) {
+      debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
+      coreUnit = rawUnit; // fallback
+    }
+
+    return {'value': value, 'unit': coreUnit};
+  }
+
+  /// Converts a quantity with a given unit to "units" according to the rules.
+  /// Returns null if the unit is not convertible.
+  double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
+    switch (unit) {
+      case 'mg':
+        return value / 1000;
+      case 'g':
+        return value;
+      case 'mcg':
+        return value / 1000000;
+      case 'U':
+        return value;
+      case 'IU':
+        return value / 1000;
+      case 'ml':
+      case 'cc':
+        final conc = antibioticData?['concentrationMgPerMl'];
+        if (conc is double && conc > 0) {
+          return (value * conc) / 1000;
+        } else {
+          debugPrint('Missing concentration for mL/cc, treating as raw');
+          return null;
+        }
+      case 'mg/kg':
+      case 'IV':
+      default:
+        debugPrint('Unit "$unit" not convertible, treating as raw');
+        return null;
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // DATA FETCHING (with corrected conversion)
+  // ----------------------------------------------------------------------
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
@@ -183,22 +292,31 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         if (itemCount == 0) continue;
 
         final dosageStr = data['dosage'] ?? '';
-        final parseResult = _parseDosageToMgWithRaw(dosageStr);
-        final dosageValue = parseResult['value']!;
-        final isConvertible = parseResult['convertible']!;
+        final parseResult = _parseDosage(dosageStr);
+        final dosageValue = parseResult['value'] as double;
+        final unit = parseResult['unit'] as String;
 
-        final totalValue = itemCount * dosageValue; // mg if convertible, else raw count
+        if (dosageValue == 0) continue;
+
+        final totalValue = itemCount * dosageValue; // total quantity in the given unit
 
         final wardId = data['wardId'] ?? '';
         final wardName = wardNames[wardId] ?? 'Unknown';
         final category = _getWardCategory(wardName);
 
-        if (isConvertible) {
-          final units = totalValue / 1000; // convert mg to units (1 unit = 1000 mg)
+        // Get antibiotic data for concentration (if needed)
+        final antibioticId = data['antibioticId'] ?? '';
+        final antibioticData = _antibioticDataMap[antibioticId];
+
+        // Attempt conversion
+        final units = _convertToUnits(totalValue, unit, antibioticData);
+
+        if (units != null) {
+          // Convertible: add to unit-based totals
           usagePerWard[wardName] = (usagePerWard[wardName] ?? 0) + units;
           usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
-          // raw count
+          // Not convertible: add to raw totals (raw count)
           rawUsagePerWard[wardName] = (rawUsagePerWard[wardName] ?? 0) + totalValue;
           rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
         }
@@ -212,76 +330,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     }
   }
 
-  // Enhanced dosage parser that returns value and convertible flag
-  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
-    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
-
-    final normalized = dosage.toLowerCase().trim();
-    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
-    final match = regex.firstMatch(normalized);
-    if (match == null) {
-      debugPrint('Warning: no number-unit pair found in "$dosage"');
-      return {'value': 0.0, 'unit': '', 'convertible': false};
-    }
-
-    final numberStr = match.group(1)!;
-    double value = double.tryParse(numberStr) ?? 0;
-    String rawUnit = match.group(2)!.trim();
-
-    final lowerUnit = rawUnit.toLowerCase();
-
-    final Map<String, double> conversion = {
-      'g': 1000,
-      'mg': 1,
-      'mcg': 0.001,
-      'µg': 0.001,
-      'ml': 1000,
-      'cc': 1000,
-      'l': 1000000,
-    };
-
-    String extractCoreUnit(String unit) {
-      final patterns = {
-        r'\bmg\b': 'mg',
-        r'\bmilligram\b': 'mg',
-        r'\bg\b': 'g',
-        r'\bgram\b': 'g',
-        r'\bmcg\b': 'mcg',
-        r'\bmicrogram\b': 'mcg',
-        r'µg': 'mcg',
-        r'\bml\b': 'ml',
-        r'\bmilliliter\b': 'ml',
-        r'\bcc\b': 'cc',
-        r'\bcubic\s*centimeter\b': 'cc',
-        r'\bl\b': 'l',
-        r'\bliter\b': 'l',
-      };
-      for (final entry in patterns.entries) {
-        if (RegExp(entry.key).hasMatch(unit)) {
-          return entry.value;
-        }
-      }
-      return unit;
-    }
-
-    final coreUnit = extractCoreUnit(lowerUnit);
-    if (conversion.containsKey(coreUnit)) {
-      return {
-        'value': value * conversion[coreUnit]!,
-        'unit': coreUnit,
-        'convertible': true,
-      };
-    } else {
-      debugPrint('Note: unit "$rawUnit" is not convertible – treating as raw count');
-      return {
-        'value': value,
-        'unit': rawUnit,
-        'convertible': false,
-      };
-    }
-  }
-
-  // ---------- UI Helpers ----------
+  // ---------- UI Helpers (unchanged) ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
