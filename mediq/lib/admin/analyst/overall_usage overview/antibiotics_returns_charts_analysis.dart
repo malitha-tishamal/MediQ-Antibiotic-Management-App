@@ -1,4 +1,5 @@
-// antibiotics_returns_analysis.dart
+// antibiotics_returns_analysis.dart (with corrected unit conversion)
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -25,7 +26,8 @@ class AntibioticsReturnsAnalysisScreen extends StatefulWidget {
 }
 
 class _AntibioticsReturnsAnalysisScreenState
-    extends State<AntibioticsReturnsAnalysisScreen> with SingleTickerProviderStateMixin {
+    extends State<AntibioticsReturnsAnalysisScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   final CollectionReference _returnsCollection =
@@ -50,8 +52,8 @@ class _AntibioticsReturnsAnalysisScreenState
   List<Map<String, dynamic>> _wards = [];
   List<Map<String, dynamic>> _antibiotics = [];
 
-  // Data maps for CONVERTIBLE (mg) usage
-  Map<String, double> usagePerDrug = {};        // drugName -> total units (1000 mg)
+  // Data maps for CONVERTIBLE usage (units)
+  Map<String, double> usagePerDrug = {};        // drugName -> total units
   Map<String, double> usagePerCategory = {
     'Access': 0,
     'Watch': 0,
@@ -67,6 +69,9 @@ class _AntibioticsReturnsAnalysisScreenState
     'Reserve': 0,
     'Other': 0,
   };
+
+  // Antibiotics data cache (category, concentration, etc.)
+  Map<String, Map<String, dynamic>> _antibioticDataMap = {};
 
   bool _isLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -109,7 +114,7 @@ class _AntibioticsReturnsAnalysisScreenState
     }
   }
 
-  // Load wards and antibiotics for dropdowns
+  // Load wards, antibiotics, and antibiotic details (including concentration)
   Future<void> _loadDropdownData() async {
     try {
       final wardSnapshot = await _wardsCollection.get();
@@ -123,12 +128,134 @@ class _AntibioticsReturnsAnalysisScreenState
         final data = doc.data() as Map<String, dynamic>;
         return {'id': doc.id, 'name': data['name'] ?? 'Unknown'};
       }).toList();
+
+      // Build antibiotic data map (category, concentration, etc.)
+      for (var doc in antibioticSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        _antibioticDataMap[doc.id] = {
+          'category': data['category'] ?? 'Other',
+          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null, // optional
+        };
+      }
     } catch (e) {
       debugPrint('Error loading dropdown data: $e');
     }
   }
 
-  // Main data fetcher: reads returns with applied filters and calculates units
+  // ----------------------------------------------------------------------
+  // UNIT CONVERSION LOGIC (based on provided formulas)
+  // ----------------------------------------------------------------------
+
+  /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
+  /// and a unit abbreviation.
+  ///
+  /// Returns a map: {'value': double, 'unit': String}.
+  Map<String, dynamic> _parseDosage(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
+
+    final normalized = dosage.toLowerCase().trim();
+
+    // Regex to capture number and unit (allow spaces, dashes, slashes)
+    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
+    final match = regex.firstMatch(normalized);
+    if (match == null) {
+      debugPrint('Warning: no number-unit pair found in "$dosage"');
+      return {'value': 0.0, 'unit': ''};
+    }
+
+    final numberStr = match.group(1)!;
+    double value = double.tryParse(numberStr) ?? 0;
+    String rawUnit = match.group(2)!.trim();
+
+    // Extract core unit (e.g., "mg" from "mg - Milligram")
+    final lowerUnit = rawUnit.toLowerCase();
+
+    // Patterns to identify core unit
+    final patterns = {
+      r'\bmg\b': 'mg',
+      r'\bmilligram\b': 'mg',
+      r'\bg\b': 'g',
+      r'\bgram\b': 'g',
+      r'\bmcg\b': 'mcg',
+      r'\bmicrogram\b': 'mcg',
+      r'µg': 'mcg',
+      r'\bml\b': 'ml',
+      r'\bmilliliter\b': 'ml',
+      r'\bcc\b': 'cc',
+      r'\bcubic\s*centimeter\b': 'cc',
+      r'\bu\b': 'U',
+      r'\bunit\b': 'U',
+      r'\biu\b': 'IU',
+      r'\binternational\s*unit\b': 'IU',
+      r'\biv\b': 'IV',
+      r'\bintravenous\b': 'IV',
+      r'\bmg/kg\b': 'mg/kg',
+    };
+
+    String coreUnit = '';
+    for (final entry in patterns.entries) {
+      if (RegExp(entry.key).hasMatch(lowerUnit)) {
+        coreUnit = entry.value;
+        break;
+      }
+    }
+
+    if (coreUnit.isEmpty) {
+      debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
+      coreUnit = rawUnit; // fallback
+    }
+
+    return {'value': value, 'unit': coreUnit};
+  }
+
+  /// Converts a quantity with a given unit to "units" according to the rules.
+  /// Returns null if the unit is not convertible (raw count).
+  ///
+  /// Parameters:
+  /// - value: numeric quantity
+  /// - unit: core unit string (e.g., 'mg', 'g', 'ml', 'U', etc.)
+  /// - antibioticData: map containing optional fields like 'concentrationMgPerMl'
+  double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
+    switch (unit) {
+      case 'mg':
+        return value / 1000;
+      case 'g':
+        return value;
+      case 'mcg':
+        return value / 1000000;
+      case 'U':
+        return value;
+      case 'IU':
+        return value / 1000;
+      case 'ml':
+      case 'cc':
+        // Need concentration (mg/mL) from antibiotic data
+        final conc = antibioticData?['concentrationMgPerMl'];
+        if (conc is double && conc > 0) {
+          // units = (value * concentration) / 1000
+          return (value * conc) / 1000;
+        } else {
+          debugPrint('Missing concentration for mL/cc, treating as raw');
+          return null;
+        }
+      case 'mg/kg':
+        // Weight not available, treat as raw
+        debugPrint('mg/kg unit requires patient weight, treating as raw');
+        return null;
+      case 'IV':
+        // No conversion, treat as raw
+        return null;
+      default:
+        // Unknown unit: treat as raw
+        debugPrint('Unknown unit "$unit", treating as raw');
+        return null;
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // DATA FETCHING (with corrected conversion)
+  // ----------------------------------------------------------------------
+
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
 
@@ -142,15 +269,14 @@ class _AntibioticsReturnsAnalysisScreenState
       // Build Firestore query with filters
       Query query = _returnsCollection;
 
-      // ========== UNCOMMENTED WARD FILTER ==========
       if (_selectedWardId != null) {
         query = query.where('wardId', isEqualTo: _selectedWardId);
       }
-      // ============================================
 
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
+
       // Use returnDateTime field for date range filtering
       if (_startDate != null && _endDate != null) {
         final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
@@ -166,17 +292,9 @@ class _AntibioticsReturnsAnalysisScreenState
         query = query.where('returnDateTime', isLessThanOrEqualTo: end);
       }
 
-      // Fetch filtered returns
       final returnSnapshot = await query.get();
 
-      // Fetch all antibiotics to map antibioticId to category
-      final antibioticSnapshot = await _antibioticsCollection.get();
-      Map<String, String> antibioticCategory = {};
-      for (var doc in antibioticSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        antibioticCategory[doc.id] = data['category'] ?? 'Other';
-      }
-
+      // Process each return
       for (var doc in returnSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
 
@@ -184,33 +302,30 @@ class _AntibioticsReturnsAnalysisScreenState
         if (itemCount == 0) continue;
 
         final dosageStr = data['dosage'] ?? '';
-        final parseResult = _parseDosageToMgWithRaw(dosageStr);
-        final dosageValue = parseResult['value']!;
-        final isConvertible = parseResult['convertible']!;
+        final parseResult = _parseDosage(dosageStr);
+        final dosageValue = parseResult['value'] as double;
+        final unit = parseResult['unit'] as String;
 
-        final totalValue = itemCount * dosageValue; // value in mg if convertible, else raw count
+        if (dosageValue == 0) continue; // skip invalid
+
+        final totalValue = itemCount * dosageValue; // total quantity in the given unit
 
         final drugName = data['antibioticName'] ?? 'Unknown';
         final antibioticId = data['antibioticId'] ?? '';
-        final category = antibioticCategory[antibioticId] ?? 'Other';
+        final antibioticData = _antibioticDataMap[antibioticId];
+        final category = antibioticData?['category'] ?? 'Other';
 
-        if (isConvertible) {
-          // Add to mg-based totals
-          final units = totalValue / 1000; // convert mg to units (1 unit = 1000 mg)
+        // Attempt conversion
+        final units = _convertToUnits(totalValue, unit, antibioticData);
+
+        if (units != null) {
+          // Convertible: add to unit-based totals
           usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
-          if (usagePerCategory.containsKey(category)) {
-            usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
-          } else {
-            usagePerCategory['Other'] = (usagePerCategory['Other'] ?? 0) + units;
-          }
+          usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
-          // Add to raw totals (no conversion)
+          // Not convertible: add to raw totals (raw count)
           rawUsagePerDrug[drugName] = (rawUsagePerDrug[drugName] ?? 0) + totalValue;
-          if (rawUsagePerCategory.containsKey(category)) {
-            rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
-          } else {
-            rawUsagePerCategory['Other'] = (rawUsagePerCategory['Other'] ?? 0) + totalValue;
-          }
+          rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
         }
       }
     } catch (e) {
@@ -219,83 +334,6 @@ class _AntibioticsReturnsAnalysisScreenState
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  // ========== ENHANCED DOSAGE PARSER ==========
-  // Returns a map: {'value': double, 'unit': String, 'convertible': bool}
-  // - If unit is Convertable to Units, returns value in mg and convertible = true.
-  // - Otherwise, returns the raw numeric value (same as parsed) and convertible = false.
-  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
-    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
-
-    final normalized = dosage.toLowerCase().trim();
-
-    // Regex to capture the first number and the following unit (may include spaces)
-    final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
-    final match = regex.firstMatch(normalized);
-    if (match == null) {
-      debugPrint('Warning: no number-unit pair found in "$dosage"');
-      return {'value': 0.0, 'unit': '', 'convertible': false};
-    }
-
-    final numberStr = match.group(1)!;
-    double value = double.tryParse(numberStr) ?? 0;
-    String rawUnit = match.group(2)!.trim();
-
-    // Normalise the unit string: extract the core abbreviation
-    final lowerUnit = rawUnit.toLowerCase();
-
-    // Define conversion factors to mg (only for convertible units)
-    final Map<String, double> conversion = {
-      'g': 1000,
-      'mg': 1,
-      'mcg': 0.001,
-      'µg': 0.001,
-      'ml': 1000,   // assuming 1 mL = 1 g = 1000 mg
-      'cc': 1000,
-      'l': 1000000, // 1 L = 1000 g = 1,000,000 mg
-    };
-
-    // Helper to extract the core unit abbreviation
-    String extractCoreUnit(String unit) {
-      final patterns = {
-        r'\bmg\b': 'mg',
-        r'\bmilligram\b': 'mg',
-        r'\bg\b': 'g',
-        r'\bgram\b': 'g',
-        r'\bmcg\b': 'mcg',
-        r'\bmicrogram\b': 'mcg',
-        r'µg': 'mcg',
-        r'\bml\b': 'ml',
-        r'\bmilliliter\b': 'ml',
-        r'\bcc\b': 'cc',
-        r'\bcubic\s*centimeter\b': 'cc',
-        r'\bl\b': 'l',
-        r'\bliter\b': 'l',
-      };
-      for (final entry in patterns.entries) {
-        if (RegExp(entry.key).hasMatch(unit)) {
-          return entry.value;
-        }
-      }
-      return unit; // unknown
-    }
-
-    final coreUnit = extractCoreUnit(lowerUnit);
-    if (conversion.containsKey(coreUnit)) {
-      return {
-        'value': value * conversion[coreUnit]!,
-        'unit': coreUnit,
-        'convertible': true,
-      };
-    } else {
-      debugPrint('Note: unit "$rawUnit" (core: "$coreUnit") is not Convertable to Units – treating as raw count');
-      return {
-        'value': value, // raw numeric value
-        'unit': rawUnit,
-        'convertible': false,
-      };
     }
   }
 
@@ -371,7 +409,6 @@ class _AntibioticsReturnsAnalysisScreenState
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // ========== NEW WARD DROPDOWN ==========
                             DropdownButtonFormField<String>(
                               value: _selectedWardId,
                               decoration: _inputDecoration(
@@ -391,31 +428,11 @@ class _AntibioticsReturnsAnalysisScreenState
                               },
                             ),
                             const SizedBox(height: 16),
-                            // =====================================
 
-                            /* Antibiotic dropdown
-                            DropdownButtonFormField<String>(
-                              value: _selectedAntibioticId,
-                              decoration: _inputDecoration(
-                                label: 'Antibiotic',
-                                prefixIcon: Icons.medication,
-                              ),
-                              items: [
-                                const DropdownMenuItem(value: null, child: Text('All Antibiotics')),
-                                ..._antibiotics.map((a) => DropdownMenuItem(
-                                      value: a['id'],
-                                      child: Text(a['name']),
-                                    )),
-                              ],
-                              onChanged: (value) {
-                                setState(() => _selectedAntibioticId = value);
-                                setModalState(() {});
-                              },
-                            ),*/
                             const SizedBox(height: 16),
 
                             // Date range
-                            const Text('Range Filter ( Year: Month: Date )', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text('Range Filter (Year: Month: Date)', style: TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
                             Row(
                               children: [
