@@ -1,4 +1,5 @@
 // released_usage_summary.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -59,7 +60,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
 
   // Lists for dropdowns
   List<Map<String, dynamic>> _antibiotics = [];
-  Map<String, String> _antibioticCategory = {};
+  Map<String, Map<String, dynamic>> _antibioticDataMap = {}; // id -> {category, concentrationMgPerMl}
 
   // ----- Data for Antibiotic tab (filtered) -----
   List<Map<String, dynamic>> _antibioticSummaryData = [];       // convertible
@@ -163,9 +164,13 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         return {'id': doc.id, 'name': data['name'] ?? 'Unknown'};
       }).toList();
 
+      // Build antibiotic data map with category and concentration
       for (var doc in antibioticSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        _antibioticCategory[doc.id] = data['category'] ?? 'Other';
+        _antibioticDataMap[doc.id] = {
+          'category': data['category'] ?? 'Other',
+          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null, // optional
+        };
       }
     } catch (e) {
       debugPrint('Error loading dropdown data: $e');
@@ -180,77 +185,101 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     }
   }
 
-  // ---------- Enhanced Dosage Parser ----------
-  Map<String, dynamic> _parseDosageToMgWithRaw(String dosage) {
-    if (dosage.isEmpty) return {'value': 0.0, 'unit': '', 'convertible': false};
+  // ----------------------------------------------------------------------
+  // UNIT CONVERSION LOGIC (based on provided formulas)
+  // ----------------------------------------------------------------------
+
+  /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
+  /// and a unit abbreviation.
+  Map<String, dynamic> _parseDosage(String dosage) {
+    if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
 
     final normalized = dosage.toLowerCase().trim();
 
-    // Regex to capture the first number and the following unit (may include spaces)
     final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
     final match = regex.firstMatch(normalized);
     if (match == null) {
       debugPrint('Warning: no number-unit pair found in "$dosage"');
-      return {'value': 0.0, 'unit': '', 'convertible': false};
+      return {'value': 0.0, 'unit': ''};
     }
 
     final numberStr = match.group(1)!;
     double value = double.tryParse(numberStr) ?? 0;
     String rawUnit = match.group(2)!.trim();
 
+    // Extract core unit
     final lowerUnit = rawUnit.toLowerCase();
-
-    // Define conversion factors to mg (only for convertible units)
-    final Map<String, double> conversion = {
-      'g': 1000,
-      'mg': 1,
-      'mcg': 0.001,
-      'µg': 0.001,
-      'ml': 1000,   // assuming 1 mL = 1 g = 1000 mg
-      'cc': 1000,
-      'l': 1000000, // 1 L = 1000 g = 1,000,000 mg
+    final patterns = {
+      r'\bmg\b': 'mg',
+      r'\bmilligram\b': 'mg',
+      r'\bg\b': 'g',
+      r'\bgram\b': 'g',
+      r'\bmcg\b': 'mcg',
+      r'\bmicrogram\b': 'mcg',
+      r'µg': 'mcg',
+      r'\bml\b': 'ml',
+      r'\bmilliliter\b': 'ml',
+      r'\bcc\b': 'cc',
+      r'\bcubic\s*centimeter\b': 'cc',
+      r'\bu\b': 'U',
+      r'\bunit\b': 'U',
+      r'\biu\b': 'IU',
+      r'\binternational\s*unit\b': 'IU',
+      r'\biv\b': 'IV',
+      r'\bintravenous\b': 'IV',
+      r'\bmg/kg\b': 'mg/kg',
     };
 
-    String extractCoreUnit(String unit) {
-      final patterns = {
-        r'\bmg\b': 'mg',
-        r'\bmilligram\b': 'mg',
-        r'\bg\b': 'g',
-        r'\bgram\b': 'g',
-        r'\bmcg\b': 'mcg',
-        r'\bmicrogram\b': 'mcg',
-        r'µg': 'mcg',
-        r'\bml\b': 'ml',
-        r'\bmilliliter\b': 'ml',
-        r'\bcc\b': 'cc',
-        r'\bcubic\s*centimeter\b': 'cc',
-        r'\bl\b': 'l',
-        r'\bliter\b': 'l',
-      };
-      for (final entry in patterns.entries) {
-        if (RegExp(entry.key).hasMatch(unit)) {
-          return entry.value;
-        }
+    String coreUnit = '';
+    for (final entry in patterns.entries) {
+      if (RegExp(entry.key).hasMatch(lowerUnit)) {
+        coreUnit = entry.value;
+        break;
       }
-      return unit;
     }
 
-    final coreUnit = extractCoreUnit(lowerUnit);
-    if (conversion.containsKey(coreUnit)) {
-      return {
-        'value': value * conversion[coreUnit]!,
-        'unit': coreUnit,
-        'convertible': true,
-      };
-    } else {
-      debugPrint('Note: unit "$rawUnit" is not convertible – treating as raw count');
-      return {
-        'value': value, // raw numeric value
-        'unit': rawUnit,
-        'convertible': false,
-      };
+    if (coreUnit.isEmpty) {
+      debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
+      coreUnit = rawUnit; // fallback
+    }
+
+    return {'value': value, 'unit': coreUnit};
+  }
+
+  /// Converts a quantity with a given unit to "units" according to the rules.
+  /// Returns null if the unit is not convertible.
+  double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
+    switch (unit) {
+      case 'mg':
+        return value / 1000;
+      case 'g':
+        return value;
+      case 'mcg':
+        return value / 1000000;
+      case 'U':
+        return value;
+      case 'IU':
+        return value / 1000;
+      case 'ml':
+      case 'cc':
+        final conc = antibioticData?['concentrationMgPerMl'];
+        if (conc is double && conc > 0) {
+          return (value * conc) / 1000;
+        } else {
+          debugPrint('Missing concentration for mL/cc, treating as raw');
+          return null;
+        }
+      case 'mg/kg':
+      case 'IV':
+      default:
+        debugPrint('Unit "$unit" not convertible, treating as raw');
+        return null;
     }
   }
+
+  // ----------------------------------------------------------------------
+  // DATA FETCHING
+  // ----------------------------------------------------------------------
 
   // Fetches data for the Antibiotic tab – respects all filters
   Future<void> _fetchAntibioticData() async {
@@ -299,7 +328,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
       final filteredDocs = releaseSnapshot.docs.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
         final antibioticId = data['antibioticId'] ?? '';
-        final category = _antibioticCategory[antibioticId] ?? 'Other';
+        final category = _antibioticDataMap[antibioticId]?['category'] ?? 'Other';
         final stockType = (data['stockType'] ?? '').toUpperCase();
         final drugName = (data['antibioticName'] ?? '').toLowerCase();
         final wardName = (data['wardName'] ?? '').toLowerCase();
@@ -337,17 +366,22 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         final itemCount = (data['itemCount'] ?? 0).toDouble();
         if (itemCount == 0) continue;
 
-        final parseResult = _parseDosageToMgWithRaw(dosage);
-        final dosageValue = parseResult['value']!;
-        final isConvertible = parseResult['convertible']!;
+        final parseResult = _parseDosage(dosage);
+        final dosageValue = parseResult['value'] as double;
+        final unit = parseResult['unit'] as String;
+
+        if (dosageValue == 0) continue;
 
         final totalValue = itemCount * dosageValue;
 
         final antibioticId = data['antibioticId'] ?? '';
-        final category = _antibioticCategory[antibioticId] ?? 'Other';
+        final antibioticData = _antibioticDataMap[antibioticId];
+        final category = antibioticData?['category'] ?? 'Other';
 
-        if (isConvertible) {
-          final units = totalValue / 1000; // mg -> units
+        final units = _convertToUnits(totalValue, unit, antibioticData);
+
+        if (units != null) {
+          // Convertible
           convertibleCategoryTotals[category] = (convertibleCategoryTotals[category] ?? 0) + units;
           totalConvertibleUnits += units;
 
@@ -361,7 +395,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
           }
           convertibleAggregated[key]!['quantity'] += units;
         } else {
-          // raw count
+          // Raw
           rawCategoryTotals[category] = (rawCategoryTotals[category] ?? 0) + totalValue;
           totalRawUnits += totalValue;
 
@@ -377,7 +411,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         }
       }
 
-      // Build convertible list
+      // Build convertible list with percentages
       List<Map<String, dynamic>> convertibleList = convertibleAggregated.values.toList();
       Map<String, double> drugTotal = {};
       for (var item in convertibleList) {
@@ -392,7 +426,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
       }
       _applySorting(convertibleList);
 
-      // Build raw list – no percentages
+      // Build raw list (no percentages)
       List<Map<String, dynamic>> rawList = rawAggregated.values.toList();
       _applySorting(rawList);
 
@@ -464,16 +498,19 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         final itemCount = (data['itemCount'] ?? 0).toDouble();
         if (itemCount == 0) continue;
 
-        final parseResult = _parseDosageToMgWithRaw(dosageStr);
-        final dosageValue = parseResult['value']!;
-        final isConvertible = parseResult['convertible']!;
+        final parseResult = _parseDosage(dosageStr);
+        final dosageValue = parseResult['value'] as double;
+        final unit = parseResult['unit'] as String;
+        if (dosageValue == 0) continue;
 
         final totalValue = itemCount * dosageValue;
 
-        final category = _antibioticCategory[antibioticId] ?? 'Other';
+        final antibioticData = _antibioticDataMap[antibioticId];
+        final category = antibioticData?['category'] ?? 'Other';
 
-        if (isConvertible) {
-          final units = totalValue / 1000;
+        final units = _convertToUnits(totalValue, unit, antibioticData);
+
+        if (units != null) {
           convertibleTotals[category] = (convertibleTotals[category] ?? 0) + units;
           totalConvertibleUnits += units;
         } else {
@@ -549,7 +586,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Filter Panel (only affects antibiotic data) ----------
+  // ---------- Filter Panel ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -560,7 +597,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
       builder: (ctx) {
         return _FilterPanel(
           antibiotics: _antibiotics,
-          antibioticCategory: _antibioticCategory,
+          antibioticDataMap: _antibioticDataMap,
           initialCategory: _selectedCategory,
           initialStockType: _selectedStockType,
           initialAntibioticId: _selectedAntibioticId,
@@ -596,7 +633,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Header (no filter button) ----------
+  // ---------- Header ----------
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -666,7 +703,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Summary Card for Antibiotic tab (filtered data) ----------
+  // ---------- Summary Cards ----------
   Widget _buildAntibioticSummaryCard() {
     final totalRecords = _antibioticSummaryData.length;
     final totalRawRecords = _rawAntibioticSummaryData.length;
@@ -692,15 +729,14 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildStatItem('Convertible\nRecords', totalRecords.toString(), AppColors.primaryPurple),
-          _buildStatItem('Convertible \nQuantity', '${_antibioticTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
-          _buildStatItem('Raw \nRecords', totalRawRecords.toString(), AppColors.primaryPurple),
-          _buildStatItem('Raw \nQuantity', '${_rawTotalQuantity.toStringAsFixed(1)}', AppColors.successGreen),
+          _buildStatItem('Convertible\nQuantity', '${_antibioticTotalQuantity.toStringAsFixed(1)} units', AppColors.successGreen),
+          _buildStatItem('Raw\nRecords', totalRawRecords.toString(), AppColors.primaryPurple),
+          _buildStatItem('Raw\nQuantity', '${_rawTotalQuantity.toStringAsFixed(1)}', AppColors.successGreen),
         ],
       ),
     );
   }
 
-  // ---------- Summary Card for Category tab (unfiltered data) ----------
   Widget _buildCategorySummaryCard() {
     return Container(
       margin: const EdgeInsets.all(16),
@@ -746,7 +782,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Antibiotic Usage Tab (with filter button) ----------
+  // ---------- Antibiotic Usage Tab ----------
   Widget _buildAntibioticUsageTab() {
     return Column(
       children: [
@@ -838,7 +874,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Category Usage Tab (unfiltered) ----------
+  // ---------- Category Usage Tab ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Access', 'color': AppColors.accessColor},
@@ -917,7 +953,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          // Convertible categories (with percentages)
+                          // Convertible categories
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -1017,7 +1053,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Raw categories (without percentages)
+                          // Raw categories
                           if (_rawTotalQuantityGlobal > 0)
                             Container(
                               padding: const EdgeInsets.all(16),
@@ -1105,7 +1141,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Table headers and rows ----------
+  // ---------- Table Widgets ----------
   Widget _buildTableHeader() {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1317,10 +1353,10 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   }
 }
 
-// ---------- Filter Panel (unchanged) ----------
+// ---------- Filter Panel (updated to use new data structures) ----------
 class _FilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
-  final Map<String, String> antibioticCategory;
+  final Map<String, Map<String, dynamic>> antibioticDataMap;
   final String initialCategory;
   final String initialStockType;
   final String? initialAntibioticId;
@@ -1340,7 +1376,7 @@ class _FilterPanel extends StatefulWidget {
 
   const _FilterPanel({
     required this.antibiotics,
-    required this.antibioticCategory,
+    required this.antibioticDataMap,
     required this.initialCategory,
     required this.initialStockType,
     required this.initialAntibioticId,
@@ -1397,7 +1433,7 @@ class _FilterPanelState extends State<_FilterPanel> {
     var list = widget.antibiotics;
     if (_tempCategory != 'All') {
       list = list.where((a) {
-        final cat = widget.antibioticCategory[a['id']] ?? 'Other';
+        final cat = widget.antibioticDataMap[a['id']]?['category'] ?? 'Other';
         return cat == _tempCategory;
       }).toList();
     }
