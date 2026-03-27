@@ -7,6 +7,9 @@ import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
 import 'overall_ward_wise_usage overview/ward_wise_usage_charts.dart';
+import 'overall_ward_wise_usage overview/ward_wise_return_charts.dart';
+import 'overall_ward_wise_usage overview/released_usage_ward_wise_summary.dart';
+import 'overall_ward_wise_usage overview/returned_usage_ward_wise_summary.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -385,7 +388,7 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
           MaterialPageRoute(builder: (_) => const WardWiseUsageChartsScreen()),
         );
       },
-      child: const SizedBox.shrink(), // removed empty text
+      child: const SizedBox.shrink(), 
     );
   }
 
@@ -397,8 +400,9 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/returns.jpg',
       color: Colors.orange,
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Ward Returns Detail')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WardWiseReturnChartsScreen()),
         );
       },
       child: const SizedBox.shrink(), 
@@ -412,17 +416,15 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
       description: 'Full A–Z breakdown Antibiotics releases Each Ward Detailes.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/releases-all.jpg',
       color: AppColors.primaryPurple,
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Net Usage Detail')),
+       onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReleasedUsageWardWiseSummaryScreen()),
         );
       },
-      child: Column(
-        children: [
-          // empty, can be filled later
-        ],
-      ),
+      child: const SizedBox.shrink(), 
     );
+    
   }
 
   // Card 4: Ward Comparison / Overview
@@ -433,16 +435,12 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/returns-all.jpg',
       color: Colors.blue,
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Navigate to Ward Overview')),
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReturnedUsageWardWiseSummaryScreen()),
         );
       },
-      child: Column(
-        children: [
-          // empty, can be filled later
-        ],
-      ),
-    );
+      child: const SizedBox.shrink(), );
   }
 
   @override
