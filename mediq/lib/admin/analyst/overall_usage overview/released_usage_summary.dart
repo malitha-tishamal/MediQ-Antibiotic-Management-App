@@ -1,5 +1,4 @@
 // released_usage_summary.dart
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -169,7 +168,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
         final data = doc.data() as Map<String, dynamic>;
         _antibioticDataMap[doc.id] = {
           'category': data['category'] ?? 'Other',
-          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null, // optional
+          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null,
         };
       }
     } catch (e) {
@@ -186,11 +185,9 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   }
 
   // ----------------------------------------------------------------------
-  // UNIT CONVERSION LOGIC (based on provided formulas)
+  // UNIT CONVERSION LOGIC
   // ----------------------------------------------------------------------
 
-  /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
-  /// and a unit abbreviation.
   Map<String, dynamic> _parseDosage(String dosage) {
     if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
 
@@ -207,7 +204,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     double value = double.tryParse(numberStr) ?? 0;
     String rawUnit = match.group(2)!.trim();
 
-    // Extract core unit
     final lowerUnit = rawUnit.toLowerCase();
     final patterns = {
       r'\bmg\b': 'mg',
@@ -240,14 +236,12 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
 
     if (coreUnit.isEmpty) {
       debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
-      coreUnit = rawUnit; // fallback
+      coreUnit = rawUnit;
     }
 
     return {'value': value, 'unit': coreUnit};
   }
 
-  /// Converts a quantity with a given unit to "units" according to the rules.
-  /// Returns null if the unit is not convertible.
   double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
     switch (unit) {
       case 'mg':
@@ -281,7 +275,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   // DATA FETCHING
   // ----------------------------------------------------------------------
 
-  // Fetches data for the Antibiotic tab – respects all filters
   Future<void> _fetchAntibioticData() async {
     setState(() {
       _isLoadingAntibiotic = true;
@@ -391,6 +384,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
               'drugName': drugName,
               'dosage': dosage,
               'quantity': 0.0,
+              'category': category,
             };
           }
           convertibleAggregated[key]!['quantity'] += units;
@@ -453,7 +447,6 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     }
   }
 
-  // Fetches data for the Category tab – ignores all filters (global view)
   Future<void> _fetchCategoryData() async {
     setState(() {
       _isLoadingCategory = true;
@@ -782,6 +775,20 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
+  // Helper for category colour (original)
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Access':
+        return AppColors.accessColor;
+      case 'Watch':
+        return AppColors.watchColor;
+      case 'Reserve':
+        return AppColors.reserveColor;
+      default:
+        return AppColors.otherColor;
+    }
+  }
+
   // ---------- Antibiotic Usage Tab ----------
   Widget _buildAntibioticUsageTab() {
     return Column(
@@ -874,7 +881,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Category Usage Tab ----------
+  // ---------- Category Usage Tab (unchanged) ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Access', 'color': AppColors.accessColor},
@@ -1161,17 +1168,25 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
+  // Convertible row with left border in category colour
   Widget _buildSummaryRow(Map<String, dynamic> item) {
     final drugName = item['drugName'] as String;
     final dosage = item['dosage'] as String;
     final quantity = item['quantity'] as double;
     final percentage = item['percentage'] as double;
+    final category = item['category'] as String;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
+        border: Border(
+          left: BorderSide(
+            color: _getCategoryColor(category),
+            width: 6,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -1353,7 +1368,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   }
 }
 
-// ---------- Filter Panel (updated to use new data structures) ----------
+// ---------- Filter Panel (unchanged) ----------
 class _FilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
   final Map<String, Map<String, dynamic>> antibioticDataMap;
