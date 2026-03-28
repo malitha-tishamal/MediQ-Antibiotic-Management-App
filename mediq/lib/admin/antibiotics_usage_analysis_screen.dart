@@ -7,7 +7,7 @@ import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 import 'analyst/antibiotics_analysis_screen.dart';
 import 'analyst/ward_wise_usage_screen.dart';
-import 'analyst/overall_usage overview/released_usage_summary.dart'; 
+import 'analyst/overall_summery.dart'; 
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -319,7 +319,7 @@ class _AntibioticsUsageAnalysisScreenState
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (_) => const ReleasedUsageSummaryScreen()),
+              builder: (_) => const OverallSummaryScreen()),
         );
       },
     );
