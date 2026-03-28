@@ -216,8 +216,28 @@ class _ReturnedUsageWardWiseSummaryScreenState
     return 'Other';
   }
 
+  // Helper for category colour for the left border
+  Color _getWardCategoryColor(String category) {
+    switch (category) {
+      case 'Pediatrics':
+        return Colors.pink.shade300;
+      case 'Medicine':
+        return Colors.blue.shade400;
+      case 'ICU':
+        return Colors.red.shade400;
+      case 'Surgery':
+        return Colors.green.shade600;
+      case 'Medicine Subspecialty':
+        return Colors.orange.shade300;
+      case 'Surgery Subspecialty':
+        return Colors.purple.shade300;
+      default:
+        return Colors.grey;
+    }
+  }
+
   // ----------------------------------------------------------------------
-  // UNIT CONVERSION LOGIC (copied from released_usage_summary.dart)
+  // UNIT CONVERSION LOGIC
   // ----------------------------------------------------------------------
 
   Map<String, dynamic> _parseDosage(String dosage) {
@@ -304,7 +324,7 @@ class _ReturnedUsageWardWiseSummaryScreenState
   }
 
   // ----------------------------------------------------------------------
-  // DATA FETCHING (using returns collection)
+  // DATA FETCHING
   // ----------------------------------------------------------------------
 
   // Fetches data for the Ward tab – respects all filters
@@ -394,6 +414,9 @@ class _ReturnedUsageWardWiseSummaryScreenState
       };
       double totalConvertibleUnits = 0;
 
+      // Store the category for each ward (for the left border)
+      Map<String, String> wardCategoryMap = {};
+
       Map<String, double> rawWardTotals = {};
       Map<String, double> rawCategoryTotals = {
         'Pediatrics': 0,
@@ -433,6 +456,7 @@ class _ReturnedUsageWardWiseSummaryScreenState
           convertibleWardTotals[wardName] = (convertibleWardTotals[wardName] ?? 0) + units;
           convertibleCategoryTotals[wardCategory] = (convertibleCategoryTotals[wardCategory] ?? 0) + units;
           totalConvertibleUnits += units;
+          wardCategoryMap[wardName] = wardCategory; // store category for this ward
         } else {
           // Raw
           rawWardTotals[wardName] = (rawWardTotals[wardName] ?? 0) + totalValue;
@@ -441,15 +465,16 @@ class _ReturnedUsageWardWiseSummaryScreenState
         }
       }
 
-      // Build convertible list
+      // Build convertible list with category
       List<Map<String, dynamic>> convertibleList = [];
       for (final entry in convertibleWardTotals.entries) {
         convertibleList.add({
           'wardName': entry.key,
           'quantity': entry.value,
+          'category': wardCategoryMap[entry.key] ?? 'Other', // store category for border
         });
       }
-      // Calculate percentages for convertible list (based on totalConvertibleUnits)
+      // Calculate percentages for convertible list
       for (var item in convertibleList) {
         final qty = item['quantity'] as double;
         item['percentage'] = totalConvertibleUnits > 0 ? (qty / totalConvertibleUnits * 100) : 0;
@@ -933,14 +958,14 @@ class _ReturnedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Category Usage Tab ----------
+  // ---------- Category Usage Tab (unchanged except category names) ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Pediatrics', 'color': Colors.pink.shade300},
       {'name': 'Medicine', 'color': Colors.blue.shade400},
       {'name': 'ICU', 'color': Colors.red.shade400},
       {'name': 'Surgery', 'color': Colors.green.shade600},
-      {'name': 'Medicine\n Subspecialty', 'color': Colors.orange.shade300},
+      {'name': 'Medicine \nSubspecialty', 'color': Colors.orange.shade300},
       {'name': 'Surgery\n Subspecialty', 'color': Colors.purple.shade300},
       {'name': 'Other', 'color': Colors.grey},
     ];
@@ -1222,16 +1247,24 @@ class _ReturnedUsageWardWiseSummaryScreenState
     );
   }
 
+  // Convertible ward row with left border in ward category colour
   Widget _buildWardRow(Map<String, dynamic> item) {
     final wardName = item['wardName'] as String;
     final quantity = item['quantity'] as double;
     final percentage = item['percentage'] as double;
+    final category = item['category'] as String;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.white,
+        border: Border(
+          left: BorderSide(
+            color: _getWardCategoryColor(category),
+            width: 6,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -1397,7 +1430,7 @@ class _ReturnedUsageWardWiseSummaryScreenState
   }
 }
 
-// ---------- Filter Panel for Ward Tab ----------
+// ---------- Filter Panel for Ward Tab (unchanged) ----------
 class _ReturnWardFilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
   final Map<String, Map<String, dynamic>> antibioticDataMap;
