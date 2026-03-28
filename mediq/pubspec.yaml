@@ -101,3 +101,6 @@ flutter:
     - assets/analyst/cards/ward-wise-overviews/returns-all.jpg
     - assets/analyst/cards/ward-wise-overviews/releases.jpg
     - assets/analyst/cards/ward-wise-overviews/returns.jpg
+
+    - assets/analyst/cards/overviews-summery/release-summery.png
+    - assets/analyst/cards/overviews-summery/return-summery.png
