@@ -1,4 +1,4 @@
-// ward_wise_usage_charts.dart (with corrected unit conversion)
+// ward_wise_usage_charts.dart (with corrected unit conversion and default current month filter)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -80,6 +80,12 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Set default date range to current month (first day to today)
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _loadDropdownData();
     _fetchData();
