@@ -1,4 +1,4 @@
-// antibiotics_returns_analysis.dart (with corrected unit conversion)
+// antibiotics_returns_analysis.dart (with corrected unit conversion and default current month filter)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -80,9 +80,15 @@ class _AntibioticsReturnsAnalysisScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Set default date range to current month (first day to today)
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _loadDropdownData();
-    _fetchData(); // initial load with no filters
+    _fetchData(); // initial load with default date range
   }
 
   @override
