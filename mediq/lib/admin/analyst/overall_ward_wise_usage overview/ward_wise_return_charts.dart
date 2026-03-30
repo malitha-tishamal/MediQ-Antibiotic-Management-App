@@ -79,6 +79,12 @@ class _WardWiseReturnChartsScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Set default date range to current month (first day to today)
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _loadDropdownData();
     _fetchData();
