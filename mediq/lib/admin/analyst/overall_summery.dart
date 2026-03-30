@@ -365,7 +365,7 @@ class _OverallSummaryScreenState extends State<OverallSummaryScreen> {
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
                   ),
                   Text(
-                    'Logged in as: $_currentUserRole',
+                    'Logged in as: Administrator',
                     style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
                   ),
                 ],
