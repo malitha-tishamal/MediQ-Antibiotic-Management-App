@@ -61,6 +61,12 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Set default date range to current month (first day to today)
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _fetchFilterData();
     _searchController.addListener(() {
