@@ -80,6 +80,12 @@ class _ReturnedUsageSummaryScreenState
   @override
   void initState() {
     super.initState();
+
+    // Set default date range to current month (first day to today)
+    final now = DateTime.now();
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _loadDropdownData();
     _searchWardController.addListener(() {
@@ -277,7 +283,7 @@ class _ReturnedUsageSummaryScreenState
 
     try {
       // Build Firestore query with filters
-      Query query = _returnsCollection; // changed from releases
+      Query query = _returnsCollection;
 
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
@@ -286,7 +292,7 @@ class _ReturnedUsageSummaryScreenState
         final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
         final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
         query = query
-            .where('returnDateTime', isGreaterThanOrEqualTo: start) // changed from releaseDateTime
+            .where('returnDateTime', isGreaterThanOrEqualTo: start)
             .where('returnDateTime', isLessThanOrEqualTo: end);
       } else if (_startDate != null) {
         final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
@@ -296,7 +302,7 @@ class _ReturnedUsageSummaryScreenState
         query = query.where('returnDateTime', isLessThanOrEqualTo: end);
       }
 
-      final returnSnapshot = await query.get(); // changed from releaseSnapshot
+      final returnSnapshot = await query.get();
 
       // Filter returns based on all filters
       final filteredDocs = returnSnapshot.docs.where((doc) {
