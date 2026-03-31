@@ -11,9 +11,11 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_keyboard_visibility: ^6.0.0
+
   fl_chart: ^0.66.0
 
-  flutter_typeahead: ^4.0.0
+  flutter_typeahead: ^5.2.0
 
   csv: ^5.0.1
   share_plus: ^7.2.0
