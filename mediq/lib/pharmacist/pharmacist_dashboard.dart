@@ -1,13 +1,15 @@
-// lib/pharmacist_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';   // for month names
 import 'dart:async';
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
 import 'release_antibiotics_details.dart';
+import 'antibiotics_release_screen.dart';
+import 'return_antibiotics_screen.dart';
 import 'return_antibiotics_details.dart';
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
@@ -58,36 +60,20 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Live user data (updates in real‑time)
+  // Live user data
   String _currentUserName = '';
   String _currentUserRole = '';
   String? _profileImageUrl;
-  String? _currentUserId; // Added to store current user's UID
+  String? _currentUserId;
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
-
-  // Month names (English)
-  final List<String> Months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
 
   @override
   void initState() {
     super.initState();
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
-    _currentUserId = FirebaseAuth.instance.currentUser?.uid; // Get current user ID
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _listenToUserChanges();
   }
 
@@ -158,53 +144,44 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     switch (title) {
       case 'Antibiotics Release':
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ReleaseAntibioticsDetails()),
+          MaterialPageRoute(builder: (_) => const ReleaseAntibioticsScreen()),
         );
         break;
-      
       case 'Antibiotics Returns':
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ReturnAntibioticsDetails()),
+          MaterialPageRoute(builder: (_) => const ReturnAntibioticsScreen()),
         );
         break;
-
-       case 'Antibiotics':
+      case 'Antibiotics':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ViewAntibioticsScreen()),
         );
         break;
-
       case 'Wards':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ViewWardsScreen()),
         );
         break;
-
       case 'Usage Details':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PharmacistAntibioticUsageScreen()),
         );
         break;
-
       case 'Book Numbers':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PharmacistBookNumbersScreen()),
         );
         break;
-
-       case 'Profile Manage':
+      case 'Profile Manage':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PharmacistProfileScreen()),
         );
         break;
-
-
       case 'Developer About':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PharmacistDeveloperAboutScreen()),
         );
         break;
-
       default:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$title tapped')),
@@ -212,6 +189,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
+  // ---------- Build Methods ----------
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -248,7 +226,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           const SizedBox(height: 10),
           Row(
             children: [
-              // Profile Picture
               Container(
                 width: 70,
                 height: 70,
@@ -281,7 +258,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                     : null,
               ),
               const SizedBox(width: 15),
-              // User Info
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -339,7 +315,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------------- Tiles Grid ----------------
   Widget _buildTilesGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -403,158 +378,155 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------- Antibiotics Release Tile (live count for current user) ----------
-  // ---------- Antibiotics Release Tile (total and user counts) ----------
-Widget _tileAntibioticsRelease() {
-  final userId = _currentUserId;
-  return InkWell(
-    onTap: () => _onNavTap('Antibiotics Release'),
-    child: _smallCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.receipt_long,
-                  color: AppColors.primaryPurple, size: 28),
-              Spacer(),
-              Text('Antibiotics\nRelease',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                      fontSize: 14)),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              // Total releases today
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _releasesCollection
-                      .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                      .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    int count = 0;
-                    if (snapshot.hasData) {
-                      count = snapshot.data!.docs.length;
-                    } else if (snapshot.hasError) {
-                      debugPrint('Error fetching total releases: ${snapshot.error}');
-                    }
-                    return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
-                        AppColors.releasesCountColor);
-                  },
+  // ---------- Tiles ----------
+  Widget _tileAntibioticsRelease() {
+    final userId = _currentUserId;
+    return InkWell(
+      onTap: () => _onNavTap('Antibiotics Release'),
+      child: _smallCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.receipt_long,
+                    color: AppColors.primaryPurple, size: 28),
+                Spacer(),
+                Text('Antibiotics\nRelease',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText,
+                        fontSize: 14)),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                // Total releases today
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _releasesCollection
+                        .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                        .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching total releases: ${snapshot.error}');
+                      }
+                      return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
+                          AppColors.releasesCountColor);
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Your releases today
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: userId != null
-                      ? _releasesCollection
-                          .where('createdBy', isEqualTo: userId)
-                          .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                          .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                          .snapshots()
-                      : Stream.empty(),
-                  builder: (context, snapshot) {
-                    int count = 0;
-                    if (snapshot.hasData) {
-                      count = snapshot.data!.docs.length;
-                    } else if (snapshot.hasError) {
-                      debugPrint('Error fetching user releases: ${snapshot.error}');
-                    }
-                    return _miniStat('You Issued', count.toString().padLeft(2, '0'),
-                        AppColors.primaryPurple);
-                  },
+                const SizedBox(width: 8),
+                // Your releases today
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: userId != null
+                        ? _releasesCollection
+                            .where('createdBy', isEqualTo: userId)
+                            .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                            .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                            .snapshots()
+                        : Stream.empty(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching user releases: ${snapshot.error}');
+                      }
+                      return _miniStat('You Issued', count.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple);
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-// ---------- Antibiotics Returns Tile (total and user counts) ----------
-Widget _tileAntibioticsReturns() {
-  final userId = _currentUserId;
-  return InkWell(
-    onTap: () => _onNavTap('Antibiotics Returns'),
-    child: _smallCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.archive,
-                  color: AppColors.primaryPurple, size: 28),
-              Spacer(),
-              Text('Antibiotics\nReturns',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.darkText,
-                      fontSize: 14)),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              // Total returns today
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _returnsCollection
-                      .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                      .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    int count = 0;
-                    if (snapshot.hasData) {
-                      count = snapshot.data!.docs.length;
-                    } else if (snapshot.hasError) {
-                      debugPrint('Error fetching total returns: ${snapshot.error}');
-                    }
-                    return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
-                        AppColors.returnsCountColor);
-                  },
+  Widget _tileAntibioticsReturns() {
+    final userId = _currentUserId;
+    return InkWell(
+      onTap: () => _onNavTap('Antibiotics Returns'),
+      child: _smallCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.archive,
+                    color: AppColors.primaryPurple, size: 28),
+                Spacer(),
+                Text('Antibiotics\nReturns',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.darkText,
+                        fontSize: 14)),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                // Total returns today
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _returnsCollection
+                        .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                        .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching total returns: ${snapshot.error}');
+                      }
+                      return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
+                          AppColors.returnsCountColor);
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Your returns today
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: userId != null
-                      ? _returnsCollection
-                          .where('createdBy', isEqualTo: userId)
-                          .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                          .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                          .snapshots()
-                      : Stream.empty(),
-                  builder: (context, snapshot) {
-                    int count = 0;
-                    if (snapshot.hasData) {
-                      count = snapshot.data!.docs.length;
-                    } else if (snapshot.hasError) {
-                      debugPrint('Error fetching user returns: ${snapshot.error}');
-                    }
-                    return _miniStat('You Issued', count.toString().padLeft(2, '0'),
-                        AppColors.primaryPurple);
-                  },
+                const SizedBox(width: 8),
+                // Your returns today
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: userId != null
+                        ? _returnsCollection
+                            .where('createdBy', isEqualTo: userId)
+                            .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
+                            .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                            .snapshots()
+                        : Stream.empty(),
+                    builder: (context, snapshot) {
+                      int count = 0;
+                      if (snapshot.hasData) {
+                        count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching user returns: ${snapshot.error}');
+                      }
+                      return _miniStat('You Issued', count.toString().padLeft(2, '0'),
+                          AppColors.primaryPurple);
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  // ---------------- Antibiotics Tile with dynamic categories count ----------------
   Widget _tileAntibiotics() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics'),
@@ -630,7 +602,6 @@ Widget _tileAntibioticsReturns() {
     );
   }
 
-  // ---------------- Wards Tile with dynamic categories count ----------------
   Widget _tileWards() {
     return InkWell(
       onTap: () => _onNavTap('Wards'),
@@ -706,10 +677,9 @@ Widget _tileAntibioticsReturns() {
     );
   }
 
-  // ---------------- Usage Details Tile (live monthly counts for current user) ----------------
   Widget _tileUsageDetails() {
     final now = DateTime.now();
-    final currentMonth = Months[now.month - 1];
+    final currentMonth = DateFormat('MMMM').format(now); // Localized month name
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
     final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
     final userId = _currentUserId;
@@ -752,6 +722,8 @@ Widget _tileAntibioticsReturns() {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching user releases: ${snapshot.error}');
                       }
                       return _miniStat(
                           '$currentMonth Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
@@ -776,6 +748,8 @@ Widget _tileAntibioticsReturns() {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching user returns: ${snapshot.error}');
                       }
                       return _miniStat(
                           '$currentMonth Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
@@ -790,7 +764,6 @@ Widget _tileAntibioticsReturns() {
     );
   }
 
-  // ---------------- Small Tile (with optional subtitle) ----------------
   Widget _buildSmallTile({required IconData icon, required String title, String? subtitle}) {
     return InkWell(
       onTap: () => _onNavTap(title),
@@ -826,7 +799,7 @@ Widget _tileAntibioticsReturns() {
       drawer: PharmacistDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-        profileImageUrl: _profileImageUrl,
+        profileImageUrl: _profileImageUrl,   // 🔑 NOW PASSED
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
