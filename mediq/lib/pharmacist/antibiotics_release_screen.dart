@@ -17,7 +17,7 @@ class AppColors {
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
-  static const Color inputBorder = Color(0xFFE0E0E0); // Added for consistency
+  static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
 class ReleaseAntibioticsScreen extends StatefulWidget {
@@ -49,6 +49,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   final _pageNumberController = TextEditingController();
   final _itemCountController = TextEditingController();
 
+  // Controllers for TypeAhead fields
+  final TextEditingController _antibioticController = TextEditingController();
+  final TextEditingController _wardController = TextEditingController();
+
   // Radio options
   String _datetimeOption = 'current';
   DateTime? _manualDateTime;
@@ -58,15 +62,15 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   List<Map<String, dynamic>> _activeBooks = [];
   String? _selectedBookNumber;
 
-  // ---------- Antibiotic search data ----------
+  // Antibiotic search data
   final List<Map<String, String>> _antibioticSearchList = [];
   final Map<String, Map<String, String>> _antibioticMap = {};
 
-  // ---------- Ward search data ----------
+  // Ward search data
   final List<Map<String, String>> _wardSearchList = [];
   final Map<String, String> _wardMap = {}; // id -> name
 
-  // ---------- Helper for consistent input decoration ----------
+  // Helper for consistent input decoration
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -136,6 +140,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   void dispose() {
     _pageNumberController.dispose();
     _itemCountController.dispose();
+    _antibioticController.dispose();
+    _wardController.dispose();
     super.dispose();
   }
 
@@ -152,7 +158,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
         setState(() {
           _userName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
           _userRole = data['role'] ?? 'Pharmacist';
-          _profileImageUrl = data['profileImageUrl']; // Drawer එකට අවශ්‍යයි
+          _profileImageUrl = data['profileImageUrl'];
           _isLoading = false;
         });
       } else {
@@ -437,6 +443,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       _selectedWardId = null;
       _pageNumberController.clear();
       _itemCountController.clear();
+      _antibioticController.clear();
+      _wardController.clear();
       _datetimeOption = 'current';
       _manualDateTime = null;
       _stockType = 'msd';
@@ -462,7 +470,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     );
   }
 
-  // ----- Header (profile picture නැතිව, නම සහ role පමණක්) -----
+  // Header widget
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -577,22 +585,19 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
-                                // TypeAhead for antibiotic – uses _inputDecoration
-                                TypeAheadFormField<String>(
-                                  textFieldConfiguration: TextFieldConfiguration(
-                                    controller: TextEditingController(
-                                      text: _selectedAntibioticKey != null
-                                          ? _antibioticMap[_selectedAntibioticKey]!['antibioticName']! +
-                                              ' – ' +
-                                              _antibioticMap[_selectedAntibioticKey]!['dosage']!
-                                          : '',
-                                    ),
-                                    decoration: _inputDecoration(
-                                      label: 'Antibiotic',
-                                      hintText: '-- Type to search Antibiotic --',
-                                      prefixIcon: Icons.medication,
-                                    ),
-                                  ),
+                                // TypeAhead for antibiotic (v5)
+                                TypeAheadField<String>(
+                                  builder: (context, controller, focusNode) {
+                                    return TextField(
+                                      controller: controller,
+                                      focusNode: focusNode,
+                                      decoration: _inputDecoration(
+                                        label: 'Antibiotic',
+                                        hintText: '-- Type to search Antibiotic --',
+                                        prefixIcon: Icons.medication,
+                                      ),
+                                    );
+                                  },
                                   suggestionsCallback: (pattern) {
                                     return _antibioticSearchList
                                         .where((item) => item['display']!
@@ -606,7 +611,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       title: Text(suggestion),
                                     );
                                   },
-                                  onSuggestionSelected: (suggestion) {
+                                  onSelected: (suggestion) {
                                     final selectedItem = _antibioticSearchList.firstWhere(
                                         (item) => item['display'] == suggestion);
                                     setState(() {
@@ -614,13 +619,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       final data = _antibioticMap[selectedItem['key']]!;
                                       _selectedAntibioticId = data['antibioticId']!;
                                       _dosage = data['dosage']!;
+                                      _antibioticController.text = suggestion;
                                     });
-                                  },
-                                  validator: (value) {
-                                    if (_selectedAntibioticKey == null) {
-                                      return 'Please select an antibiotic';
-                                    }
-                                    return null;
                                   },
                                 ),
 
@@ -641,20 +641,19 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 const Text('Release Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
-                                // TypeAhead for ward – uses _inputDecoration
-                                TypeAheadFormField<String>(
-                                  textFieldConfiguration: TextFieldConfiguration(
-                                    controller: TextEditingController(
-                                      text: _selectedWardId != null
-                                          ? _wardMap[_selectedWardId] ?? ''
-                                          : '',
-                                    ),
-                                    decoration: _inputDecoration(
-                                      label: 'Ward',
-                                      hintText: '-- Type to search Ward --',
-                                      prefixIcon: Icons.local_hospital,
-                                    ),
-                                  ),
+                                // TypeAhead for ward (v5)
+                                TypeAheadField<String>(
+                                  builder: (context, controller, focusNode) {
+                                    return TextField(
+                                      controller: controller,
+                                      focusNode: focusNode,
+                                      decoration: _inputDecoration(
+                                        label: 'Ward',
+                                        hintText: '-- Type to search Ward --',
+                                        prefixIcon: Icons.local_hospital,
+                                      ),
+                                    );
+                                  },
                                   suggestionsCallback: (pattern) {
                                     return _wardSearchList
                                         .where((item) => item['display']!
@@ -668,18 +667,13 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                       title: Text(suggestion),
                                     );
                                   },
-                                  onSuggestionSelected: (suggestion) {
+                                  onSelected: (suggestion) {
                                     final selectedItem = _wardSearchList.firstWhere(
                                         (item) => item['display'] == suggestion);
                                     setState(() {
                                       _selectedWardId = selectedItem['id'];
+                                      _wardController.text = suggestion;
                                     });
-                                  },
-                                  validator: (value) {
-                                    if (_selectedWardId == null) {
-                                      return 'Please select a ward';
-                                    }
-                                    return null;
                                   },
                                 ),
 
@@ -688,7 +682,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                 const Text('Select Date & Time', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 4),
 
-                                // Compact radio buttons with minimal spacing
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -774,7 +767,6 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                           const Text('Select Book Number',
                                               style: TextStyle(fontWeight: FontWeight.w600)),
                                           const SizedBox(height: 6),
-                                          // Book dropdown – wrap in container for border
                                           Container(
                                             decoration: BoxDecoration(
                                               borderRadius: BorderRadius.circular(12),
