@@ -13,7 +13,7 @@ import 'pharmacist_profile_screen.dart';
 class PharmacistDrawer extends StatefulWidget {
   final String userName;
   final String userRole;
-  final String? profileImageUrl;
+  final String? profileImageUrl;  
   final Function(String) onNavTap;
   final VoidCallback onLogout;
 
@@ -143,7 +143,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                   width: 60,
                   height: 60,
                   child: Image.asset(
-                    'assets/logo2.png',
+                    'assets/logo/logo2.png',
                     width: 60,
                     height: 60,
                     fit: BoxFit.contain,
