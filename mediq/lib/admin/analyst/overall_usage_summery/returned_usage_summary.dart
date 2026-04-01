@@ -1,8 +1,12 @@
 // returned_usage_ward_wise_summary.dart
+// With timezone (Asia/Colombo) and current month indicator
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 // ---------- App Colors ----------
 class AppColors {
@@ -31,7 +35,7 @@ class ReturnedUsageSummaryScreen extends StatefulWidget {
 class _ReturnedUsageSummaryScreenState
     extends State<ReturnedUsageSummaryScreen> {
   final CollectionReference _returnsCollection =
-      FirebaseFirestore.instance.collection('returns'); // changed from releases
+      FirebaseFirestore.instance.collection('returns');
   final CollectionReference _wardsCollection =
       FirebaseFirestore.instance.collection('wards');
   final CollectionReference _antibioticsCollection =
@@ -66,6 +70,11 @@ class _ReturnedUsageSummaryScreenState
   double _totalRawUnits = 0;
   bool _isLoading = true;
 
+  // ----------------------------------------------------------------------
+  // NEW: Current month returns count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  int _currentMonthReturnsCount = 0;
+
   // Ward categories for colouring and filter dropdown
   final List<Map<String, dynamic>> _wardCategoryList = [
     {'name': 'Pediatrics', 'color': Colors.pink.shade300},
@@ -81,8 +90,12 @@ class _ReturnedUsageSummaryScreenState
   void initState() {
     super.initState();
 
-    // Set default date range to current month (first day to today)
-    final now = DateTime.now();
+    // Initialize timezone database and set local to Asia/Colombo
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
+    // Set default date range to current month in Sri Lanka
+    final now = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
 
@@ -153,7 +166,9 @@ class _ReturnedUsageSummaryScreenState
         _wardCategories[doc.id] = _getWardCategory(wardName);
       }
 
-      _fetchData();
+      // Fetch data after loading
+      await _fetchData();
+      await _fetchCurrentMonthReturnsCount();
     } catch (e) {
       debugPrint('Error loading dropdown data: $e');
       setState(() => _isLoading = false);
@@ -275,7 +290,7 @@ class _ReturnedUsageSummaryScreenState
   }
 
   // ----------------------------------------------------------------------
-  // DATA FETCHING WITH FILTERS (using returns collection)
+  // DATA FETCHING WITH TIMEZONE-AWARE DATE FILTERING (using returns collection)
   // ----------------------------------------------------------------------
 
   Future<void> _fetchData() async {
@@ -288,18 +303,26 @@ class _ReturnedUsageSummaryScreenState
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
+
+      // Date range: convert selected local dates to UTC day boundaries
       if (_startDate != null && _endDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+
         query = query
-            .where('returnDateTime', isGreaterThanOrEqualTo: start)
-            .where('returnDateTime', isLessThanOrEqualTo: end);
+            .where('returnDateTime', isGreaterThanOrEqualTo: startUtc)
+            .where('returnDateTime', isLessThanOrEqualTo: endUtc);
       } else if (_startDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        query = query.where('returnDateTime', isGreaterThanOrEqualTo: start);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        query = query.where('returnDateTime', isGreaterThanOrEqualTo: startUtc);
       } else if (_endDate != null) {
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
-        query = query.where('returnDateTime', isLessThanOrEqualTo: end);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+        query = query.where('returnDateTime', isLessThanOrEqualTo: endUtc);
       }
 
       final returnSnapshot = await query.get();
@@ -327,6 +350,9 @@ class _ReturnedUsageSummaryScreenState
       Map<String, Map<String, Map<String, dynamic>>> wardDrugs = {}; // wardId -> drugName -> {units, raw, drugCategory}
       Map<String, double> wardTotalConvertible = {};
       Map<String, double> wardTotalRaw = {};
+
+      double totalConvertible = 0;
+      double totalRaw = 0;
 
       for (var doc in filteredDocs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -356,11 +382,11 @@ class _ReturnedUsageSummaryScreenState
         if (units != null) {
           drugMap[drugName]!['units'] += units;
           wardTotalConvertible[wardId] = (wardTotalConvertible[wardId] ?? 0) + units;
-          _totalConvertibleUnits += units;
+          totalConvertible += units;
         } else {
           drugMap[drugName]!['raw'] += totalValue;
           wardTotalRaw[wardId] = (wardTotalRaw[wardId] ?? 0) + totalValue;
-          _totalRawUnits += totalValue;
+          totalRaw += totalValue;
         }
       }
 
@@ -410,6 +436,8 @@ class _ReturnedUsageSummaryScreenState
 
       setState(() {
         _wardSummaries = summaries;
+        _totalConvertibleUnits = totalConvertible;
+        _totalRawUnits = totalRaw;
         _isLoading = false;
       });
     } catch (e) {
@@ -423,6 +451,34 @@ class _ReturnedUsageSummaryScreenState
           ),
         );
       }
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // NEW: Fetch current month returns count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  Future<void> _fetchCurrentMonthReturnsCount() async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      final startUtc = tz.TZDateTime.from(startOfMonth, tz.local).toUtc();
+      final endUtc = tz.TZDateTime.from(endOfMonth, tz.local).toUtc();
+
+      final snapshot = await _returnsCollection
+          .where('returnDateTime', isGreaterThanOrEqualTo: startUtc)
+          .where('returnDateTime', isLessThanOrEqualTo: endUtc)
+          .get();
+
+      setState(() {
+        _currentMonthReturnsCount = snapshot.docs.length;
+      });
+    } catch (e) {
+      debugPrint('Error fetching current month returns count: $e');
+      setState(() {
+        _currentMonthReturnsCount = 0;
+      });
     }
   }
 
@@ -594,6 +650,38 @@ class _ReturnedUsageSummaryScreenState
     );
   }
 
+  // ---------- Current Month Indicator ----------
+  Widget _buildCurrentMonthIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Returns This Month (Sri Lanka time):',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            _currentMonthReturnsCount > 0
+                ? '$_currentMonthReturnsCount'
+                : ' Not found \nthis month',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _currentMonthReturnsCount > 0
+                  ? AppColors.primaryPurple
+                  : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryCard() {
     final wardCount = _wardSummaries.length;
     return Container(
@@ -759,6 +847,7 @@ class _ReturnedUsageSummaryScreenState
         child: Column(
           children: [
             _buildHeader(context),
+            _buildCurrentMonthIndicator(), // NEW: added here
             _buildSummaryCard(),
             Expanded(
               child: _isLoading
@@ -913,7 +1002,7 @@ class WardSummary {
   });
 }
 
-// ---------- Filter Panel for Returns ----------
+// ---------- Filter Panel for Returns (updated with timezone-aware date pickers) ----------
 class _ReturnWardFilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
   final Map<String, Map<String, dynamic>> antibioticDataMap;
@@ -1218,9 +1307,9 @@ class _ReturnWardFilterPanelState extends State<_ReturnWardFilterPanel> {
                             onTap: () async {
                               final date = await showDatePicker(
                                 context: context,
-                                initialDate: _tempStartDate ?? DateTime.now(),
+                                initialDate: _tempStartDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now(),
+                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                               );
                               if (date != null) {
                                 setState(() {
@@ -1242,9 +1331,9 @@ class _ReturnWardFilterPanelState extends State<_ReturnWardFilterPanel> {
                             onTap: () async {
                               final date = await showDatePicker(
                                 context: context,
-                                initialDate: _tempEndDate ?? DateTime.now(),
+                                initialDate: _tempEndDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now(),
+                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                               );
                               if (date != null) {
                                 setState(() {
