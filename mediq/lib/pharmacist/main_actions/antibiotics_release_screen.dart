@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import '../../auth/login_page.dart';
 import '../pharmacist_drawer.dart';
@@ -54,7 +56,7 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   final TextEditingController _wardController = TextEditingController();
 
   // Radio options
-  String _datetimeOption = 'manual'; // changed default to 'manual'
+  String _datetimeOption = 'current';
   DateTime? _manualDateTime;
   String _stockType = 'msd';
 
@@ -130,10 +132,9 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Set manual date to first day of current month (00:00)
-    final now = DateTime.now();
-    _manualDateTime = DateTime(now.year, now.month, 1);
+    // Initialize time zone for Sri Lanka (Colombo)
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
     _fetchUserData();
     _fetchActiveBooks();
@@ -320,6 +321,21 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     );
   }
 
+  /// Returns a stream of releases for the given antibiotic in the current month
+  /// (using Sri Lanka time zone).
+  Stream<QuerySnapshot> _getReleasesForCurrentMonth(String antibioticId) {
+    final nowSriLanka = tz.TZDateTime.now(tz.local);
+    final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
+    final endOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month + 1, 1);
+
+    return _firestore
+        .collection('releases')
+        .where('antibioticId', isEqualTo: antibioticId)
+        .where('releaseDateTime', isGreaterThanOrEqualTo: startOfMonth)
+        .where('releaseDateTime', isLessThan: endOfMonth)
+        .snapshots();
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -353,10 +369,10 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
     }
     final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
 
-    // Determine date/time
+    // Determine date/time using Sri Lanka time for 'current'
     DateTime releaseDateTime;
     if (_datetimeOption == 'current') {
-      releaseDateTime = DateTime.now();
+      releaseDateTime = tz.TZDateTime.now(tz.local);
     } else {
       if (_manualDateTime == null) {
         _showSnackBar('Please select manual date and time', false);
@@ -450,10 +466,8 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
       _itemCountController.clear();
       _antibioticController.clear();
       _wardController.clear();
-      _datetimeOption = 'manual'; // keep manual as default after clear
-      // Reset manual date to first day of current month
-      final now = DateTime.now();
-      _manualDateTime = DateTime(now.year, now.month, 1);
+      _datetimeOption = 'current';
+      _manualDateTime = null;
       _stockType = 'msd';
       _selectedBookNumber = null;
     });
@@ -631,6 +645,35 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                   },
                                 ),
 
+                                // Show release count for current month (or "Not found this month")
+                                if (_selectedAntibioticId.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  StreamBuilder<QuerySnapshot>(
+                                    stream: _getReleasesForCurrentMonth(_selectedAntibioticId),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Text('Error: ${snapshot.error}',
+                                            style: const TextStyle(color: Colors.red));
+                                      }
+                                      final count = snapshot.data?.docs.length ?? 0;
+                                      if (count == 0) {
+                                        return const Text(
+                                          'Not found this month',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                                        );
+                                      }
+                                      return Text(
+                                        'Releases this month: $count',
+                                        style: const TextStyle(
+                                            fontSize: 12, color: AppColors.primaryPurple),
+                                      );
+                                    },
+                                  ),
+                                ],
+
                                 const SizedBox(height: 12),
 
                                 const Text('Dosage', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -722,19 +765,17 @@ class _ReleaseAntibioticsScreenState extends State<ReleaseAntibioticsScreen> {
                                   const SizedBox(height: 4),
                                   InkWell(
                                     onTap: () async {
+                                      final nowSriLanka = tz.TZDateTime.now(tz.local);
                                       final picked = await showDatePicker(
                                         context: context,
-                                        initialDate: _manualDateTime ?? DateTime.now(),
+                                        initialDate: nowSriLanka,
                                         firstDate: DateTime(2020),
                                         lastDate: DateTime(2030),
                                       );
                                       if (picked != null) {
                                         final time = await showTimePicker(
                                           context: context,
-                                          initialTime: TimeOfDay(
-                                            hour: _manualDateTime?.hour ?? 0,
-                                            minute: _manualDateTime?.minute ?? 0,
-                                          ),
+                                          initialTime: TimeOfDay.fromDateTime(nowSriLanka),
                                         );
                                         if (time != null) {
                                           setState(() {
