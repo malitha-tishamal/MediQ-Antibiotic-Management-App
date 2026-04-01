@@ -282,7 +282,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                           imagePath: 'assets/stores/main_store.jpg',
                           label: 'Main Store',
                           description: 'Store from which releases are made to wards',
-                          borderColor: AppColors.primaryPurple, // Main store uses primary purple
+                          borderColor: const Color.fromARGB(255, 234, 123, 5), // Main store uses primary purple
                           onTap: () {
                             Navigator.push(
                               context,
@@ -295,7 +295,7 @@ class _StocksManagementScreenState extends State<StocksManagementScreen> {
                           imagePath: 'assets/stores/return_store.jpg',
                           label: 'Return Store',
                           description: 'Store where surplus antibiotics from wards are returned',
-                          borderColor: Colors.orange, // Return store uses orange for distinction
+                          borderColor: const Color.fromARGB(255, 242, 181, 89), // Return store uses orange for distinction
                           onTap: () {
                             Navigator.push(
                               context,
