@@ -1,8 +1,12 @@
 // released_usage_summary.dart
+// With timezone (Asia/Colombo) and current month indicator
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 // ---------- App Colors ----------
 class AppColors {
@@ -102,16 +106,26 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
 
   bool _isLoadingCategory = true;
 
+  // ----------------------------------------------------------------------
+  // NEW: Current month releases count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  int _currentMonthReleasesCount = 0;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize timezone database and set local to Asia/Colombo
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       setState(() {});
     });
 
-    // Set default date range to current month (first day to today)
-    final now = DateTime.now();
+    // Set default date range to current month in Sri Lanka
+    final now = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
 
@@ -136,6 +150,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     await Future.wait([
       _fetchAntibioticData(),
       _fetchCategoryData(),
+      _fetchCurrentMonthReleasesCount(),
     ]);
   }
 
@@ -278,7 +293,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   }
 
   // ----------------------------------------------------------------------
-  // DATA FETCHING
+  // DATA FETCHING (with timezone‑aware date filtering)
   // ----------------------------------------------------------------------
 
   Future<void> _fetchAntibioticData() async {
@@ -308,18 +323,26 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
+
+      // Date range: convert selected local dates to UTC day boundaries
       if (_startDate != null && _endDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+
         query = query
-            .where('releaseDateTime', isGreaterThanOrEqualTo: start)
-            .where('releaseDateTime', isLessThanOrEqualTo: end);
+            .where('releaseDateTime', isGreaterThanOrEqualTo: startUtc)
+            .where('releaseDateTime', isLessThanOrEqualTo: endUtc);
       } else if (_startDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        query = query.where('releaseDateTime', isGreaterThanOrEqualTo: start);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        query = query.where('releaseDateTime', isGreaterThanOrEqualTo: startUtc);
       } else if (_endDate != null) {
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
-        query = query.where('releaseDateTime', isLessThanOrEqualTo: end);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+        query = query.where('releaseDateTime', isLessThanOrEqualTo: endUtc);
       }
 
       final releaseSnapshot = await query.get();
@@ -539,6 +562,34 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     }
   }
 
+  // ----------------------------------------------------------------------
+  // NEW: Fetch current month releases count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  Future<void> _fetchCurrentMonthReleasesCount() async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      final startUtc = tz.TZDateTime.from(startOfMonth, tz.local).toUtc();
+      final endUtc = tz.TZDateTime.from(endOfMonth, tz.local).toUtc();
+
+      final snapshot = await _releasesCollection
+          .where('releaseDateTime', isGreaterThanOrEqualTo: startUtc)
+          .where('releaseDateTime', isLessThanOrEqualTo: endUtc)
+          .get();
+
+      setState(() {
+        _currentMonthReleasesCount = snapshot.docs.length;
+      });
+    } catch (e) {
+      debugPrint('Error fetching current month releases count: $e');
+      setState(() {
+        _currentMonthReleasesCount = 0;
+      });
+    }
+  }
+
   void _applySorting(List<Map<String, dynamic>> data) {
     switch (_sortOption) {
       case 'most':
@@ -702,6 +753,38 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
+  // ---------- Current Month Indicator ----------
+  Widget _buildCurrentMonthIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Releases This Month (Sri Lanka time):',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            _currentMonthReleasesCount > 0
+                ? '$_currentMonthReleasesCount'
+                : ' Not found\nthis month',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _currentMonthReleasesCount > 0
+                  ? AppColors.primaryPurple
+                  : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------- Summary Cards ----------
   Widget _buildAntibioticSummaryCard() {
     final totalRecords = _antibioticSummaryData.length;
@@ -816,6 +899,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
             ],
           ),
         ),
+        _buildCurrentMonthIndicator(), // NEW: added here
         _buildAntibioticSummaryCard(),
         Expanded(
           child: _isLoadingAntibiotic
@@ -887,7 +971,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
     );
   }
 
-  // ---------- Category Usage Tab (unchanged) ----------
+  // ---------- Category Usage Tab (with current month indicator) ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Access', 'color': AppColors.accessColor},
@@ -907,6 +991,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
 
     return Column(
       children: [
+        _buildCurrentMonthIndicator(), // NEW: added here
         _buildCategorySummaryCard(),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1374,7 +1459,7 @@ class _ReleasedUsageSummaryScreenState extends State<ReleasedUsageSummaryScreen>
   }
 }
 
-// ---------- Filter Panel (unchanged) ----------
+// ---------- Filter Panel (unchanged except date picker initial dates) ----------
 class _FilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
   final Map<String, Map<String, dynamic>> antibioticDataMap;
@@ -1638,9 +1723,9 @@ class _FilterPanelState extends State<_FilterPanel> {
                             onTap: () async {
                               final date = await showDatePicker(
                                 context: context,
-                                initialDate: _tempStartDate ?? DateTime.now(),
+                                initialDate: _tempStartDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now(),
+                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                               );
                               if (date != null) {
                                 setState(() {
@@ -1662,9 +1747,9 @@ class _FilterPanelState extends State<_FilterPanel> {
                             onTap: () async {
                               final date = await showDatePicker(
                                 context: context,
-                                initialDate: _tempEndDate ?? DateTime.now(),
+                                initialDate: _tempEndDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now(),
+                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                               );
                               if (date != null) {
                                 setState(() {
