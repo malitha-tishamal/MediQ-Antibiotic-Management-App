@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../main.dart' as main_app;
 import 'pharmacist_dashboard.dart';
 import 'pharmacist_developer_about_screen.dart';
-import 'antibiotics_release_screen.dart';
-import 'return_antibiotics_screen.dart';
+
+import 'main_actions/antibiotics_release_screen.dart';
+import 'main_actions/return_antibiotics_screen.dart';
+
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
 import 'pharmacist_antibiotic_usage_screen.dart';
