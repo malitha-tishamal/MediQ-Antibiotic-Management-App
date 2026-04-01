@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'pharmacist_drawer.dart';
-import 'release_antibiotics_details.dart';
-import 'return_antibiotics_details.dart';
+
+import 'usages/release_antibiotics_details.dart';
+import 'usages/return_antibiotics_details.dart';
+
 import '../auth/login_page.dart';
 
 class AppColors {
@@ -183,7 +185,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
           ),
           const SizedBox(height: 25),
           const Text(
-            'Antibiotic Usage',
+            'Antibiotics Usage Details',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
           ),
         ],
@@ -266,7 +268,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/release_details.png',
+                    'assets/usages/release_details.png',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
@@ -364,7 +366,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
               child: Column(
                 children: [
                   Image.asset(
-                    'assets/return_details.jpg',
+                    'assets/usages/return_details.jpg',
                     width: 160,
                     height: 80,
                     fit: BoxFit.cover,
