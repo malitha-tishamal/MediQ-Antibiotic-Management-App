@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 import '../admin_drawer.dart';
 import '../../auth/login_page.dart';
 
@@ -62,10 +64,14 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
   void initState() {
     super.initState();
 
-    // Set default date range to current month (first day to today)
-    final now = DateTime.now();
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = now;
+    // Initialize time zone for Sri Lanka (Colombo)
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
+    // Set default date range to current month (first day to today) using Sri Lanka time
+    final nowSriLanka = tz.TZDateTime.now(tz.local);
+    _startDate = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
+    _endDate = nowSriLanka;
 
     _fetchCurrentUserDetails();
     _fetchFilterData();
@@ -207,7 +213,7 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
     );
   }
 
-  // Show advanced filter bottom sheet
+  // Show advanced filter bottom sheet (updated to use Sri Lanka time for date pickers)
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -289,7 +295,7 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Date range
+                            // Date range (use Sri Lanka time for initial dates)
                             const Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
                             Row(
@@ -297,11 +303,12 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
                                 Expanded(
                                   child: InkWell(
                                     onTap: () async {
+                                      final nowSriLanka = tz.TZDateTime.now(tz.local);
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _startDate ?? DateTime.now(),
+                                        initialDate: _startDate ?? nowSriLanka,
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: nowSriLanka,
                                       );
                                       if (date != null) {
                                         setState(() => _startDate = date);
@@ -320,11 +327,12 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
                                 Expanded(
                                   child: InkWell(
                                     onTap: () async {
+                                      final nowSriLanka = tz.TZDateTime.now(tz.local);
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _endDate ?? DateTime.now(),
+                                        initialDate: _endDate ?? nowSriLanka,
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: nowSriLanka,
                                       );
                                       if (date != null) {
                                         setState(() => _endDate = date);
@@ -986,6 +994,32 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
     }
   }
 
+  // Add a small widget to show releases this month count
+  Widget _buildCurrentMonthIndicator(List<DocumentSnapshot> allDocs) {
+    final nowSriLanka = tz.TZDateTime.now(tz.local);
+    final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
+    final endOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month + 1, 1);
+    final releasesThisMonth = allDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final releaseDate = (data['releaseDateTime'] as Timestamp?)?.toDate();
+      if (releaseDate == null) return false;
+      return releaseDate.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
+          releaseDate.isBefore(endOfMonth);
+    }).length;
+
+    if (releasesThisMonth == 0) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Text(
+          'Not found this month',
+          style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return const SizedBox.shrink(); // Optionally show count, but not required
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -1122,6 +1156,8 @@ class _AntibioticReleaseScreenState extends State<AntibioticReleaseScreen> {
                       return Column(
                         children: [
                           categoryFilterRow,
+                          // Show current month indicator
+                          _buildCurrentMonthIndicator(docs),
                           Expanded(
                             child: filteredDocs.isEmpty
                                 ? Center(
