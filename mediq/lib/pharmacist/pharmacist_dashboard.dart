@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';   // for month names
+import 'package:intl/intl.dart';
 import 'dart:async';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;   // needed for timezone data
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
-
 import 'usages/release_antibiotics_details.dart';
 import 'usages/return_antibiotics_details.dart';
-
 import 'main_actions/antibiotics_release_screen.dart';
 import 'main_actions/return_antibiotics_screen.dart';
-
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
 import 'pharmacist_antibiotic_usage_screen.dart';
@@ -30,7 +29,6 @@ class AppColors {
   static const Color totalFoundColor = Color(0xFF1E88E5);
   static const Color releasesCountColor = Color(0xFFE53935);
   static const Color returnsCountColor = Color(0xFF43A047);
-
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
@@ -63,7 +61,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Live user data
   String _currentUserName = '';
   String _currentUserRole = '';
   String? _profileImageUrl;
@@ -74,6 +71,11 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   @override
   void initState() {
     super.initState();
+
+    // ---------- Timezone initialization (Sri Lanka) ----------
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
@@ -109,19 +111,36 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     super.dispose();
   }
 
-  // ---------- Sri Lanka time helpers ----------
-  DateTime _getSriLankaNow() {
-    return DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
-  }
+  // ---------- Sri Lanka time helpers (using timezone package) ----------
+  DateTime _getSriLankaNow() => tz.TZDateTime.now(tz.local);
 
-  DateTime _getStartOfToday() {
+  // Start of today in Sri Lanka (00:00:00) as UTC
+  DateTime _getUtcStartOfToday() {
     final now = _getSriLankaNow();
-    return DateTime(now.year, now.month, now.day);
+    final localStart = DateTime(now.year, now.month, now.day);
+    return tz.TZDateTime.from(localStart, tz.local).toUtc();
   }
 
-  DateTime _getEndOfToday() {
-    final start = _getStartOfToday();
-    return start.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
+  // End of today in Sri Lanka (23:59:59.999) as UTC
+  DateTime _getUtcEndOfToday() {
+    final startUtc = _getUtcStartOfToday();
+    return startUtc.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
+  }
+
+  // Start of current month in Sri Lanka (first day, 00:00:00) as UTC
+  DateTime _getUtcStartOfCurrentMonth() {
+    final now = _getSriLankaNow();
+    final localStart = DateTime(now.year, now.month, 1);
+    return tz.TZDateTime.from(localStart, tz.local).toUtc();
+  }
+
+  // End of current month in Sri Lanka (last day, 23:59:59.999) as UTC
+  DateTime _getUtcEndOfCurrentMonth() {
+    final startUtc = _getUtcStartOfCurrentMonth();
+    final startLocal = tz.TZDateTime.from(startUtc, tz.local);
+    final nextMonth = DateTime(startLocal.year, startLocal.month + 1, 1);
+    final utcNextMonthStart = tz.TZDateTime.from(nextMonth, tz.local).toUtc();
+    return utcNextMonthStart.subtract(const Duration(microseconds: 1));
   }
 
   Future<void> _handleLogout() async {
@@ -384,6 +403,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   // ---------- Tiles ----------
   Widget _tileAntibioticsRelease() {
     final userId = _currentUserId;
+    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow()); // ✅ define currentMonth
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Release'),
       child: _smallCard(
@@ -406,34 +426,15 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             const Spacer(),
             Row(
               children: [
-                // Total releases today
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _releasesCollection
-                        .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                        .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint('Error fetching total releases: ${snapshot.error}');
-                      }
-                      return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
-                          AppColors.releasesCountColor);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Your releases today
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: userId != null
                         ? _releasesCollection
                             .where('createdBy', isEqualTo: userId)
-                            .where('releaseDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                            .where('releaseDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                            .where('releaseDateTime',
+                                isGreaterThanOrEqualTo: _getUtcStartOfToday())
+                            .where('releaseDateTime',
+                                isLessThanOrEqualTo: _getUtcEndOfToday())
                             .snapshots()
                         : Stream.empty(),
                     builder: (context, snapshot) {
@@ -441,10 +442,14 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       } else if (snapshot.hasError) {
-                        debugPrint('Error fetching user releases: ${snapshot.error}');
+                        debugPrint(
+                            'Error fetching user releases: ${snapshot.error}');
                       }
-                      return _miniStat('You Issued', count.toString().padLeft(2, '0'),
-                          AppColors.primaryPurple);
+                      return _miniStat(
+                        '$currentMonth You Issued',
+                        count.toString().padLeft(2, '0'),
+                        AppColors.primaryPurple,
+                      );
                     },
                   ),
                 ),
@@ -458,6 +463,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   Widget _tileAntibioticsReturns() {
     final userId = _currentUserId;
+    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow()); // ✅ define currentMonth
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Returns'),
       child: _smallCard(
@@ -480,34 +486,15 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             const Spacer(),
             Row(
               children: [
-                // Total returns today
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _returnsCollection
-                        .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                        .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint('Error fetching total returns: ${snapshot.error}');
-                      }
-                      return _miniStat('Total Usage', count.toString().padLeft(2, '0'),
-                          AppColors.returnsCountColor);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Your returns today
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: userId != null
                         ? _returnsCollection
                             .where('createdBy', isEqualTo: userId)
-                            .where('returnDateTime', isGreaterThanOrEqualTo: _getStartOfToday())
-                            .where('returnDateTime', isLessThanOrEqualTo: _getEndOfToday())
+                            .where('returnDateTime',
+                                isGreaterThanOrEqualTo: _getUtcStartOfToday())
+                            .where('returnDateTime',
+                                isLessThanOrEqualTo: _getUtcEndOfToday())
                             .snapshots()
                         : Stream.empty(),
                     builder: (context, snapshot) {
@@ -515,10 +502,14 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       } else if (snapshot.hasError) {
-                        debugPrint('Error fetching user returns: ${snapshot.error}');
+                        debugPrint(
+                            'Error fetching user returns: ${snapshot.error}');
                       }
-                      return _miniStat('You Issued', count.toString().padLeft(2, '0'),
-                          AppColors.primaryPurple);
+                      return _miniStat(
+                        '$currentMonth You Issued',
+                        count.toString().padLeft(2, '0'),
+                        AppColors.primaryPurple,
+                      );
                     },
                   ),
                 ),
@@ -681,10 +672,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
   }
 
   Widget _tileUsageDetails() {
-    final now = DateTime.now();
-    final currentMonth = DateFormat('MMMM').format(now); // Localized month name
-    final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
+    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
     final userId = _currentUserId;
 
     return InkWell(
@@ -716,9 +704,11 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                             .collection('releases')
                             .where('createdBy', isEqualTo: userId)
                             .where('createdAt',
-                                isGreaterThanOrEqualTo: firstDayOfMonth)
+                                isGreaterThanOrEqualTo:
+                                    _getUtcStartOfCurrentMonth())
                             .where('createdAt',
-                                isLessThan: firstDayNextMonth)
+                                isLessThanOrEqualTo:
+                                    _getUtcEndOfCurrentMonth())
                             .snapshots()
                         : Stream.empty(),
                     builder: (context, snapshot) {
@@ -726,10 +716,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       } else if (snapshot.hasError) {
-                        debugPrint('Error fetching user releases: ${snapshot.error}');
+                        debugPrint(
+                            'Error fetching user releases: ${snapshot.error}');
                       }
-                      return _miniStat(
-                          '$currentMonth Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
+                      return _miniStat('$currentMonth Releases',
+                          count.toString().padLeft(2, '0'),
+                          AppColors.releasesCountColor);
                     },
                   ),
                 ),
@@ -742,9 +734,11 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                             .collection('returns')
                             .where('createdBy', isEqualTo: userId)
                             .where('createdAt',
-                                isGreaterThanOrEqualTo: firstDayOfMonth)
+                                isGreaterThanOrEqualTo:
+                                    _getUtcStartOfCurrentMonth())
                             .where('createdAt',
-                                isLessThan: firstDayNextMonth)
+                                isLessThanOrEqualTo:
+                                    _getUtcEndOfCurrentMonth())
                             .snapshots()
                         : Stream.empty(),
                     builder: (context, snapshot) {
@@ -752,10 +746,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       } else if (snapshot.hasError) {
-                        debugPrint('Error fetching user returns: ${snapshot.error}');
+                        debugPrint(
+                            'Error fetching user returns: ${snapshot.error}');
                       }
-                      return _miniStat(
-                          '$currentMonth Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
+                      return _miniStat('$currentMonth \nReturns',
+                          count.toString().padLeft(2, '0'),
+                          AppColors.returnsCountColor);
                     },
                   ),
                 ),
@@ -767,7 +763,8 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  Widget _buildSmallTile({required IconData icon, required String title, String? subtitle}) {
+  Widget _buildSmallTile(
+      {required IconData icon, required String title, String? subtitle}) {
     return InkWell(
       onTap: () => _onNavTap(title),
       child: _smallCard(
@@ -802,7 +799,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       drawer: PharmacistDrawer(
         userName: _currentUserName,
         userRole: _currentUserRole,
-        profileImageUrl: _profileImageUrl,   // 🔑 NOW PASSED
+        profileImageUrl: _profileImageUrl,
         onNavTap: _onNavTap,
         onLogout: _handleLogout,
       ),
