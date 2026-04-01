@@ -1,5 +1,5 @@
 // release_antibiotics_details.dart
-// With timezone (Asia/Colombo) and current month indicator
+// Improved UI with modern design, better visual hierarchy, and timezone support
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -21,6 +21,8 @@ class AppColors {
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
   static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color cardShadow = Color(0x1A000000);
+  static const Color chipBackground = Color(0xFFF5F5F5);
 }
 
 class ReleaseAntibioticsDetails extends StatefulWidget {
@@ -30,7 +32,8 @@ class ReleaseAntibioticsDetails extends StatefulWidget {
   State<ReleaseAntibioticsDetails> createState() => _ReleaseAntibioticsDetailsState();
 }
 
-class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
+class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
+    with SingleTickerProviderStateMixin {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final CollectionReference _userCollection = FirebaseFirestore.instance.collection('users');
@@ -62,23 +65,31 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
   // Cache for user names
   final Map<String, String> _userNameCache = {};
 
-  // ----------------------------------------------------------------------
-  // NEW: Current month releases count (Sri Lanka time)
-  // ----------------------------------------------------------------------
+  // Current month releases count
   int _currentMonthReleasesCount = 0;
+
+  // Animation controller for fade-in effects
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize timezone database and set local to Asia/Colombo
+    // Initialize timezone
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
-    // Set default date range to current month in Sri Lanka
+    // Set default date range to current month
     final now = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
+
+    // Initialize animation
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _animationController.forward();
 
     _fetchCurrentUserDetails();
     _fetchFilterData();
@@ -92,6 +103,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
   @override
   void dispose() {
     _searchController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -116,14 +128,12 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
 
   Future<void> _fetchFilterData() async {
     try {
-      // Fetch wards
       final wardsSnapshot = await _wardsCollection.get();
       _wards = wardsSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return {'id': doc.id, 'name': data['wardName'] ?? 'Unknown'};
       }).toList();
 
-      // Fetch antibiotics and build category map
       final antibioticsSnapshot = await _antibioticsCollection.get();
       _antibiotics = antibioticsSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -163,7 +173,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
-  // ---------- Helper for consistent input decoration ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -220,7 +229,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // Show advanced filter bottom sheet (with timezone-aware date pickers)
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -260,13 +268,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Ward dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedWardId,
-                              decoration: _inputDecoration(
-                                label: 'Ward',
-                                prefixIcon: Icons.place,
-                              ),
+                              decoration: _inputDecoration(label: 'Ward', prefixIcon: Icons.place),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Wards')),
                                 ..._wards.map((w) => DropdownMenuItem(
@@ -280,14 +284,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                               },
                             ),
                             const SizedBox(height: 16),
-
-                            // Antibiotic dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
-                              decoration: _inputDecoration(
-                                label: 'Antibiotic',
-                                prefixIcon: Icons.medication,
-                              ),
+                              decoration: _inputDecoration(label: 'Antibiotic', prefixIcon: Icons.medication),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Antibiotics')),
                                 ..._antibiotics.map((a) => DropdownMenuItem(
@@ -301,9 +300,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                               },
                             ),
                             const SizedBox(height: 16),
-
-                            // Date range
-                            const Text('Date Range - Year:Month:Range', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -312,9 +309,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
+                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local),
                                         firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
+                                        lastDate: tz.TZDateTime.now(tz.local),
                                       );
                                       if (date != null) {
                                         setState(() => _startDate = date);
@@ -335,9 +332,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
+                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local),
                                         firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
+                                        lastDate: tz.TZDateTime.now(tz.local),
                                       );
                                       if (date != null) {
                                         setState(() => _endDate = date);
@@ -355,8 +352,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                               ],
                             ),
                             const SizedBox(height: 24),
-
-                            // Action buttons
                             Row(
                               children: [
                                 Expanded(
@@ -408,26 +403,45 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // ---- Category Filter Chips ----
   Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
     final isSelected = _selectedCategory == filterValue;
     return GestureDetector(
       onTap: () => setState(() => _selectedCategory = filterValue),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? Colors.transparent : color.withOpacity(0.3)),
-        ),
-        child: Text(
-          '$label $count',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? Colors.white : color,
+          color: isSelected ? color : AppColors.chipBackground,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : color.withOpacity(0.3),
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check_circle, size: 14, color: Colors.white),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              '$label $count',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? Colors.white : color,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -447,37 +461,22 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      height: 50,
+      child: ListView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _buildFilterChip('All', all, AppColors.primaryPurple, 'All'),
-            _buildFilterChip('Access', access, AppColors.primaryPurple, 'Access'),
-            _buildFilterChip('Watch', watch, AppColors.successGreen, 'Watch'),
-            _buildFilterChip('Reserve', reserve, AppColors.warningOrange, 'Reserve'),
-            _buildFilterChip('Other', other, Colors.grey, 'Other'),
-          ],
-        ),
+        children: [
+          _buildFilterChip('All', all, AppColors.primaryPurple, 'All'),
+          _buildFilterChip('Access', access, AppColors.primaryPurple, 'Access'),
+          _buildFilterChip('Watch', watch, AppColors.successGreen, 'Watch'),
+          _buildFilterChip('Reserve', reserve, AppColors.warningOrange, 'Reserve'),
+          _buildFilterChip('Other', other, Colors.grey, 'Other'),
+        ],
       ),
     );
   }
 
-  // Filter function with timezone-aware date comparison
   bool _filterRelease(Map<String, dynamic> data) {
-    // Search
     if (_searchQuery.isNotEmpty) {
       final antibiotic = (data['antibioticName'] ?? '').toLowerCase();
       final ward = (data['wardName'] ?? '').toLowerCase();
@@ -486,7 +485,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
       }
     }
 
-    // Category filter
     if (_selectedCategory != 'All') {
       final antibioticId = data['antibioticId'] ?? '';
       final category = _antibioticCategoryMap[antibioticId] ?? 'Other';
@@ -497,43 +495,30 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
       }
     }
 
-    // Ward filter
     if (_selectedWardId != null && data['wardId'] != _selectedWardId) {
       return false;
     }
 
-    // Antibiotic filter
     if (_selectedAntibioticId != null && data['antibioticId'] != _selectedAntibioticId) {
       return false;
     }
 
-    // Date range (convert releaseDateTime to Sri Lanka time for comparison)
     if (_startDate != null || _endDate != null) {
       final releaseDate = (data['releaseDateTime'] as Timestamp?)?.toDate();
       if (releaseDate == null) return false;
-
-      // Convert release date to Sri Lanka timezone
       final releaseLocal = tz.TZDateTime.from(releaseDate, tz.local);
-      final startLocal = _startDate != null
-          ? tz.TZDateTime.from(_startDate!, tz.local)
-          : null;
-      final endLocal = _endDate != null
-          ? tz.TZDateTime.from(_endDate!, tz.local)
-          : null;
-
+      final startLocal = _startDate != null ? tz.TZDateTime.from(_startDate!, tz.local) : null;
+      final endLocal = _endDate != null ? tz.TZDateTime.from(_endDate!, tz.local) : null;
       if (startLocal != null && releaseLocal.isBefore(startLocal)) return false;
       if (endLocal != null && releaseLocal.isAfter(endLocal.add(const Duration(days: 1)))) return false;
     }
-
     return true;
   }
 
-  // Compute current month releases count from a list of docs
   void _updateCurrentMonthCount(List<DocumentSnapshot> docs) {
     final now = tz.TZDateTime.now(tz.local);
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-
     final startLocal = tz.TZDateTime.from(startOfMonth, tz.local);
     final endLocal = tz.TZDateTime.from(endOfMonth, tz.local);
 
@@ -550,22 +535,16 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
       }
     }
     if (_currentMonthReleasesCount != count) {
-      setState(() {
-        _currentMonthReleasesCount = count;
-      });
+      setState(() => _currentMonthReleasesCount = count);
     }
   }
 
-  // Fetch user name by ID with caching
   Future<String> _getUserName(String userId) async {
-    if (_userNameCache.containsKey(userId)) {
-      return _userNameCache[userId]!;
-    }
+    if (_userNameCache.containsKey(userId)) return _userNameCache[userId]!;
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        final name = data['fullName'] ?? 'Unknown User';
+        final name = (doc.data() as Map<String, dynamic>)['fullName'] ?? 'Unknown User';
         _userNameCache[userId] = name;
         return name;
       } else {
@@ -578,7 +557,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
-  // ---- Edit Quantity Dialog ----
   Future<void> _editRelease(String docId, int currentQuantity) async {
     final TextEditingController qtyController = TextEditingController(text: currentQuantity.toString());
     final result = await showDialog<bool>(
@@ -621,7 +599,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
-  // ---- Delete Confirmation ----
   Future<void> _confirmDelete(String docId, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -648,7 +625,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
-  // ---- Show Details Modal ----
   void _showDetailsModal(Map<String, dynamic> data, String docId) {
     final antibioticName = data['antibioticName'] ?? 'Unknown';
     final dosage = data['dosage'] ?? '';
@@ -668,16 +644,16 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [Colors.white, Color(0xFFF9F7FF)],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: FutureBuilder<String>(
             future: _getUserName(createdBy),
@@ -711,7 +687,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   _detailRow(Icons.medical_services, 'Dosage', dosage),
                   _detailRow(Icons.inventory, 'Quantity', quantity.toString()),
                   _detailRow(Icons.place, 'Ward', wardName),
@@ -721,7 +697,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                   _detailRow(Icons.person, 'Released by', releasedByName),
                   _detailRow(Icons.calendar_today, 'Created At', formattedCreated),
                   _detailRow(Icons.fingerprint, 'Document ID', docId),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -729,7 +705,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                         onPressed: () => Navigator.pop(ctx),
                         child: const Text('Close'),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(ctx);
@@ -740,9 +716,10 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.pop(ctx);
@@ -753,6 +730,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
                       ),
                     ],
@@ -768,14 +746,14 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
 
   Widget _detailRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.primaryPurple),
-          const SizedBox(width: 12),
+          Icon(icon, size: 20, color: AppColors.primaryPurple),
+          const SizedBox(width: 16),
           SizedBox(
-            width: 100,
+            width: 110,
             child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText)),
           ),
           Expanded(child: Text(value, style: const TextStyle(color: AppColors.darkText))),
@@ -790,7 +768,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
         content: Row(
           children: [
             Icon(isSuccess ? Icons.check_circle : Icons.error, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(child: Text(msg)),
           ],
         ),
@@ -801,7 +779,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // ---- Modern Compact Release Card (with edit/delete buttons) ----
   Widget _buildReleaseCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final antibioticName = data['antibioticName'] ?? 'Unknown';
@@ -814,196 +791,170 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
         : 'N/A';
     final bookNumber = data['bookNumber'] ?? '';
     final pageNumber = data['pageNumber'] ?? '';
-    final stockType = data['stockType'] == 'msd' ? 'Main Store' : 'Return Store';
+    final stockType = data['stockType'] == 'msd' ? 'MSD' : 'LP';
     final antibioticId = data['antibioticId'] ?? '';
     final category = _antibioticCategoryMap[antibioticId] ?? 'Other';
     final Color categoryColor = _getCategoryColor(category);
     final createdBy = data['createdBy'] ?? '';
 
-    return GestureDetector(
-      onTap: () => _showDetailsModal(data, doc.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFF9F7FF)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: categoryColor.withOpacity(0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-              spreadRadius: -2,
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: categoryColor, width: 5),
-                ),
+    return FadeTransition(
+      opacity: _animationController,
+      child: GestureDetector(
+        onTap: () => _showDetailsModal(data, doc.id),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.cardShadow,
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header: name + stock type + edit/delete
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          antibioticName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkText,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: stockType == 'Main Store' ? Colors.green.shade50 : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          stockType == 'Main Store' ? 'MSD' : 'LP',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: stockType == 'Main Store' ? Colors.green.shade700 : Colors.orange.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: categoryColor, width: 6),
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            antibioticName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.darkText,
                             ),
-                            child: IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.orange, size: 16),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: stockType == 'MSD' ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            stockType,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: stockType == 'MSD' ? Colors.green.shade700 : Colors.orange.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.orange, size: 18),
                               onPressed: () => _editRelease(doc.id, quantity),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
+                              tooltip: 'Edit',
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 16),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red, size: 18),
                               onPressed: () => _confirmDelete(doc.id, antibioticName),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
+                              tooltip: 'Delete',
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Category chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: categoryColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: categoryColor.withOpacity(0.3)),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      category,
-                      style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 10),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 10),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Info row: dosage, quantity, ward
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 4,
-                    children: [
-                      _infoChipCompact(Icons.medical_services, 'Dosage: $dosage'),
-                      _infoChipCompact(Icons.inventory, 'Qty: $quantity'),
-                      _infoChipCompact(Icons.place, wardName),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Book and page
-                  Wrap(
-                    spacing: 10,
-                    children: [
-                      _infoChipCompact(Icons.menu_book, 'Book: $bookNumber'),
-                      _infoChipCompact(Icons.pages, 'Page: $pageNumber'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1, thickness: 0.5),
-                  const SizedBox(height: 6),
-                  // Footer: date, ID, and released by
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.fingerprint, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  // Released by
-                  FutureBuilder<String>(
-                    future: _getUserName(createdBy),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Row(
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 6,
+                      children: [
+                        _infoChip(Icons.medical_services, 'Dosage: $dosage'),
+                        _infoChip(Icons.inventory, 'Qty: $quantity'),
+                        _infoChip(Icons.place, wardName),
+                        _infoChip(Icons.menu_book, 'Book: $bookNumber'),
+                        _infoChip(Icons.pages, 'Page: $pageNumber'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            Icon(Icons.person, size: 12, color: Colors.grey),
-                            SizedBox(width: 2),
-                            Text('Released by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                            const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.fingerprint, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    FutureBuilder<String>(
+                      future: _getUserName(createdBy),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Row(
+                            children: [
+                              Icon(Icons.person, size: 12, color: Colors.grey),
+                              SizedBox(width: 4),
+                              Text('Released by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            const Icon(Icons.person, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Released by: ${snapshot.data ?? 'Unknown'}',
+                                style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         );
-                      }
-                      return Row(
-                        children: [
-                          const Icon(Icons.person, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              'Released by: ${snapshot.data ?? 'Unknown'}',
-                              style: const TextStyle(color: Colors.grey, fontSize: 10),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1012,15 +963,21 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // Compact info chip helper
-  Widget _infoChipCompact(IconData icon, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: AppColors.primaryPurple),
-        const SizedBox(width: 2),
-        Text(label, style: const TextStyle(fontSize: 10)),
-      ],
+  Widget _infoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.chipBackground,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.primaryPurple),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.darkText)),
+        ],
+      ),
     );
   }
 
@@ -1037,31 +994,42 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
-  // ---- Current Month Indicator Widget ----
   Widget _buildCurrentMonthIndicator() {
+    final monthName = DateFormat('MMMM').format(_getSriLankaNow());
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryPurple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [AppColors.primaryPurple.withOpacity(0.1), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryPurple.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Releases This Month (Sri Lanka time):',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+              const SizedBox(width: 8),
+              Text(
+                '$monthName Releases:',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ],
           ),
-          Text(
-            _currentMonthReleasesCount > 0
-                ? '$_currentMonthReleasesCount'
-                : ' Not found \nthis month',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _currentMonthReleasesCount > 0
-                  ? AppColors.primaryPurple
-                  : Colors.red,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _currentMonthReleasesCount > 0 ? AppColors.primaryPurple : Colors.red,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _currentMonthReleasesCount.toString(),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ),
         ],
@@ -1069,9 +1037,11 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
+  DateTime _getSriLankaNow() => tz.TZDateTime.now(tz.local);
+
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -1127,11 +1097,11 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           const Text(
             'Release Antibiotics',
             style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.headerTextDark),
           ),
@@ -1158,27 +1128,21 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
             child: Column(
               children: [
                 _buildHeader(context),
-                // Persistent search bar
                 Container(
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
+                  margin: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 4),
                   child: TextField(
                     controller: _searchController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Search by antibiotic or ward...',
-                      prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 15),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ),
                 ),
@@ -1193,13 +1157,8 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       final docs = snapshot.data?.docs ?? [];
-
-                      // Update current month count
                       _updateCurrentMonthCount(docs);
-
-                      // Category filter row (requires docs to compute counts)
                       final categoryFilterRow = _buildCategoryFilterRow(docs);
-
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return _filterRelease(data);
@@ -1207,7 +1166,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
 
                       return Column(
                         children: [
-                          _buildCurrentMonthIndicator(), // NEW: added here
+                          _buildCurrentMonthIndicator(),
                           categoryFilterRow,
                           Expanded(
                             child: filteredDocs.isEmpty
@@ -1236,7 +1195,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                                     ),
                                   )
                                 : ListView.builder(
-                                    key: const PageStorageKey('release_list'),
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                                     itemCount: filteredDocs.length,
                                     itemBuilder: (context, index) {
@@ -1252,7 +1210,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
