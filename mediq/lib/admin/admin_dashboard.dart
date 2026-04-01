@@ -2,7 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'dart:async';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../auth/login_page.dart';
 import 'admin_drawer.dart';
@@ -14,7 +16,7 @@ import 'wards_management_screen.dart';
 import 'stocks_management_screen.dart';
 import 'book_numbers_screen.dart';
 import 'antibiotic_usage_screen.dart';
-import 'antibiotics_usage_analysis_screen.dart'; 
+import 'antibiotics_usage_analysis_screen.dart';
 
 // ---------------- App Colors ----------------
 class AppColors {
@@ -59,33 +61,49 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Live user data (updates in real‑time)
+  // Live user data
   String _currentUserName = '';
   String _currentUserRole = '';
   String? _profileImageUrl;
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
+  // ---------- Sri Lanka time helpers (using timezone package) ----------
+  DateTime _getSriLankaNow() => tz.TZDateTime.now(tz.local);
 
-final List<String>Months = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+  // Start of today in Sri Lanka (00:00:00) as UTC
+  DateTime _getUtcStartOfToday() {
+    final now = _getSriLankaNow();
+    final localStart = DateTime(now.year, now.month, now.day);
+    return tz.TZDateTime.from(localStart, tz.local).toUtc();
+  }
+
+  // End of today in Sri Lanka (23:59:59.999) as UTC
+  DateTime _getUtcEndOfToday() {
+    final startUtc = _getUtcStartOfToday();
+    return startUtc.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
+  }
+
+  // Start of current month in Sri Lanka (first day, 00:00:00) as UTC
+  DateTime _getUtcStartOfCurrentMonth() {
+    final now = _getSriLankaNow();
+    final localStart = DateTime(now.year, now.month, 1);
+    return tz.TZDateTime.from(localStart, tz.local).toUtc();
+  }
+
+  // End of current month in Sri Lanka (last day, 23:59:59.999) as UTC
+  DateTime _getUtcEndOfCurrentMonth() {
+    final startUtc = _getUtcStartOfCurrentMonth();
+    // Get the first day of next month in local time, then convert to UTC
+    final startLocal = tz.TZDateTime.from(startUtc, tz.local);
+    final nextMonth = DateTime(startLocal.year, startLocal.month + 1, 1);
+    final utcNextMonthStart = tz.TZDateTime.from(nextMonth, tz.local).toUtc();
+    return utcNextMonthStart.subtract(const Duration(microseconds: 1));
+  }
 
   @override
   void initState() {
     super.initState();
-    // Initially set from widget (in case stream takes time)
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
     _listenToUserChanges();
@@ -145,56 +163,47 @@ final List<String>Months = [
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const AccountManageDetails()));
         break;
-
       case 'Antibiotics':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AntibioticsManagementScreen()),
         );
         break;
-
       case 'Wards':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const WardsManagementScreen()),
         );
         break;
-
       case 'Stocks':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const StocksManagementScreen()),
         );
         break;
-
       case 'Book Numbers':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const BookNumbersScreen()),
         );
         break;
-
       case 'Usage Details':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AntibioticUsageScreen()),
         );
         break;
-
-       case 'Usage Analyst':
+      case 'Usage Analyst':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AntibioticsUsageAnalysisScreen()),
         );
         break;
-
       case 'Developer About':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AdminDeveloperAboutScreen()),
         );
         break;
-
       case 'Profile Manage':
       case 'Profile':
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AdminProfileScreen()),
         );
         break;
-
       default:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$title tapped')),
@@ -220,8 +229,6 @@ final List<String>Months = [
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-
-                // Main Content
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -231,7 +238,6 @@ final List<String>Months = [
                         _buildSectionTitle('Home', Icons.home_rounded),
                         const SizedBox(height: 10),
                         _buildTilesGrid(),
-
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -240,8 +246,6 @@ final List<String>Months = [
               ],
             ),
           ),
-
-          // 📌 FULL‑WIDTH FOOTER
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -263,7 +267,6 @@ final List<String>Months = [
     );
   }
 
-  // Header – uses live _currentUserName, _currentUserRole and _profileImageUrl
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -293,18 +296,13 @@ final List<String>Months = [
             children: [
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
             ],
           ),
-
           const SizedBox(height: 10),
-
           Row(
             children: [
-              // Profile Picture (live URL)
               Container(
                 width: 70,
                 height: 70,
@@ -336,10 +334,7 @@ final List<String>Months = [
                     ? const Icon(Icons.person, size: 40, color: Colors.white)
                     : null,
               ),
-
               const SizedBox(width: 15),
-
-              // User Info (live name & role)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -363,10 +358,7 @@ final List<String>Months = [
               ),
             ],
           ),
-
           const SizedBox(height: 25),
-
-          // Dashboard Title
           const Text(
             'Administrative Dashboard',
             style: TextStyle(
@@ -380,7 +372,6 @@ final List<String>Months = [
     );
   }
 
-  // Section Title Widget
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -401,7 +392,6 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Tiles Grid ----------------
   Widget _buildTilesGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -472,7 +462,7 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Live Accounts Manage (Firestore Stream) ----------------
+  // Accounts Manage Tile (live counts)
   Widget _tileAccountsManage() {
     return StreamBuilder<QuerySnapshot>(
       stream: _userCollection.snapshots(),
@@ -541,7 +531,7 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Antibiotics Tile with dynamic categories count ----------------
+  // Antibiotics Tile
   Widget _tileAntibiotics() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics'),
@@ -617,7 +607,7 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Wards Tile with dynamic categories count ----------------
+  // Wards Tile
   Widget _tileWards() {
     return InkWell(
       onTap: () => _onNavTap('Wards'),
@@ -693,7 +683,7 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Simple Tiles ----------------
+  // Simple Tile (Stocks)
   Widget _tileSimple(
       {required IconData icon,
       required String title,
@@ -725,13 +715,9 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Usage Details with live monthly counts andMonths month ----------------
+  // Usage Details Tile (using timezone-aware UTC boundaries)
   Widget _tileUsageDetails() {
-    final now = DateTime.now();
-    final currentMonthMonths =Months[now.month - 1];
-
-    final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    final firstDayNextMonth = DateTime(now.year, now.month + 1, 1);
+    final currentMonthName = DateFormat('MMMM').format(_getSriLankaNow());
 
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
@@ -754,44 +740,50 @@ final List<String>Months = [
             const Spacer(),
             Row(
               children: [
-                // Releases count for current month
+                // Releases count for current month (UTC range)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('releases')
                         .where('createdAt',
-                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                            isGreaterThanOrEqualTo: _getUtcStartOfCurrentMonth())
                         .where('createdAt',
-                            isLessThan: firstDayNextMonth)
+                            isLessThanOrEqualTo: _getUtcEndOfCurrentMonth())
                         .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching releases: ${snapshot.error}');
                       }
-                      return _miniStat(
-                          '$currentMonthMonths Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
+                      return _miniStat('$currentMonthName Releases',
+                          count.toString().padLeft(2, '0'),
+                          AppColors.releasesCountColor);
                     },
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Returns count for current month
+                // Returns count for current month (UTC range)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('returns')
                         .where('createdAt',
-                            isGreaterThanOrEqualTo: firstDayOfMonth)
+                            isGreaterThanOrEqualTo: _getUtcStartOfCurrentMonth())
                         .where('createdAt',
-                            isLessThan: firstDayNextMonth)
+                            isLessThanOrEqualTo: _getUtcEndOfCurrentMonth())
                         .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
+                      } else if (snapshot.hasError) {
+                        debugPrint('Error fetching returns: ${snapshot.error}');
                       }
-                      return _miniStat(
-                          '$currentMonthMonths Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
+                      return _miniStat('$currentMonthName Returns',
+                          count.toString().padLeft(2, '0'),
+                          AppColors.returnsCountColor);
                     },
                   ),
                 ),
@@ -803,7 +795,7 @@ final List<String>Months = [
     );
   }
 
-  // ---------------- Small Tile with optional subtitle ----------------
+  // Small Tile (used for other options)
   Widget _buildSmallTile({
     required IconData icon,
     required String title,
