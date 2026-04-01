@@ -1,9 +1,13 @@
 // antibiotics_usage_charts_analysis.dart
+// With timezone (Asia/Colombo) and current month indicator
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 // AppColors (match other admin screens)
 class AppColors {
@@ -75,13 +79,23 @@ class _AntibioticsUsageChartsAnalysisScreenState
   bool _isLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // ----------------------------------------------------------------------
+  // NEW: Current month releases count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  int _currentMonthReleasesCount = 0;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize timezone database and set local to Asia/Colombo
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
     _tabController = TabController(length: 2, vsync: this);
 
-    // Set default date range to current month (first day to today)
-    final now = DateTime.now();
+    // Default date range to current month in Sri Lanka
+    final now = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
 
@@ -139,7 +153,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
         final data = doc.data() as Map<String, dynamic>;
         _antibioticDataMap[doc.id] = {
           'category': data['category'] ?? 'Other',
-          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null, // optional
+          'concentrationMgPerMl': data['concentrationMgPerMl'] ?? null,
         };
       }
     } catch (e) {
@@ -153,14 +167,11 @@ class _AntibioticsUsageChartsAnalysisScreenState
 
   /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
   /// and a unit abbreviation.
-  ///
-  /// Returns a map: {'value': double, 'unit': String}.
   Map<String, dynamic> _parseDosage(String dosage) {
     if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
 
     final normalized = dosage.toLowerCase().trim();
 
-    // Regex to capture number and unit (allow spaces, dashes, slashes)
     final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-z/%-]+(?:\s+[a-z/%-]+)?)');
     final match = regex.firstMatch(normalized);
     if (match == null) {
@@ -172,10 +183,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
     double value = double.tryParse(numberStr) ?? 0;
     String rawUnit = match.group(2)!.trim();
 
-    // Extract core unit (e.g., "mg" from "mg - Milligram")
     final lowerUnit = rawUnit.toLowerCase();
 
-    // Patterns to identify core unit
     final patterns = {
       r'\bmg\b': 'mg',
       r'\bmilligram\b': 'mg',
@@ -207,20 +216,14 @@ class _AntibioticsUsageChartsAnalysisScreenState
 
     if (coreUnit.isEmpty) {
       debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
-      coreUnit = rawUnit; // fallback
+      coreUnit = rawUnit;
     }
 
     return {'value': value, 'unit': coreUnit};
   }
 
-  /// Converts a quantity with a given unit to "units" according to the rules.
-  /// Returns null if the unit is not convertible (raw count).
-  ///
-  /// Parameters:
-  /// - value: numeric quantity
-  /// - unit: core unit string (e.g., 'mg', 'g', 'ml', 'U', etc.)
-  /// - antibioticData: map containing optional fields like 'concentrationMgPerMl'
-  double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
+  double? _convertToUnits(
+      double value, String unit, Map<String, dynamic>? antibioticData) {
     switch (unit) {
       case 'mg':
         return value / 1000;
@@ -234,31 +237,26 @@ class _AntibioticsUsageChartsAnalysisScreenState
         return value / 1000;
       case 'ml':
       case 'cc':
-        // Need concentration (mg/mL) from antibiotic data
         final conc = antibioticData?['concentrationMgPerMl'];
         if (conc is double && conc > 0) {
-          // units = (value * concentration) / 1000
           return (value * conc) / 1000;
         } else {
           debugPrint('Missing concentration for mL/cc, treating as raw');
           return null;
         }
       case 'mg/kg':
-        // Weight not available, treat as raw
         debugPrint('mg/kg unit requires patient weight, treating as raw');
         return null;
       case 'IV':
-        // No conversion, treat as raw
         return null;
       default:
-        // Unknown unit: treat as raw
         debugPrint('Unknown unit "$unit", treating as raw');
         return null;
     }
   }
 
   // ----------------------------------------------------------------------
-  // DATA FETCHING (with corrected conversion)
+  // DATA FETCHING (with corrected conversion and timezone‑aware filters)
   // ----------------------------------------------------------------------
 
   Future<void> _fetchData() async {
@@ -281,18 +279,26 @@ class _AntibioticsUsageChartsAnalysisScreenState
       if (_selectedAntibioticId != null) {
         query = query.where('antibioticId', isEqualTo: _selectedAntibioticId);
       }
+
+      // Date range: convert selected local dates to UTC day boundaries
       if (_startDate != null && _endDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+
         query = query
-            .where('releaseDateTime', isGreaterThanOrEqualTo: start)
-            .where('releaseDateTime', isLessThanOrEqualTo: end);
+            .where('releaseDateTime', isGreaterThanOrEqualTo: startUtc)
+            .where('releaseDateTime', isLessThanOrEqualTo: endUtc);
       } else if (_startDate != null) {
-        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
-        query = query.where('releaseDateTime', isGreaterThanOrEqualTo: start);
+        final startLocal = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final startUtc = tz.TZDateTime.from(startLocal, tz.local).toUtc();
+        query = query.where('releaseDateTime', isGreaterThanOrEqualTo: startUtc);
       } else if (_endDate != null) {
-        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
-        query = query.where('releaseDateTime', isLessThanOrEqualTo: end);
+        final endLocal = DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+        final endUtc = tz.TZDateTime.from(endLocal, tz.local).toUtc();
+        query = query.where('releaseDateTime', isLessThanOrEqualTo: endUtc);
       }
 
       final releaseSnapshot = await query.get();
@@ -309,33 +315,61 @@ class _AntibioticsUsageChartsAnalysisScreenState
         final dosageValue = parseResult['value'] as double;
         final unit = parseResult['unit'] as String;
 
-        if (dosageValue == 0) continue; // skip invalid
+        if (dosageValue == 0) continue;
 
-        final totalValue = itemCount * dosageValue; // total quantity in the given unit
+        final totalValue = itemCount * dosageValue;
 
         final drugName = data['antibioticName'] ?? 'Unknown';
         final antibioticId = data['antibioticId'] ?? '';
         final antibioticData = _antibioticDataMap[antibioticId];
         final category = antibioticData?['category'] ?? 'Other';
 
-        // Attempt conversion
         final units = _convertToUnits(totalValue, unit, antibioticData);
 
         if (units != null) {
-          // Convertible: add to unit-based totals
           usagePerDrug[drugName] = (usagePerDrug[drugName] ?? 0) + units;
           usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
-          // Not convertible: add to raw totals (raw count)
           rawUsagePerDrug[drugName] = (rawUsagePerDrug[drugName] ?? 0) + totalValue;
           rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
         }
       }
+
+      // After loading data, also fetch the current month count
+      await _fetchCurrentMonthReleasesCount();
     } catch (e) {
       debugPrint('Error fetching data: $e');
     } finally {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // NEW: Fetch current month releases count (based on Sri Lanka time)
+  // ----------------------------------------------------------------------
+  Future<void> _fetchCurrentMonthReleasesCount() async {
+    try {
+      final now = tz.TZDateTime.now(tz.local);
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+      final startUtc = tz.TZDateTime.from(startOfMonth, tz.local).toUtc();
+      final endUtc = tz.TZDateTime.from(endOfMonth, tz.local).toUtc();
+
+      final snapshot = await _releasesCollection
+          .where('releaseDateTime', isGreaterThanOrEqualTo: startUtc)
+          .where('releaseDateTime', isLessThanOrEqualTo: endUtc)
+          .get();
+
+      setState(() {
+        _currentMonthReleasesCount = snapshot.docs.length;
+      });
+    } catch (e) {
+      debugPrint('Error fetching current month releases count: $e');
+      setState(() {
+        _currentMonthReleasesCount = 0;
       });
     }
   }
@@ -372,7 +406,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  // ---------- Filter Panel Bottom Sheet ----------
+  // ---------- Filter Panel Bottom Sheet (with timezone initial dates) ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -432,6 +466,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
                             ),
                             const SizedBox(height: 16),
 
+                            // (Antibiotic dropdown is commented out in original, leaving as is)
+
                             const SizedBox(height: 16),
 
                             // Date range
@@ -444,9 +480,9 @@ class _AntibioticsUsageChartsAnalysisScreenState
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _startDate ?? DateTime.now(),
+                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local),
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: tz.TZDateTime.now(tz.local),
                                       );
                                       if (date != null) {
                                         setState(() => _startDate = date);
@@ -467,9 +503,9 @@ class _AntibioticsUsageChartsAnalysisScreenState
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _endDate ?? DateTime.now(),
+                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local),
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: tz.TZDateTime.now(tz.local),
                                       );
                                       if (date != null) {
                                         setState(() => _endDate = date);
@@ -577,7 +613,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
                     color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-              // Filter button
               IconButton(
                 icon: const Icon(Icons.tune, color: AppColors.headerTextDark),
                 onPressed: _showFilterPanel,
@@ -631,7 +666,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Gradient header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -660,14 +694,12 @@ class _AntibioticsUsageChartsAnalysisScreenState
                 ),
               ),
               const SizedBox(height: 20),
-              // Details
               Text(
                 details,
                 style: const TextStyle(fontSize: 16, height: 1.4),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              // Action button
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
@@ -688,7 +720,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
   }
 
   // ---------- Chart Helper Widgets ----------
-  Widget _buildLegendItem(Color color, String label, double value, double total, {bool showValue = true, String suffix = 'units'}) {
+  Widget _buildLegendItem(Color color, String label, double value, double total,
+      {bool showValue = true, String suffix = 'units'}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -757,20 +790,55 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
+  // ----------------------------------------------------------------------
+  // NEW: Current month indicator widget
+  // ----------------------------------------------------------------------
+  Widget _buildCurrentMonthIndicator() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Releases This Month (Sri Lanka time):',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            _currentMonthReleasesCount > 0
+                ? '$_currentMonthReleasesCount'
+                : ' Not found \nthis month',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _currentMonthReleasesCount > 0
+                  ? AppColors.primaryPurple
+                  : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------- Pie Charts with tooltip ----------
   Widget _buildPieCharts() {
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
 
-    // Prepare data for tooltips
-    final drugEntries = usagePerDrug.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final categoryEntries = usagePerCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final drugEntries = usagePerDrug.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Convertible usage (mg)
+          _buildCurrentMonthIndicator(), // NEW: placed at the top
           _buildChartCard(
             title: 'Usage by Antibiotic (Convertable to Units)',
             total: totalDrug,
@@ -855,15 +923,15 @@ class _AntibioticsUsageChartsAnalysisScreenState
             ),
             legendItems: _buildPieLegend(usagePerCategory, totalCategory, limit: 4),
           ),
-
-          // Raw (non‑convertible) data as a table
           _buildRawUsageTable(),
         ],
       ),
     );
   }
 
-  List<PieChartSectionData> _buildPieSections(Map<String, double> data, double total, {int limit = 8}) {
+  List<PieChartSectionData> _buildPieSections(
+      Map<String, double> data, double total,
+      {int limit = 8}) {
     if (total == 0) {
       return [
         PieChartSectionData(
@@ -871,7 +939,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
           title: 'No Data',
           color: Colors.grey,
           radius: 100,
-          titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+          titleStyle: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
         )
       ];
     }
@@ -898,7 +967,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
           title: '$percentage%',
           color: _getColorForIndex(sections.length),
           radius: 100,
-          titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+          titleStyle: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       );
     }
@@ -911,7 +981,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
           title: '$percentage%',
           color: Colors.grey,
           radius: 100,
-          titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+          titleStyle: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       );
     }
@@ -919,7 +990,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return sections;
   }
 
-  List<Widget> _buildPieLegend(Map<String, double> data, double total, {int limit = 8, String suffix = 'units'}) {
+  List<Widget> _buildPieLegend(Map<String, double> data, double total,
+      {int limit = 8, String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     List<MapEntry<String, double>> mainEntries;
@@ -966,14 +1038,16 @@ class _AntibioticsUsageChartsAnalysisScreenState
     final totalDrug = usagePerDrug.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
 
-    final drugEntries = usagePerDrug.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final categoryEntries = usagePerCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final drugEntries = usagePerDrug.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final categoryEntries = usagePerCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Convertible usage
+          _buildCurrentMonthIndicator(), // NEW: placed at the top
           _buildChartCard(
             title: 'Usage by Antibiotic (Convertable to Units)',
             total: totalDrug,
@@ -988,7 +1062,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
                     enabled: true,
                     touchCallback: (FlTouchEvent event, barTouchResponse) {
                       if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                        final touchedBarGroupIndex =
+                            barTouchResponse!.spot!.touchedBarGroupIndex;
                         if (touchedBarGroupIndex < drugEntries.length) {
                           final entry = drugEntries[touchedBarGroupIndex];
                           final percentage = (entry.value / totalDrug * 100).toStringAsFixed(1);
@@ -997,7 +1072,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
                             'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
                             _getColorForIndex(touchedBarGroupIndex),
                           );
-                        } else if (touchedBarGroupIndex == drugEntries.length && drugEntries.length > 7) {
+                        } else if (touchedBarGroupIndex == drugEntries.length &&
+                            drugEntries.length > 7) {
                           final otherSum = drugEntries.skip(7).fold(0.0, (sum, e) => sum + e.value);
                           if (otherSum > 0) {
                             final percentage = (otherSum / totalDrug * 100).toStringAsFixed(1);
@@ -1061,7 +1137,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
                     enabled: true,
                     touchCallback: (FlTouchEvent event, barTouchResponse) {
                       if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                        final touchedBarGroupIndex =
+                            barTouchResponse!.spot!.touchedBarGroupIndex;
                         if (touchedBarGroupIndex < categoryEntries.length) {
                           final entry = categoryEntries[touchedBarGroupIndex];
                           final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
@@ -1111,8 +1188,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
             ),
             legendItems: _buildBarLegend(usagePerCategory, totalCategory, limit: 4),
           ),
-
-          // Raw (non‑convertible) data as a table
           _buildRawUsageTable(),
         ],
       ),
@@ -1134,7 +1209,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
       );
     }
 
-    // Sort by raw count descending
     final entries = rawUsagePerDrug.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -1194,7 +1268,9 @@ class _AntibioticsUsageChartsAnalysisScreenState
     );
   }
 
-  List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total, {int limit = 8}) {
+  List<BarChartGroupData> _buildBarGroups(
+      Map<String, double> data, double total,
+      {int limit = 8}) {
     final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     List<MapEntry<String, double>> mainEntries;
@@ -1255,7 +1331,8 @@ class _AntibioticsUsageChartsAnalysisScreenState
     return groups;
   }
 
-  List<Widget> _buildBarLegend(Map<String, double> data, double total, {int limit = 8, String suffix = 'units'}) {
+  List<Widget> _buildBarLegend(Map<String, double> data, double total,
+      {int limit = 8, String suffix = 'units'}) {
     var entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     List<MapEntry<String, double>> mainEntries;
@@ -1333,7 +1410,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
             child: Column(
               children: [
                 _buildHeader(context),
-                // TabBar
                 Container(
                   color: Colors.white,
                   child: TabBar(
@@ -1347,7 +1423,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
                     indicatorColor: AppColors.primaryPurple,
                   ),
                 ),
-                // Tab content
                 Expanded(
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
@@ -1362,7 +1437,6 @@ class _AntibioticsUsageChartsAnalysisScreenState
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
