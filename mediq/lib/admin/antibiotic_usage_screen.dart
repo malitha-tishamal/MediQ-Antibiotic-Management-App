@@ -260,7 +260,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: Colors.green,
+                    color: Colors.purple,
                     width: 8,
                   ),
                 ),
@@ -274,7 +274,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
                     height: 80,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.arrow_forward, size: 60, color: Colors.green);
+                      return const Icon(Icons.arrow_forward, size: 60, color: Colors.purple);
                     },
                   ),
                   const SizedBox(height: 10),
@@ -301,7 +301,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _buildModernCountChip(currentMonth, count, Colors.green);
+                      return _buildModernCountChip(currentMonth, count, Colors.purple);
                     },
                   ),
                 ],
@@ -360,7 +360,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: Colors.orange,
+                    color: Colors.purpleAccent,
                     width: 8,
                   ),
                 ),
@@ -374,7 +374,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
                     height: 80,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.arrow_back, size: 60, color: Colors.orange);
+                      return const Icon(Icons.arrow_back, size: 60, color: Colors.purpleAccent);
                     },
                   ),
                   const SizedBox(height: 10),
@@ -401,7 +401,7 @@ class _AntibioticUsageScreenState extends State<AntibioticUsageScreen> {
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _buildModernCountChip(currentMonth, count, Colors.orange);
+                      return _buildModernCountChip(currentMonth, count, Colors.purpleAccent);
                     },
                   ),
                 ],
