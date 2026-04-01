@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import '../../auth/login_page.dart';
 import '../pharmacist_drawer.dart';
@@ -130,6 +132,10 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize time zone for Sri Lanka (Colombo)
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
     _fetchUserData();
     _fetchActiveBooks();
     _fetchAntibiotics();
@@ -315,6 +321,21 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
     );
   }
 
+  /// Returns a stream of returns for the given antibiotic in the current month
+  /// (using Sri Lanka time zone).
+  Stream<QuerySnapshot> _getReturnsForCurrentMonth(String antibioticId) {
+    final nowSriLanka = tz.TZDateTime.now(tz.local);
+    final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
+    final endOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month + 1, 1);
+
+    return _firestore
+        .collection('returns')
+        .where('antibioticId', isEqualTo: antibioticId)
+        .where('returnDateTime', isGreaterThanOrEqualTo: startOfMonth)
+        .where('returnDateTime', isLessThan: endOfMonth)
+        .snapshots();
+  }
+
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -348,10 +369,10 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
     }
     final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
 
-    // Determine date/time
+    // Determine date/time using Sri Lanka time for 'current'
     DateTime returnDateTime;
     if (_datetimeOption == 'current') {
-      returnDateTime = DateTime.now();
+      returnDateTime = tz.TZDateTime.now(tz.local);
     } else {
       if (_manualDateTime == null) {
         _showSnackBar('Please select manual date and time', false);
@@ -616,6 +637,35 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                   },
                                 ),
 
+                                // Show return count for current month (or "Not found this month")
+                                if (_selectedAntibioticId.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  StreamBuilder<QuerySnapshot>(
+                                    stream: _getReturnsForCurrentMonth(_selectedAntibioticId),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Text('Error: ${snapshot.error}',
+                                            style: const TextStyle(color: Colors.red));
+                                      }
+                                      final count = snapshot.data?.docs.length ?? 0;
+                                      if (count == 0) {
+                                        return const Text(
+                                          'Not found this month',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                                        );
+                                      }
+                                      return Text(
+                                        'Returns this month: $count',
+                                        style: const TextStyle(
+                                            fontSize: 12, color: AppColors.primaryPurple),
+                                      );
+                                    },
+                                  ),
+                                ],
+
                                 const SizedBox(height: 12),
 
                                 const Text('Dosage', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -707,16 +757,17 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                   const SizedBox(height: 4),
                                   InkWell(
                                     onTap: () async {
+                                      final nowSriLanka = tz.TZDateTime.now(tz.local);
                                       final picked = await showDatePicker(
                                         context: context,
-                                        initialDate: DateTime.now(),
+                                        initialDate: nowSriLanka,
                                         firstDate: DateTime(2020),
                                         lastDate: DateTime(2030),
                                       );
                                       if (picked != null) {
                                         final time = await showTimePicker(
                                           context: context,
-                                          initialTime: TimeOfDay.now(),
+                                          initialTime: TimeOfDay.fromDateTime(nowSriLanka),
                                         );
                                         if (time != null) {
                                           setState(() {
