@@ -218,7 +218,7 @@ class _AntibioticsManagementScreenState extends State<AntibioticsManagementScree
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: AppColors.primaryPurple,
+                    color: const Color.fromARGB(255, 109, 53, 220),
                     width: 8,
                   ),
                 ),
