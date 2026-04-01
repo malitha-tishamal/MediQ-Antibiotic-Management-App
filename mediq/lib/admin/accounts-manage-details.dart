@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -264,7 +265,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                           role: 'Admin',
                           title: 'Manage Admin Accounts',
                           imagePath: 'assets/accounts/admin-default.jpg',
-                          borderColor: AppColors.primaryPurple,
+                          borderColor: Colors.deepPurpleAccent,
                         ),
                         
                         const SizedBox(height: 24),
@@ -275,7 +276,7 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                           role: 'Pharmacist',
                           title: 'Manage Pharmacist Accounts',
                           imagePath: 'assets/accounts/pharmizist-default.jpg',
-                          borderColor: Colors.green, // or AppColors.approvedColor
+                          borderColor: CupertinoColors.systemPurple, // or AppColors.approvedColor
                         ),
                         
                         const SizedBox(height: 30),
