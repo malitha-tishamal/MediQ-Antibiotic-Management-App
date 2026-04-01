@@ -7,10 +7,13 @@ import 'dart:async';
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
 import 'pharmacist_developer_about_screen.dart';
-import 'release_antibiotics_details.dart';
-import 'antibiotics_release_screen.dart';
-import 'return_antibiotics_screen.dart';
-import 'return_antibiotics_details.dart';
+
+import 'usages/release_antibiotics_details.dart';
+import 'usages/return_antibiotics_details.dart';
+
+import 'main_actions/antibiotics_release_screen.dart';
+import 'main_actions/return_antibiotics_screen.dart';
+
 import 'view_antibiotics_screen.dart';
 import 'view_wards_screen.dart';
 import 'pharmacist_antibiotic_usage_screen.dart';
