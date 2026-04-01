@@ -1,5 +1,6 @@
 // ward_wise_usage_charts.dart
 // With timezone (Asia/Colombo) and current month indicator
+// UI improvements applied (header and footer unchanged)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter/cupertino.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -17,6 +19,7 @@ class AppColors {
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
   static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color successGreen = Color(0xFF48BB78);
 }
 
 class WardWiseUsageChartsScreen extends StatefulWidget {
@@ -80,7 +83,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // ----------------------------------------------------------------------
-  // NEW: Current month releases count (Sri Lanka time)
+  // Current month releases count (Sri Lanka time)
   // ----------------------------------------------------------------------
   int _currentMonthReleasesCount = 0;
 
@@ -166,11 +169,9 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   }
 
   // ----------------------------------------------------------------------
-  // UNIT CONVERSION LOGIC (based on provided formulas)
+  // UNIT CONVERSION LOGIC
   // ----------------------------------------------------------------------
 
-  /// Parses a dosage string (e.g., "500 mg - Milligram") into a numeric value
-  /// and a unit abbreviation.
   Map<String, dynamic> _parseDosage(String dosage) {
     if (dosage.isEmpty) return {'value': 0.0, 'unit': ''};
 
@@ -187,7 +188,6 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     double value = double.tryParse(numberStr) ?? 0;
     String rawUnit = match.group(2)!.trim();
 
-    // Extract core unit
     final lowerUnit = rawUnit.toLowerCase();
     final patterns = {
       r'\bmg\b': 'mg',
@@ -220,14 +220,12 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
 
     if (coreUnit.isEmpty) {
       debugPrint('Warning: unknown unit "$rawUnit" in dosage "$dosage"');
-      coreUnit = rawUnit; // fallback
+      coreUnit = rawUnit;
     }
 
     return {'value': value, 'unit': coreUnit};
   }
 
-  /// Converts a quantity with a given unit to "units" according to the rules.
-  /// Returns null if the unit is not convertible.
   double? _convertToUnits(double value, String unit, Map<String, dynamic>? antibioticData) {
     switch (unit) {
       case 'mg':
@@ -325,31 +323,26 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
 
         if (dosageValue == 0) continue;
 
-        final totalValue = itemCount * dosageValue; // total quantity in the given unit
+        final totalValue = itemCount * dosageValue;
 
         final wardId = data['wardId'] ?? '';
         final wardName = wardNames[wardId] ?? 'Unknown';
         final category = _getWardCategory(wardName);
 
-        // Get antibiotic data for concentration (if needed)
         final antibioticId = data['antibioticId'] ?? '';
         final antibioticData = _antibioticDataMap[antibioticId];
 
-        // Attempt conversion
         final units = _convertToUnits(totalValue, unit, antibioticData);
 
         if (units != null) {
-          // Convertible: add to unit-based totals
           usagePerWard[wardName] = (usagePerWard[wardName] ?? 0) + units;
           usagePerCategory[category] = (usagePerCategory[category] ?? 0) + units;
         } else {
-          // Not convertible: add to raw totals (raw count)
           rawUsagePerWard[wardName] = (rawUsagePerWard[wardName] ?? 0) + totalValue;
           rawUsagePerCategory[category] = (rawUsagePerCategory[category] ?? 0) + totalValue;
         }
       }
 
-      // After data fetch, fetch current month count
       await _fetchCurrentMonthReleasesCount();
     } catch (e) {
       debugPrint('Error fetching data: $e');
@@ -361,7 +354,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   }
 
   // ----------------------------------------------------------------------
-  // NEW: Fetch current month releases count (Sri Lanka time)
+  // Fetch current month releases count (Sri Lanka time)
   // ----------------------------------------------------------------------
   Future<void> _fetchCurrentMonthReleasesCount() async {
     try {
@@ -388,7 +381,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     }
   }
 
-  // ---------- UI Helpers (unchanged except date pickers) ----------
+  // ---------- UI Helpers ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -420,13 +413,15 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
+  // ---------- Enhanced Filter Panel (with CupertinoDatePicker) ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -437,27 +432,49 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
               expand: false,
               builder: (context, scrollController) {
                 return Container(
-                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Filter Releases',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
+                      // Handle bar
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Filter Releases',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryPurple,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
                       ),
                       const Divider(),
                       Expanded(
                         child: ListView(
                           controller: scrollController,
+                          padding: const EdgeInsets.all(20),
                           children: [
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
@@ -477,53 +494,66 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                                 setModalState(() {});
                               },
                             ),
-                            const SizedBox(height: 16),
-                            const Text('Range Filter', style: TextStyle(fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Date Range (Sri Lanka time)',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      final date = await showDatePicker(
-                                        context: context,
-                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                        firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                                      );
-                                      if (date != null) {
-                                        setState(() => _startDate = date);
-                                        setModalState(() {});
-                                      }
-                                    },
-                                    child: InputDecorator(
-                                      decoration: _inputDecoration(label: 'From'),
-                                      child: Text(_startDate != null
-                                          ? DateFormat('yyyy-MM-dd').format(_startDate!)
-                                          : 'Select'),
+                                  child: GestureDetector(
+                                    onTap: () => _showDatePicker(context, true, setModalState),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: AppColors.inputBorder),
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.white,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _startDate != null
+                                                ? DateFormat('yyyy-MM-dd').format(_startDate!)
+                                                : 'From',
+                                            style: TextStyle(
+                                              color: _startDate != null ? Colors.black : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 12),
                                 Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      final date = await showDatePicker(
-                                        context: context,
-                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                        firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                                      );
-                                      if (date != null) {
-                                        setState(() => _endDate = date);
-                                        setModalState(() {});
-                                      }
-                                    },
-                                    child: InputDecorator(
-                                      decoration: _inputDecoration(label: 'To'),
-                                      child: Text(_endDate != null
-                                          ? DateFormat('yyyy-MM-dd').format(_endDate!)
-                                          : 'Select'),
+                                  child: GestureDetector(
+                                    onTap: () => _showDatePicker(context, false, setModalState),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: AppColors.inputBorder),
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.white,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _endDate != null
+                                                ? DateFormat('yyyy-MM-dd').format(_endDate!)
+                                                : 'To',
+                                            style: TextStyle(
+                                              color: _endDate != null ? Colors.black : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -564,7 +594,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    child: const Text('Apply'),
+                                    child: const Text('Apply Filters'),
                                   ),
                                 ),
                               ],
@@ -578,6 +608,61 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  // Helper to show Cupertino date picker
+  void _showDatePicker(BuildContext context, bool isStart, StateSetter setModalState) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        DateTime tempDate = isStart ? (_startDate ?? tz.TZDateTime.now(tz.local)) : (_endDate ?? tz.TZDateTime.now(tz.local));
+        return SizedBox(
+          height: 280,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isStart) {
+                            _startDate = tempDate;
+                          } else {
+                            _endDate = tempDate;
+                          }
+                        });
+                        setModalState(() {});
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  initialDateTime: tempDate,
+                  mode: CupertinoDatePickerMode.date,
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -655,31 +740,72 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Current Month Indicator ----------
+  // ---------- Current Month Indicator (Improved) ----------
   Widget _buildCurrentMonthIndicator() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryPurple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryPurple.withOpacity(0.1),
+            AppColors.primaryPurple.withOpacity(0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primaryPurple.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Releases This Month (Sri Lanka time):',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.calendar_today,
+              color: AppColors.primaryPurple,
+              size: 20,
+            ),
           ),
-          Text(
-            _currentMonthReleasesCount > 0
-                ? '$_currentMonthReleasesCount'
-                : 'Not found \nthis month',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _currentMonthReleasesCount > 0
-                  ? AppColors.primaryPurple
-                  : Colors.red,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Releases This Month',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sri Lanka time (Asia/Colombo)',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _currentMonthReleasesCount > 0
+                  ? '$_currentMonthReleasesCount'
+                  : '0',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
             ),
           ),
         ],
@@ -753,20 +879,27 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     );
   }
 
-  // ---------- Chart Helpers ----------
+  // ---------- Chart Helpers (Improved) ----------
   Widget _buildLegendItem(Color color, String label, double value, double total,
       {bool showValue = true, String suffix = 'units'}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Container(width: 16, height: 16, color: color),
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -795,36 +928,61 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (total != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 12),
-                child: Text(
-                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+      elevation: 4,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.white],
+            stops: const [0, 1],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText,
                 ),
               ),
-            SizedBox(height: 250, child: chart),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 8),
-            ...legendItems,
-          ],
+              if (total != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(height: 260, child: chart),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                children: legendItems,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ---------- Pie Charts ----------
+  // ---------- Pie Charts (Improved) ----------
   Widget _buildPieCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -836,69 +994,78 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildCurrentMonthIndicator(), // NEW: added here
-          // Ward chart
-          _buildChartCard(
-            title: 'Usage by Ward (Convertable to Units)',
-            total: totalWard,
-            chart: PieChart(
-              PieChartData(
-                sections: _buildPieSections(usagePerWard, totalWard),
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
-                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
-                      final sections = _buildPieSections(usagePerWard, totalWard);
-                      if (touchedIndex < sections.length && touchedIndex < wardEntries.length) {
-                        final entry = wardEntries[touchedIndex];
-                        final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
-                        _showItemDetails(
-                          entry.key,
-                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                          _getColorForIndex(touchedIndex),
-                        );
-                      }
-                    }
-                  },
+          _buildCurrentMonthIndicator(),
+          if (totalWard == 0 && totalCategory == 0)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text(
+                  'No data available for the selected filters.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
-            ),
-            legendItems: _buildPieLegend(usagePerWard, totalWard),
-          ),
-          // Category chart
-          _buildChartCard(
-            title: 'Usage by Category (Convertable to Units)',
-            total: totalCategory,
-            chart: PieChart(
-              PieChartData(
-                sections: _buildPieSections(usagePerCategory, totalCategory),
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
-                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
-                      final sections = _buildPieSections(usagePerCategory, totalCategory);
-                      if (touchedIndex < sections.length && touchedIndex < categoryEntries.length) {
-                        final entry = categoryEntries[touchedIndex];
-                        final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
-                        _showItemDetails(
-                          entry.key,
-                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                          _getCategoryColor(entry.key),
-                        );
+            )
+          else ...[
+            _buildChartCard(
+              title: 'Usage by Ward (Convertible to Units)',
+              total: totalWard,
+              chart: PieChart(
+                PieChartData(
+                  sections: _buildPieSections(usagePerWard, totalWard),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                        final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                        final sections = _buildPieSections(usagePerWard, totalWard);
+                        if (touchedIndex < sections.length && touchedIndex < wardEntries.length) {
+                          final entry = wardEntries[touchedIndex];
+                          final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedIndex),
+                          );
+                        }
                       }
-                    }
-                  },
+                    },
+                  ),
                 ),
               ),
+              legendItems: _buildPieLegend(usagePerWard, totalWard),
             ),
-            legendItems: _buildPieLegend(usagePerCategory, totalCategory, suffix: 'units'),
-          ),
-          // Raw data table
-          _buildRawUsageTable(),
+            _buildChartCard(
+              title: 'Usage by Category (Convertible to Units)',
+              total: totalCategory,
+              chart: PieChart(
+                PieChartData(
+                  sections: _buildPieSections(usagePerCategory, totalCategory),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                        final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                        final sections = _buildPieSections(usagePerCategory, totalCategory);
+                        if (touchedIndex < sections.length && touchedIndex < categoryEntries.length) {
+                          final entry = categoryEntries[touchedIndex];
+                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getCategoryColor(entry.key),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ),
+              legendItems: _buildPieLegend(usagePerCategory, totalCategory, suffix: 'units'),
+            ),
+            _buildRawUsageTable(),
+          ],
         ],
       ),
     );
@@ -952,7 +1119,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     return items;
   }
 
-  // ---------- Bar Charts ----------
+  // ---------- Bar Charts (Improved) ----------
   Widget _buildBarCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -960,150 +1127,174 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     final wardEntries = usagePerWard.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final categoryEntries = usagePerCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
+    const double barWidth = 40;
+    const double barSpacing = 12;
+    final int wardCount = wardEntries.length;
+    final int categoryCount = categoryEntries.length;
+    final double wardChartWidth = wardCount * (barWidth + barSpacing) + 50;
+    final double categoryChartWidth = categoryCount * (barWidth + barSpacing) + 50;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildCurrentMonthIndicator(), // NEW: added here
-          // Ward bar chart
-          _buildChartCard(
-            title: 'Usage by Ward (Convertable to Units)',
-            total: totalWard,
-            chart: SizedBox(
-              height: 300,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _getMaxY(usagePerWard),
-                  barTouchData: BarTouchData(
-                    enabled: true,
-                    touchCallback: (FlTouchEvent event, barTouchResponse) {
-                      if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
-                        if (touchedBarGroupIndex < wardEntries.length) {
-                          final entry = wardEntries[touchedBarGroupIndex];
-                          final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
-                          _showItemDetails(
-                            entry.key,
-                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                            _getColorForIndex(touchedBarGroupIndex),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= 0 && value.toInt() < wardEntries.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Transform.rotate(
-                                angle: -0.5, // slight tilt for long names
-                                child: Text(
-                                  _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
-                                  style: const TextStyle(fontSize: 10),
-                                ),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                        reservedSize: 60,
-                      ),
-                    ),
-                  ),
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
-                  barGroups: _buildBarGroups(usagePerWard, totalWard),
+          _buildCurrentMonthIndicator(),
+          if (totalWard == 0 && totalCategory == 0)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text(
+                  'No data available for the selected filters.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
-            ),
-            legendItems: _buildBarLegend(usagePerWard, totalWard),
-          ),
-          // Category bar chart with rotated X labels
-          _buildChartCard(
-            title: 'Usage by Category (Convertable to Units)',
-            total: totalCategory,
-            chart: SizedBox(
-              height: 300,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _getMaxY(usagePerCategory),
-                  barTouchData: BarTouchData(
-                    enabled: true,
-                    touchCallback: (FlTouchEvent event, barTouchResponse) {
-                      if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                        final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
-                        if (touchedBarGroupIndex < categoryEntries.length) {
-                          final entry = categoryEntries[touchedBarGroupIndex];
-                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
-                          _showItemDetails(
-                            entry.key,
-                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                            _getCategoryColor(entry.key),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
-                      ),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final categories = usagePerCategory.keys.toList();
-                          if (value.toInt() >= 0 && value.toInt() < categories.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Transform.rotate(
-                                angle: -90 * 3.14159 / 180, // rotate -90° (vertical)
-                                child: Text(
-                                  categories[value.toInt()],
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                              ),
-                            );
+            )
+          else ...[
+            _buildChartCard(
+              title: 'Usage by Ward (Convertible to Units)',
+              total: totalWard,
+              chart: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: wardChartWidth,
+                  height: 300,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceBetween,
+                      maxY: _getMaxY(usagePerWard),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchCallback: (FlTouchEvent event, barTouchResponse) {
+                          if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                            final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                            if (touchedBarGroupIndex < wardEntries.length) {
+                              final entry = wardEntries[touchedBarGroupIndex];
+                              final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
+                              _showItemDetails(
+                                entry.key,
+                                'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                                _getColorForIndex(touchedBarGroupIndex),
+                              );
+                            }
                           }
-                          return const Text('');
                         },
-                        reservedSize: 80, // extra space for rotated text
                       ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              if (value.toInt() >= 0 && value.toInt() < wardEntries.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Transform.rotate(
+                                    angle: -0.5,
+                                    child: Text(
+                                      _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                            reservedSize: 60,
+                          ),
+                        ),
+                      ),
+                      gridData: FlGridData(show: true),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarGroups(usagePerWard, totalWard, barWidth: barWidth),
                     ),
                   ),
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
-                  barGroups: _buildBarGroups(usagePerCategory, totalCategory),
                 ),
               ),
+              legendItems: _buildBarLegend(usagePerWard, totalWard),
             ),
-            legendItems: _buildBarLegend(usagePerCategory, totalCategory, suffix: 'units'),
-          ),
-          // Raw data table
-          _buildRawUsageTable(),
+            _buildChartCard(
+              title: 'Usage by Category (Convertible to Units)',
+              total: totalCategory,
+              chart: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: categoryChartWidth,
+                  height: 300,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceBetween,
+                      maxY: _getMaxY(usagePerCategory),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchCallback: (FlTouchEvent event, barTouchResponse) {
+                          if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                            final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                            if (touchedBarGroupIndex < categoryEntries.length) {
+                              final entry = categoryEntries[touchedBarGroupIndex];
+                              final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                              _showItemDetails(
+                                entry.key,
+                                'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                                _getCategoryColor(entry.key),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final categories = usagePerCategory.keys.toList();
+                              if (value.toInt() >= 0 && value.toInt() < categories.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Transform.rotate(
+                                    angle: -90 * 3.14159 / 180,
+                                    child: Text(
+                                      categories[value.toInt()],
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                            reservedSize: 80,
+                          ),
+                        ),
+                      ),
+                      gridData: FlGridData(show: true),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarGroups(usagePerCategory, totalCategory, barWidth: barWidth),
+                    ),
+                  ),
+                ),
+              ),
+              legendItems: _buildBarLegend(usagePerCategory, totalCategory, suffix: 'units'),
+            ),
+            _buildRawUsageTable(),
+          ],
         ],
       ),
     );
   }
 
-  List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total) {
+  List<BarChartGroupData> _buildBarGroups(Map<String, double> data, double total, {required double barWidth}) {
     final entries = data.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final groups = <BarChartGroupData>[];
     for (int i = 0; i < entries.length; i++) {
@@ -1114,8 +1305,8 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
             BarChartRodData(
               toY: entries[i].value,
               color: _getColorForIndex(i),
-              width: 16,
-              borderRadius: BorderRadius.circular(4),
+              width: barWidth,
+              borderRadius: BorderRadius.circular(6),
               backDrawRodData: BackgroundBarChartRodData(
                 show: true,
                 toY: _getMaxY(data),
@@ -1147,42 +1338,51 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
     return items;
   }
 
-  // ---------- Raw Usage Table ----------
+  // ---------- Raw Usage Table (Improved) ----------
   Widget _buildRawUsageTable() {
     final totalRawWard = rawUsagePerWard.values.fold(0.0, (a, b) => a + b);
     if (totalRawWard == 0) {
       return const Card(
         margin: EdgeInsets.only(top: 16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(20),
           child: Center(
-            child: Text('No non‑convertible usage data.'),
+            child: Text(
+              'No non‑convertible usage data.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
         ),
       );
     }
 
-    // Sort raw ward entries
     final wardEntries = rawUsagePerWard.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Raw category entries
     final categoryEntries = rawUsagePerCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      ..sort((a, b) => b.value.compareTo(a.value))
+      ..where((e) => e.value > 0).toList();
 
     return Card(
       margin: const EdgeInsets.only(top: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Non‑convertible Usage (Raw Counts)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Non‑convertible Usage',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
               'These items are not expressed in mg and are shown as raw counts.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -1203,20 +1403,24 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
                   child: Row(
                     children: [
                       Container(
-                        width: 16,
-                        height: 16,
-                        color: _getColorForIndex(index),
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _getColorForIndex(index),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           entry.key,
                           style: const TextStyle(fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${entry.value.toStringAsFixed(1)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ],
                   ),
@@ -1234,31 +1438,55 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
               itemCount: categoryEntries.length,
               itemBuilder: (context, index) {
                 final entry = categoryEntries[index];
-                if (entry.value == 0) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 16,
-                        height: 16,
-                        color: _getCategoryColor(entry.key),
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(entry.key),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           entry.key,
                           style: const TextStyle(fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${entry.value.toStringAsFixed(1)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ],
                   ),
                 );
               },
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total Raw Count:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${totalRawWard.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.primaryPurple,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1279,10 +1507,10 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
 
   Color _getColorForIndex(int index) {
     const colors = [
-      Colors.red, Colors.blue, Colors.green, Colors.orange,
-      Colors.purple, Colors.teal, Colors.pink, Colors.amber,
-      Colors.indigo, Colors.lime, Colors.cyan, Colors.brown,
-      Colors.deepOrange, Colors.lightGreen, Colors.deepPurple,
+      Color(0xFFE57373), Color(0xFF64B5F6), Color(0xFF81C784), Color(0xFFFFB74D),
+      Color(0xFFBA68C8), Color(0xFF4DD0E1), Color(0xFFF06292), Color(0xFFFFD54F),
+      Color(0xFF7986CB), Color(0xFF4FC3F7), Color(0xFFAED581), Color(0xFFFF8A65),
+      Color(0xFF9575CD), Color(0xFF4DB6AC), Color(0xFFE57373),
     ];
     return colors[index % colors.length];
   }
