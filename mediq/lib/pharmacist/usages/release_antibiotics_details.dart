@@ -1,8 +1,12 @@
 // release_antibiotics_details.dart
+// With timezone (Asia/Colombo) and current month indicator
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 import '../pharmacist_drawer.dart';
 import '../../auth/login_page.dart';
 
@@ -58,9 +62,24 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
   // Cache for user names
   final Map<String, String> _userNameCache = {};
 
+  // ----------------------------------------------------------------------
+  // NEW: Current month releases count (Sri Lanka time)
+  // ----------------------------------------------------------------------
+  int _currentMonthReleasesCount = 0;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize timezone database and set local to Asia/Colombo
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
+    // Set default date range to current month in Sri Lanka
+    final now = tz.TZDateTime.now(tz.local);
+    _startDate = DateTime(now.year, now.month, 1);
+    _endDate = now;
+
     _fetchCurrentUserDetails();
     _fetchFilterData();
     _searchController.addListener(() {
@@ -201,7 +220,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // Show advanced filter bottom sheet
+  // Show advanced filter bottom sheet (with timezone-aware date pickers)
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
@@ -293,9 +312,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _startDate ?? DateTime.now(),
+                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                                       );
                                       if (date != null) {
                                         setState(() => _startDate = date);
@@ -316,9 +335,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                                     onTap: () async {
                                       final date = await showDatePicker(
                                         context: context,
-                                        initialDate: _endDate ?? DateTime.now(),
+                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
                                         firstDate: DateTime(2020),
-                                        lastDate: DateTime.now(),
+                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
                                       );
                                       if (date != null) {
                                         setState(() => _endDate = date);
@@ -456,7 +475,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     );
   }
 
-  // Filter function (combines all filters)
+  // Filter function with timezone-aware date comparison
   bool _filterRelease(Map<String, dynamic> data) {
     // Search
     if (_searchQuery.isNotEmpty) {
@@ -488,15 +507,53 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
       return false;
     }
 
-    // Date range
+    // Date range (convert releaseDateTime to Sri Lanka time for comparison)
     if (_startDate != null || _endDate != null) {
       final releaseDate = (data['releaseDateTime'] as Timestamp?)?.toDate();
       if (releaseDate == null) return false;
-      if (_startDate != null && releaseDate.isBefore(_startDate!)) return false;
-      if (_endDate != null && releaseDate.isAfter(_endDate!.add(const Duration(days: 1)))) return false;
+
+      // Convert release date to Sri Lanka timezone
+      final releaseLocal = tz.TZDateTime.from(releaseDate, tz.local);
+      final startLocal = _startDate != null
+          ? tz.TZDateTime.from(_startDate!, tz.local)
+          : null;
+      final endLocal = _endDate != null
+          ? tz.TZDateTime.from(_endDate!, tz.local)
+          : null;
+
+      if (startLocal != null && releaseLocal.isBefore(startLocal)) return false;
+      if (endLocal != null && releaseLocal.isAfter(endLocal.add(const Duration(days: 1)))) return false;
     }
 
     return true;
+  }
+
+  // Compute current month releases count from a list of docs
+  void _updateCurrentMonthCount(List<DocumentSnapshot> docs) {
+    final now = tz.TZDateTime.now(tz.local);
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    final startLocal = tz.TZDateTime.from(startOfMonth, tz.local);
+    final endLocal = tz.TZDateTime.from(endOfMonth, tz.local);
+
+    int count = 0;
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final releaseDate = (data['releaseDateTime'] as Timestamp?)?.toDate();
+      if (releaseDate != null) {
+        final releaseLocal = tz.TZDateTime.from(releaseDate, tz.local);
+        if (releaseLocal.isAfter(startLocal.subtract(const Duration(days: 1))) &&
+            releaseLocal.isBefore(endLocal.add(const Duration(days: 1)))) {
+          count++;
+        }
+      }
+    }
+    if (_currentMonthReleasesCount != count) {
+      setState(() {
+        _currentMonthReleasesCount = count;
+      });
+    }
   }
 
   // Fetch user name by ID with caching
@@ -980,6 +1037,38 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
     }
   }
 
+  // ---- Current Month Indicator Widget ----
+  Widget _buildCurrentMonthIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Releases This Month (Sri Lanka time):',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            _currentMonthReleasesCount > 0
+                ? '$_currentMonthReleasesCount'
+                : ' Not found \nthis month',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _currentMonthReleasesCount > 0
+                  ? AppColors.primaryPurple
+                  : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -1105,6 +1194,9 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
                       }
                       final docs = snapshot.data?.docs ?? [];
 
+                      // Update current month count
+                      _updateCurrentMonthCount(docs);
+
                       // Category filter row (requires docs to compute counts)
                       final categoryFilterRow = _buildCategoryFilterRow(docs);
 
@@ -1115,6 +1207,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails> {
 
                       return Column(
                         children: [
+                          _buildCurrentMonthIndicator(), // NEW: added here
                           categoryFilterRow,
                           Expanded(
                             child: filteredDocs.isEmpty
