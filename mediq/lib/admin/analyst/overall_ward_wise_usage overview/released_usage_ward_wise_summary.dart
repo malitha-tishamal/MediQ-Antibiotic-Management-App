@@ -1,5 +1,6 @@
 // released_usage_ward_wise_summary.dart
 // With timezone (Asia/Colombo) and current month indicator
+// UI improvements applied (header and footer unchanged)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter/cupertino.dart';
 
 // ---------- App Colors ----------
 class AppColors {
@@ -727,14 +729,15 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Filter Panel ----------
+  // ---------- Enhanced Filter Panel ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return _WardFilterPanel(
           antibiotics: _antibiotics,
@@ -774,7 +777,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Header ----------
+  // ---------- Header (unchanged) ----------
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
@@ -844,31 +847,72 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Current Month Indicator ----------
+  // ---------- Current Month Indicator (Improved) ----------
   Widget _buildCurrentMonthIndicator() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryPurple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryPurple.withOpacity(0.1),
+            AppColors.primaryPurple.withOpacity(0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primaryPurple.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Releases This Month (Sri Lanka time):',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.calendar_today,
+              color: AppColors.primaryPurple,
+              size: 20,
+            ),
           ),
-          Text(
-            _currentMonthReleasesCount > 0
-                ? '$_currentMonthReleasesCount'
-                : ' Not found \nthis month',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _currentMonthReleasesCount > 0
-                  ? AppColors.primaryPurple
-                  : Colors.red,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Releases This Month',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sri Lanka time (Asia/Colombo)',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _currentMonthReleasesCount > 0
+                  ? '$_currentMonthReleasesCount'
+                  : '0',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
             ),
           ),
         ],
@@ -876,16 +920,16 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Summary Cards ----------
+  // ---------- Summary Cards (Improved) ----------
   Widget _buildWardSummaryCard() {
     final totalRecords = _wardSummaryData.length;
     final totalRawRecords = _rawWardSummaryData.length;
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.white, Color(0xFFF0F4FF)],
+        gradient: LinearGradient(
+          colors: [Colors.white, const Color(0xFFF0F4FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -913,10 +957,10 @@ class _ReleasedUsageWardWiseSummaryScreenState
   Widget _buildCategorySummaryCard() {
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Colors.white, Color(0xFFF0F4FF)],
+        gradient: LinearGradient(
+          colors: [Colors.white, const Color(0xFFF0F4FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -955,7 +999,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Ward Usage Tab ----------
+  // ---------- Ward Usage Tab (Improved) ----------
   Widget _buildWardUsageTab() {
     return Column(
       children: [
@@ -976,7 +1020,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
             ],
           ),
         ),
-        _buildCurrentMonthIndicator(), // NEW: added here
+        _buildCurrentMonthIndicator(),
         _buildWardSummaryCard(),
         Expanded(
           child: _isLoadingWard
@@ -1017,7 +1061,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                             },
                           ),
                         ],
-                        // Raw data table (no percentages)
+                        // Raw data table
                         if (_rawWardSummaryData.isNotEmpty) ...[
                           const SizedBox(height: 24),
                           Padding(
@@ -1048,15 +1092,15 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Category Usage Tab ----------
+  // ---------- Category Usage Tab (Improved) ----------
   Widget _buildCategoryUsageTab() {
     final List<Map<String, dynamic>> categories = [
       {'name': 'Pediatrics', 'color': Colors.pink.shade300},
       {'name': 'Medicine', 'color': Colors.blue.shade400},
       {'name': 'ICU', 'color': Colors.red.shade400},
       {'name': 'Surgery', 'color': Colors.green.shade600},
-      {'name': 'Medicine \nSubspecialty', 'color': Colors.orange.shade300},
-      {'name': 'Surgery\n Subspecialty', 'color': Colors.purple.shade300},
+      {'name': 'Medicine Subspecialty', 'color': Colors.orange.shade300},
+      {'name': 'Surgery Subspecialty', 'color': Colors.purple.shade300},
       {'name': 'Other', 'color': Colors.grey},
     ];
 
@@ -1071,7 +1115,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
 
     return Column(
       children: [
-        _buildCurrentMonthIndicator(), // NEW: added here
+        _buildCurrentMonthIndicator(),
         _buildCategorySummaryCard(),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1133,7 +1177,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                         children: [
                           // Convertible categories
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 colors: [Colors.white, Color(0xFFF0F4FF)],
@@ -1158,7 +1202,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                                 ),
                                 const SizedBox(height: 12),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                   decoration: BoxDecoration(
                                     color: AppColors.primaryPurple.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
@@ -1180,7 +1224,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                                     final percentage = _categoryTotalQuantity > 0 ? (quantity / _categoryTotalQuantity * 100) : 0;
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
@@ -1234,7 +1278,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                           // Raw categories
                           if (_rawTotalQuantityGlobal > 0)
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [Colors.white, Color(0xFFF0F4FF)],
@@ -1259,7 +1303,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                                   ),
                                   const SizedBox(height: 12),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
@@ -1278,7 +1322,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
                                       final quantity = _rawCategoryTotalsGlobal[name] ?? 0;
                                       return Container(
                                         margin: const EdgeInsets.only(bottom: 8),
-                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius: BorderRadius.circular(12),
@@ -1319,7 +1363,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // ---------- Table Widgets for Ward Tab ----------
+  // ---------- Table Widgets for Ward Tab (Improved) ----------
   Widget _buildWardTableHeader() {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1338,7 +1382,6 @@ class _ReleasedUsageWardWiseSummaryScreenState
     );
   }
 
-  // Convertible ward row with left border in ward category colour
   Widget _buildWardRow(Map<String, dynamic> item) {
     final wardName = item['wardName'] as String;
     final quantity = item['quantity'] as double;
@@ -1521,7 +1564,7 @@ class _ReleasedUsageWardWiseSummaryScreenState
   }
 }
 
-// ---------- Filter Panel for Ward Tab (updated with timezone-aware date pickers) ----------
+// ---------- Enhanced Filter Panel (with CupertinoDatePicker) ----------
 class _WardFilterPanel extends StatefulWidget {
   final List<Map<String, dynamic>> antibiotics;
   final Map<String, Map<String, dynamic>> antibioticDataMap;
@@ -1638,6 +1681,59 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
     Navigator.pop(context);
   }
 
+  void _showDatePicker(BuildContext context, bool isStart) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        DateTime tempDate = isStart ? (_tempStartDate ?? tz.TZDateTime.now(tz.local)) : (_tempEndDate ?? tz.TZDateTime.now(tz.local));
+        return SizedBox(
+          height: 280,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isStart) {
+                            _tempStartDate = tempDate;
+                          } else {
+                            _tempEndDate = tempDate;
+                          }
+                        });
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  initialDateTime: tempDate,
+                  mode: CupertinoDatePickerMode.date,
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -1680,27 +1776,49 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
       expand: false,
       builder: (context, scrollController) {
         return Container(
-          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Filter Releases',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filter Releases',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryPurple,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
               const Divider(),
               Expanded(
                 child: ListView(
                   controller: scrollController,
+                  padding: const EdgeInsets.all(20),
                   children: [
                     TextField(
                       controller: _searchController,
@@ -1712,7 +1830,6 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       value: _tempCategory,
                       decoration: _inputDecoration(label: 'Category', prefixIcon: Icons.category),
@@ -1727,7 +1844,6 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                       },
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String?>(
                       value: _tempAntibioticId,
                       decoration: _inputDecoration(label: 'Antibiotic', prefixIcon: Icons.medication),
@@ -1745,7 +1861,6 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                       },
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       value: _tempStockType,
                       decoration: _inputDecoration(label: 'Stock Type', prefixIcon: Icons.inventory),
@@ -1759,7 +1874,6 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                       },
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       value: _tempSortOption,
                       decoration: _inputDecoration(label: 'Order by', prefixIcon: Icons.sort),
@@ -1775,62 +1889,68 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                       },
                     ),
                     const SizedBox(height: 16),
-
-                    const Text('Range Filter (Year: Month: Date)', style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
+                    const Text('Date Range (Sri Lanka time)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: _tempStartDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                firstDate: DateTime(2020),
-                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                              );
-                              if (date != null) {
-                                setState(() {
-                                  _tempStartDate = date;
-                                });
-                              }
-                            },
-                            child: InputDecorator(
-                              decoration: _inputDecoration(label: 'From'),
-                              child: Text(_tempStartDate != null
-                                  ? DateFormat('yyyy-MM-dd').format(_tempStartDate!)
-                                  : 'Select'),
+                          child: GestureDetector(
+                            onTap: () => _showDatePicker(context, true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppColors.inputBorder),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.white,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _tempStartDate != null
+                                        ? DateFormat('yyyy-MM-dd').format(_tempStartDate!)
+                                        : 'From',
+                                    style: TextStyle(
+                                      color: _tempStartDate != null ? Colors.black : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final date = await showDatePicker(
-                                context: context,
-                                initialDate: _tempEndDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                firstDate: DateTime(2020),
-                                lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                              );
-                              if (date != null) {
-                                setState(() {
-                                  _tempEndDate = date;
-                                });
-                              }
-                            },
-                            child: InputDecorator(
-                              decoration: _inputDecoration(label: 'To'),
-                              child: Text(_tempEndDate != null
-                                  ? DateFormat('yyyy-MM-dd').format(_tempEndDate!)
-                                  : 'Select'),
+                          child: GestureDetector(
+                            onTap: () => _showDatePicker(context, false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppColors.inputBorder),
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.white,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _tempEndDate != null
+                                        ? DateFormat('yyyy-MM-dd').format(_tempEndDate!)
+                                        : 'To',
+                                    style: TextStyle(
+                                      color: _tempEndDate != null ? Colors.black : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-
                     Row(
                       children: [
                         Expanded(
@@ -1855,7 +1975,7 @@ class _WardFilterPanelState extends State<_WardFilterPanel> {
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: const Text('Apply'),
+                            child: const Text('Apply Filters'),
                           ),
                         ),
                       ],
