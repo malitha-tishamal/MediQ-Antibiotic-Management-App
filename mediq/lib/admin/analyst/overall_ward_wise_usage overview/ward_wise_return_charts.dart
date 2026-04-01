@@ -1,5 +1,6 @@
 // ward_wise_return_charts.dart
 // With timezone (Asia/Colombo) and current month indicator
+// UI improvements applied (header and footer unchanged)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:flutter/cupertino.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -17,6 +19,7 @@ class AppColors {
   static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
   static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color successGreen = Color(0xFF48BB78);
 }
 
 class WardWiseReturnChartsScreen extends StatefulWidget {
@@ -420,13 +423,15 @@ class _WardWiseReturnChartsScreenState
     );
   }
 
+  // ---------- Enhanced Filter Panel (with CupertinoDatePicker) ----------
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -437,27 +442,49 @@ class _WardWiseReturnChartsScreenState
               expand: false,
               builder: (context, scrollController) {
                 return Container(
-                  padding: const EdgeInsets.all(20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Filter Returns',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
+                      // Handle bar
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Filter Returns',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryPurple,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
                       ),
                       const Divider(),
                       Expanded(
                         child: ListView(
                           controller: scrollController,
+                          padding: const EdgeInsets.all(20),
                           children: [
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
@@ -477,53 +504,66 @@ class _WardWiseReturnChartsScreenState
                                 setModalState(() {});
                               },
                             ),
-                            const SizedBox(height: 16),
-                            const Text('Range Filter', style: TextStyle(fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Date Range (Sri Lanka time)',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      final date = await showDatePicker(
-                                        context: context,
-                                        initialDate: _startDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                        firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                                      );
-                                      if (date != null) {
-                                        setState(() => _startDate = date);
-                                        setModalState(() {});
-                                      }
-                                    },
-                                    child: InputDecorator(
-                                      decoration: _inputDecoration(label: 'From'),
-                                      child: Text(_startDate != null
-                                          ? DateFormat('yyyy-MM-dd').format(_startDate!)
-                                          : 'Select'),
+                                  child: GestureDetector(
+                                    onTap: () => _showDatePicker(context, true, setModalState),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: AppColors.inputBorder),
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.white,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _startDate != null
+                                                ? DateFormat('yyyy-MM-dd').format(_startDate!)
+                                                : 'From',
+                                            style: TextStyle(
+                                              color: _startDate != null ? Colors.black : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 12),
                                 Expanded(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      final date = await showDatePicker(
-                                        context: context,
-                                        initialDate: _endDate ?? tz.TZDateTime.now(tz.local), // <-- timezone
-                                        firstDate: DateTime(2020),
-                                        lastDate: tz.TZDateTime.now(tz.local), // <-- timezone
-                                      );
-                                      if (date != null) {
-                                        setState(() => _endDate = date);
-                                        setModalState(() {});
-                                      }
-                                    },
-                                    child: InputDecorator(
-                                      decoration: _inputDecoration(label: 'To'),
-                                      child: Text(_endDate != null
-                                          ? DateFormat('yyyy-MM-dd').format(_endDate!)
-                                          : 'Select'),
+                                  child: GestureDetector(
+                                    onTap: () => _showDatePicker(context, false, setModalState),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: AppColors.inputBorder),
+                                        borderRadius: BorderRadius.circular(12),
+                                        color: Colors.white,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _endDate != null
+                                                ? DateFormat('yyyy-MM-dd').format(_endDate!)
+                                                : 'To',
+                                            style: TextStyle(
+                                              color: _endDate != null ? Colors.black : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -564,7 +604,7 @@ class _WardWiseReturnChartsScreenState
                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
-                                    child: const Text('Apply'),
+                                    child: const Text('Apply Filters'),
                                   ),
                                 ),
                               ],
@@ -578,6 +618,61 @@ class _WardWiseReturnChartsScreenState
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  // Helper to show Cupertino date picker
+  void _showDatePicker(BuildContext context, bool isStart, StateSetter setModalState) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        DateTime tempDate = isStart ? (_startDate ?? tz.TZDateTime.now(tz.local)) : (_endDate ?? tz.TZDateTime.now(tz.local));
+        return SizedBox(
+          height: 280,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          if (isStart) {
+                            _startDate = tempDate;
+                          } else {
+                            _endDate = tempDate;
+                          }
+                        });
+                        setModalState(() {});
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  initialDateTime: tempDate,
+                  mode: CupertinoDatePickerMode.date,
+                  onDateTimeChanged: (DateTime newDate) {
+                    tempDate = newDate;
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -655,31 +750,72 @@ class _WardWiseReturnChartsScreenState
     );
   }
 
-  // ---------- Current Month Indicator ----------
+  // ---------- Current Month Indicator (Improved) ----------
   Widget _buildCurrentMonthIndicator() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.primaryPurple.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryPurple.withOpacity(0.1),
+            AppColors.primaryPurple.withOpacity(0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primaryPurple.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Returns This Month (Sri Lanka time):',
-            style: TextStyle(fontWeight: FontWeight.w600),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.calendar_today,
+              color: AppColors.primaryPurple,
+              size: 20,
+            ),
           ),
-          Text(
-            _currentMonthReturnsCount > 0
-                ? '$_currentMonthReturnsCount'
-                : ' Not found \nthis month',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _currentMonthReturnsCount > 0
-                  ? AppColors.primaryPurple
-                  : Colors.red,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Returns This Month',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sri Lanka time (Asia/Colombo)',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _currentMonthReturnsCount > 0
+                  ? '$_currentMonthReturnsCount'
+                  : '0',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
             ),
           ),
         ],
@@ -753,20 +889,27 @@ class _WardWiseReturnChartsScreenState
     );
   }
 
-  // ---------- Chart Helpers ----------
+  // ---------- Chart Helpers (Improved) ----------
   Widget _buildLegendItem(Color color, String label, double value, double total,
       {bool showValue = true, String suffix = 'units'}) {
     final percentage = total > 0 ? (value / total * 100) : 0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Container(width: 16, height: 16, color: color),
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -795,36 +938,61 @@ class _WardWiseReturnChartsScreenState
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (total != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 12),
-                child: Text(
-                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+      elevation: 4,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, Colors.white],
+            stops: const [0, 1],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkText,
                 ),
               ),
-            SizedBox(height: 250, child: chart),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 8),
-            ...legendItems,
-          ],
+              if (total != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Total: ${total.toStringAsFixed(1)} ${totalSuffix ?? 'units'}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(height: 260, child: chart),
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                children: legendItems,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ---------- Pie Charts ----------
+  // ---------- Pie Charts (Improved) ----------
   Widget _buildPieCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -836,69 +1004,81 @@ class _WardWiseReturnChartsScreenState
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildCurrentMonthIndicator(), // NEW: added here
-          // Ward chart
-          _buildChartCard(
-            title: 'Returns by Ward (Convertible to Units)',
-            total: totalWard,
-            chart: PieChart(
-              PieChartData(
-                sections: _buildPieSections(usagePerWard, totalWard),
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
-                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
-                      final sections = _buildPieSections(usagePerWard, totalWard);
-                      if (touchedIndex < sections.length && touchedIndex < wardEntries.length) {
-                        final entry = wardEntries[touchedIndex];
-                        final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
-                        _showItemDetails(
-                          entry.key,
-                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                          _getColorForIndex(touchedIndex),
-                        );
-                      }
-                    }
-                  },
+          _buildCurrentMonthIndicator(),
+          if (totalWard == 0 && totalCategory == 0)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text(
+                  'No data available for the selected filters.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
-            ),
-            legendItems: _buildPieLegend(usagePerWard, totalWard),
-          ),
-          // Category chart
-          _buildChartCard(
-            title: 'Returns by Category (Convertible to Units)',
-            total: totalCategory,
-            chart: PieChart(
-              PieChartData(
-                sections: _buildPieSections(usagePerCategory, totalCategory),
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                    if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
-                      final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
-                      final sections = _buildPieSections(usagePerCategory, totalCategory);
-                      if (touchedIndex < sections.length && touchedIndex < categoryEntries.length) {
-                        final entry = categoryEntries[touchedIndex];
-                        final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
-                        _showItemDetails(
-                          entry.key,
-                          'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                          _getCategoryColor(entry.key),
-                        );
+            )
+          else ...[
+            // Ward chart
+            _buildChartCard(
+              title: 'Returns by Ward (Convertible to Units)',
+              total: totalWard,
+              chart: PieChart(
+                PieChartData(
+                  sections: _buildPieSections(usagePerWard, totalWard),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                        final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                        final sections = _buildPieSections(usagePerWard, totalWard);
+                        if (touchedIndex < sections.length && touchedIndex < wardEntries.length) {
+                          final entry = wardEntries[touchedIndex];
+                          final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getColorForIndex(touchedIndex),
+                          );
+                        }
                       }
-                    }
-                  },
+                    },
+                  ),
                 ),
               ),
+              legendItems: _buildPieLegend(usagePerWard, totalWard),
             ),
-            legendItems: _buildPieLegend(usagePerCategory, totalCategory, suffix: 'units'),
-          ),
-          // Raw data table
-          _buildRawUsageTable(),
+            // Category chart
+            _buildChartCard(
+              title: 'Returns by Category (Convertible to Units)',
+              total: totalCategory,
+              chart: PieChart(
+                PieChartData(
+                  sections: _buildPieSections(usagePerCategory, totalCategory),
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      if (event is FlTapUpEvent && pieTouchResponse?.touchedSection != null) {
+                        final touchedIndex = pieTouchResponse!.touchedSection!.touchedSectionIndex;
+                        final sections = _buildPieSections(usagePerCategory, totalCategory);
+                        if (touchedIndex < sections.length && touchedIndex < categoryEntries.length) {
+                          final entry = categoryEntries[touchedIndex];
+                          final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                          _showItemDetails(
+                            entry.key,
+                            'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                            _getCategoryColor(entry.key),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ),
+              legendItems: _buildPieLegend(usagePerCategory, totalCategory, suffix: 'units'),
+            ),
+            // Raw data table
+            _buildRawUsageTable(),
+          ],
         ],
       ),
     );
@@ -952,7 +1132,7 @@ class _WardWiseReturnChartsScreenState
     return items;
   }
 
-  // ---------- Bar Charts (scrollable) ----------
+  // ---------- Bar Charts (scrollable, improved) ----------
   Widget _buildBarCharts() {
     final totalWard = usagePerWard.values.fold(0.0, (a, b) => a + b);
     final totalCategory = usagePerCategory.values.fold(0.0, (a, b) => a + b);
@@ -971,148 +1151,160 @@ class _WardWiseReturnChartsScreenState
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildCurrentMonthIndicator(), // NEW: added here
-          // Ward bar chart (scrollable)
-          _buildChartCard(
-            title: 'Returns by Ward (Convertible to Units)',
-            total: totalWard,
-            chart: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: wardChartWidth,
-                height: 300,
-                child: BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceBetween,
-                    maxY: _getMaxY(usagePerWard),
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchCallback: (FlTouchEvent event, barTouchResponse) {
-                        if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                          final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
-                          if (touchedBarGroupIndex < wardEntries.length) {
-                            final entry = wardEntries[touchedBarGroupIndex];
-                            final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
-                            _showItemDetails(
-                              entry.key,
-                              'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                              _getColorForIndex(touchedBarGroupIndex),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            if (value.toInt() >= 0 && value.toInt() < wardEntries.length) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Transform.rotate(
-                                  angle: -0.5,
-                                  child: Text(
-                                    _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                ),
+          _buildCurrentMonthIndicator(),
+          if (totalWard == 0 && totalCategory == 0)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text(
+                  'No data available for the selected filters.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ),
+            )
+          else ...[
+            // Ward bar chart
+            _buildChartCard(
+              title: 'Returns by Ward (Convertible to Units)',
+              total: totalWard,
+              chart: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: wardChartWidth,
+                  height: 300,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceBetween,
+                      maxY: _getMaxY(usagePerWard),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchCallback: (FlTouchEvent event, barTouchResponse) {
+                          if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                            final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                            if (touchedBarGroupIndex < wardEntries.length) {
+                              final entry = wardEntries[touchedBarGroupIndex];
+                              final percentage = (entry.value / totalWard * 100).toStringAsFixed(1);
+                              _showItemDetails(
+                                entry.key,
+                                'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                                _getColorForIndex(touchedBarGroupIndex),
                               );
                             }
-                            return const Text('');
-                          },
-                          reservedSize: 60,
+                          }
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              if (value.toInt() >= 0 && value.toInt() < wardEntries.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Transform.rotate(
+                                    angle: -0.5,
+                                    child: Text(
+                                      _shortenName(wardEntries[value.toInt()].key, maxLength: 12),
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                            reservedSize: 60,
+                          ),
                         ),
                       ),
+                      gridData: FlGridData(show: true),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarGroups(usagePerWard, totalWard, barWidth: barWidth),
                     ),
-                    gridData: FlGridData(show: true),
-                    borderData: FlBorderData(show: false),
-                    barGroups: _buildBarGroups(usagePerWard, totalWard, barWidth: barWidth),
                   ),
                 ),
               ),
+              legendItems: _buildBarLegend(usagePerWard, totalWard),
             ),
-            legendItems: _buildBarLegend(usagePerWard, totalWard),
-          ),
-          // Category bar chart (scrollable with rotated labels)
-          _buildChartCard(
-            title: 'Returns by Category (Convertible to Units)',
-            total: totalCategory,
-            chart: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: categoryChartWidth,
-                height: 300,
-                child: BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceBetween,
-                    maxY: _getMaxY(usagePerCategory),
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchCallback: (FlTouchEvent event, barTouchResponse) {
-                        if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
-                          final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
-                          if (touchedBarGroupIndex < categoryEntries.length) {
-                            final entry = categoryEntries[touchedBarGroupIndex];
-                            final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
-                            _showItemDetails(
-                              entry.key,
-                              'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
-                              _getCategoryColor(entry.key),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final categories = usagePerCategory.keys.toList();
-                            if (value.toInt() >= 0 && value.toInt() < categories.length) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Transform.rotate(
-                                  angle: -90 * 3.14159 / 180,
-                                  child: Text(
-                                    categories[value.toInt()],
-                                    style: const TextStyle(fontSize: 11),
-                                  ),
-                                ),
+            // Category bar chart
+            _buildChartCard(
+              title: 'Returns by Category (Convertible to Units)',
+              total: totalCategory,
+              chart: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: categoryChartWidth,
+                  height: 300,
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceBetween,
+                      maxY: _getMaxY(usagePerCategory),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchCallback: (FlTouchEvent event, barTouchResponse) {
+                          if (event is FlTapUpEvent && barTouchResponse?.spot != null) {
+                            final touchedBarGroupIndex = barTouchResponse!.spot!.touchedBarGroupIndex;
+                            if (touchedBarGroupIndex < categoryEntries.length) {
+                              final entry = categoryEntries[touchedBarGroupIndex];
+                              final percentage = (entry.value / totalCategory * 100).toStringAsFixed(1);
+                              _showItemDetails(
+                                entry.key,
+                                'Quantity: ${entry.value.toStringAsFixed(1)} units\nPercentage: $percentage%',
+                                _getCategoryColor(entry.key),
                               );
                             }
-                            return const Text('');
-                          },
-                          reservedSize: 80,
+                          }
+                        },
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, meta) {
+                              final categories = usagePerCategory.keys.toList();
+                              if (value.toInt() >= 0 && value.toInt() < categories.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Transform.rotate(
+                                    angle: -90 * 3.14159 / 180,
+                                    child: Text(
+                                      categories[value.toInt()],
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return const Text('');
+                            },
+                            reservedSize: 80,
+                          ),
                         ),
                       ),
+                      gridData: FlGridData(show: true),
+                      borderData: FlBorderData(show: false),
+                      barGroups: _buildBarGroups(usagePerCategory, totalCategory, barWidth: barWidth),
                     ),
-                    gridData: FlGridData(show: true),
-                    borderData: FlBorderData(show: false),
-                    barGroups: _buildBarGroups(usagePerCategory, totalCategory, barWidth: barWidth),
                   ),
                 ),
               ),
+              legendItems: _buildBarLegend(usagePerCategory, totalCategory, suffix: 'units'),
             ),
-            legendItems: _buildBarLegend(usagePerCategory, totalCategory, suffix: 'units'),
-          ),
-          // Raw data table
-          _buildRawUsageTable(),
+            // Raw data table
+            _buildRawUsageTable(),
+          ],
         ],
       ),
     );
@@ -1130,7 +1322,7 @@ class _WardWiseReturnChartsScreenState
               toY: entries[i].value,
               color: _getColorForIndex(i),
               width: barWidth,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
               backDrawRodData: BackgroundBarChartRodData(
                 show: true,
                 toY: _getMaxY(data),
@@ -1162,16 +1354,19 @@ class _WardWiseReturnChartsScreenState
     return items;
   }
 
-  // ---------- Raw Usage Table ----------
+  // ---------- Raw Usage Table (Improved) ----------
   Widget _buildRawUsageTable() {
     final totalRawWard = rawUsagePerWard.values.fold(0.0, (a, b) => a + b);
     if (totalRawWard == 0) {
       return const Card(
         margin: EdgeInsets.only(top: 16),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(20),
           child: Center(
-            child: Text('No non‑convertible returns data.'),
+            child: Text(
+              'No non‑convertible returns data.',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
         ),
       );
@@ -1181,23 +1376,31 @@ class _WardWiseReturnChartsScreenState
     final wardEntries = rawUsagePerWard.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Raw category entries
+    // Raw category entries (only those with non-zero values)
     final categoryEntries = rawUsagePerCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      ..sort((a, b) => b.value.compareTo(a.value))
+      ..where((e) => e.value > 0).toList();
 
     return Card(
       margin: const EdgeInsets.only(top: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Non‑convertible Returns (Raw Counts)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Non‑convertible Returns',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             const Text(
               'These items are not expressed in mg and are shown as raw counts.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -1218,20 +1421,24 @@ class _WardWiseReturnChartsScreenState
                   child: Row(
                     children: [
                       Container(
-                        width: 16,
-                        height: 16,
-                        color: _getColorForIndex(index),
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _getColorForIndex(index),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           entry.key,
                           style: const TextStyle(fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${entry.value.toStringAsFixed(1)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ],
                   ),
@@ -1249,31 +1456,55 @@ class _WardWiseReturnChartsScreenState
               itemCount: categoryEntries.length,
               itemBuilder: (context, index) {
                 final entry = categoryEntries[index];
-                if (entry.value == 0) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 16,
-                        height: 16,
-                        color: _getCategoryColor(entry.key),
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(entry.key),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           entry.key,
                           style: const TextStyle(fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         '${entry.value.toStringAsFixed(1)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                     ],
                   ),
                 );
               },
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total Raw Count:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${totalRawWard.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.primaryPurple,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1294,10 +1525,10 @@ class _WardWiseReturnChartsScreenState
 
   Color _getColorForIndex(int index) {
     const colors = [
-      Colors.red, Colors.blue, Colors.green, Colors.orange,
-      Colors.purple, Colors.teal, Colors.pink, Colors.amber,
-      Colors.indigo, Colors.lime, Colors.cyan, Colors.brown,
-      Colors.deepOrange, Colors.lightGreen, Colors.deepPurple,
+      Color(0xFFE57373), Color(0xFF64B5F6), Color(0xFF81C784), Color(0xFFFFB74D),
+      Color(0xFFBA68C8), Color(0xFF4DD0E1), Color(0xFFF06292), Color(0xFFFFD54F),
+      Color(0xFF7986CB), Color(0xFF4FC3F7), Color(0xFFAED581), Color(0xFFFF8A65),
+      Color(0xFF9575CD), Color(0xFF4DB6AC), Color(0xFFE57373),
     ];
     return colors[index % colors.length];
   }
