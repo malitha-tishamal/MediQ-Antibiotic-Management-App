@@ -5,60 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../main.dart'; // AppColors
 import 'signup_page.dart';
 import '../core/dashboard_wrapper.dart';
-import 'forgot_password_page.dart'; // Import the new page
-
-class LoginThrottleManager {
-  static const Map<int, int> _lockoutDurations = {
-    3: 1,
-    4: 2,
-    5: 5,
-    6: 10,
-  };
-
-  static int _failedAttempts = 0;
-  static DateTime? _lockoutEndTime;
-
-  static int get failedAttempts => _failedAttempts;
-  static DateTime? get lockoutEndTime => _lockoutEndTime;
-
-  static void recordFailedAttempt() {
-    _failedAttempts++;
-    int durationMinutes = 0;
-
-    if (_failedAttempts >= 7) {
-      durationMinutes = 60;
-    } else if (_lockoutDurations.containsKey(_failedAttempts)) {
-      durationMinutes = _lockoutDurations[_failedAttempts]!;
-    }
-
-    if (durationMinutes > 0) {
-      _lockoutEndTime = DateTime.now().add(Duration(minutes: durationMinutes));
-    }
-  }
-
-  static void resetAttempts() {
-    _failedAttempts = 0;
-    _lockoutEndTime = null;
-  }
-
-  static String? getLockoutMessage() {
-    if (_lockoutEndTime != null && _lockoutEndTime!.isBefore(DateTime.now())) {
-      _lockoutEndTime = null;
-      return null;
-    }
-    if (_lockoutEndTime != null) {
-      final duration = _lockoutEndTime!.difference(DateTime.now());
-      String remaining = '';
-      if (duration.inHours > 0) remaining += '${duration.inHours}h ';
-      final minutes = duration.inMinutes.remainder(60);
-      final seconds = duration.inSeconds.remainder(60);
-      remaining += '${minutes.toString().padLeft(2, '0')}m ';
-      remaining += '${seconds.toString().padLeft(2, '0')}s';
-      return 'Too many failed attempts. Try again in $remaining.';
-    }
-    return null;
-  }
-}
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -77,41 +24,178 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
-
   Timer? _lockoutTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    _startLockoutTimer();
+  // Helper to get lockout duration in seconds based on failed attempts
+  int _getLockoutDuration(int attempts) {
+    switch (attempts) {
+      case 3:
+        return 30;
+      case 4:
+        return 60;
+      case 5:
+        return 180;
+      case 6:
+        return 600;
+      case 7:
+        return 1800;
+      default:
+        return 0;
+    }
   }
 
-  @override
-  void dispose() {
-    _lockoutTimer?.cancel();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  // Fetch user document by email (requires an index on email)
+  Future<DocumentSnapshot?> _getUserDocByEmail(String email) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching user by email: $e');
+      return null;
+    }
+  }
+
+  // Update failed attempts and lockout state for the user
+  Future<void> _recordFailedAttempt(String email) async {
+    final userDoc = await _getUserDocByEmail(email);
+    if (userDoc == null) return; // No user document, cannot record
+
+    final data = userDoc.data() as Map<String, dynamic>;
+    int attempts = (data['failedLoginAttempts'] ?? 0) + 1;
+    String status = data['status'] ?? 'Approved';
+    Timestamp? lockoutUntil = data['lockoutUntil'];
+
+    // If already locked, do nothing (should have been caught earlier)
+    if (status == 'Locked') return;
+
+    // Determine new state
+    if (attempts >= 8) {
+      // Account lock
+      status = 'Locked';
+      lockoutUntil = null;
+    } else {
+      final duration = _getLockoutDuration(attempts);
+      if (duration > 0) {
+        lockoutUntil = Timestamp.fromDate(
+          DateTime.now().add(Duration(seconds: duration)),
+        );
+      } else {
+        lockoutUntil = null;
+      }
+    }
+
+    await userDoc.reference.update({
+      'failedLoginAttempts': attempts,
+      'lockoutUntil': lockoutUntil,
+      'status': status,
+    });
+  }
+
+  // Reset attempts on successful login
+  Future<void> _resetFailedAttempts(String email) async {
+    final userDoc = await _getUserDocByEmail(email);
+    if (userDoc == null) return;
+    await userDoc.reference.update({
+      'failedLoginAttempts': 0,
+      'lockoutUntil': null,
+    });
+  }
+
+  // Check if the user is locked out (either account locked or temporary lockout)
+  Future<({bool isLocked, String? message, DateTime? lockoutEnd})> _checkLockoutStatus(
+      String email) async {
+    final userDoc = await _getUserDocByEmail(email);
+    if (userDoc == null) {
+      return (isLocked: false, message: null, lockoutEnd: null);
+    }
+
+    final data = userDoc.data() as Map<String, dynamic>;
+    final status = data['status'] as String?;
+    final lockoutUntil = data['lockoutUntil'] as Timestamp?;
+
+    // Account permanently locked
+    if (status == 'Locked') {
+      return (
+        isLocked: true,
+        message: 'Your account has been locked. Please contact admin for approval.',
+        lockoutEnd: null
+      );
+    }
+
+    // Temporary lockout
+    if (lockoutUntil != null) {
+      final lockoutDateTime = lockoutUntil.toDate();
+      if (lockoutDateTime.isAfter(DateTime.now())) {
+        return (
+          isLocked: true,
+          message: 'Too many failed attempts. Try again later.',
+          lockoutEnd: lockoutDateTime
+        );
+      } else {
+        // Lockout expired, we could reset the lockout field, but leave attempts count for next failure
+        await userDoc.reference.update({'lockoutUntil': null});
+      }
+    }
+
+    return (isLocked: false, message: null, lockoutEnd: null);
   }
 
   void _startLockoutTimer() {
     _lockoutTimer?.cancel();
-    if (LoginThrottleManager.getLockoutMessage() != null) {
+    if (_errorMessage != null && _errorMessage!.contains('Try again in')) {
       _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        final newLockoutMessage = LoginThrottleManager.getLockoutMessage();
-        if (newLockoutMessage == null) timer.cancel();
-        if (mounted) setState(() => _errorMessage = newLockoutMessage);
+        // Re‑evaluate lockout status to update remaining time
+        _updateLockoutMessage();
       });
     }
   }
 
-  void _handleLogin() async {
-    final lockoutMessage = LoginThrottleManager.getLockoutMessage();
-    if (lockoutMessage != null) {
-      setState(() => _errorMessage = lockoutMessage);
-      return;
-    }
+  Future<void> _updateLockoutMessage() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
 
+    final status = await _checkLockoutStatus(email);
+    if (status.isLocked && status.lockoutEnd != null) {
+      final remaining = status.lockoutEnd!.difference(DateTime.now());
+      if (remaining.isNegative) {
+        // Lockout expired, clear message
+        if (mounted) setState(() => _errorMessage = null);
+        _lockoutTimer?.cancel();
+      } else {
+        String formatted = '';
+        if (remaining.inHours > 0) formatted += '${remaining.inHours}h ';
+        final minutes = remaining.inMinutes.remainder(60);
+        final seconds = remaining.inSeconds.remainder(60);
+        formatted += '${minutes.toString().padLeft(2, '0')}m ';
+        formatted += '${seconds.toString().padLeft(2, '0')}s';
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Too many failed attempts. Try again in $formatted.';
+          });
+        }
+      }
+    } else if (status.isLocked && status.lockoutEnd == null) {
+      if (mounted) setState(() => _errorMessage = status.message);
+      _lockoutTimer?.cancel();
+    } else {
+      // No lockout, clear message if it was a lockout message
+      if (_errorMessage != null &&
+          (_errorMessage!.contains('Try again in') ||
+              _errorMessage!.contains('account has been locked'))) {
+        if (mounted) setState(() => _errorMessage = null);
+      }
+      _lockoutTimer?.cancel();
+    }
+  }
+
+  Future<void> _handleLogin() async {
     setState(() {
       _errorMessage = null;
       _isLoading = true;
@@ -128,6 +212,17 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    // Check lockout status before attempting sign-in
+    final lockoutStatus = await _checkLockoutStatus(email);
+    if (lockoutStatus.isLocked) {
+      setState(() {
+        _errorMessage = lockoutStatus.message;
+        _isLoading = false;
+      });
+      if (lockoutStatus.lockoutEnd != null) _startLockoutTimer();
+      return;
+    }
+
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -137,6 +232,7 @@ class _LoginPageState extends State<LoginPage> {
       final user = userCredential.user;
       if (user == null) throw Exception("User object is null.");
 
+      // Fetch user document (by UID) to check status again (safety)
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (!userDoc.exists) {
         await _auth.signOut();
@@ -156,7 +252,9 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      LoginThrottleManager.resetAttempts();
+      // Reset failed attempts on successful login
+      await _resetFailedAttempts(email);
+
       _lockoutTimer?.cancel();
 
       if (mounted) {
@@ -168,31 +266,59 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      LoginThrottleManager.recordFailedAttempt();
-
-      String message;
-      if (e.code == 'user-not-found' ||
-          e.code == 'wrong-password' ||
-          e.code == 'invalid-credential') {
-        message = 'Invalid email or password.';
+      // Record failed attempt only for wrong password or user not found (which indicates existing user)
+      if (e.code == 'wrong-password') {
+        await _recordFailedAttempt(email);
+        // Re‑check lockout after recording
+        final newLockout = await _checkLockoutStatus(email);
+        if (newLockout.isLocked) {
+          setState(() {
+            _errorMessage = newLockout.message;
+          });
+          if (newLockout.lockoutEnd != null) _startLockoutTimer();
+        } else {
+          setState(() {
+            _errorMessage = 'Invalid email or password.';
+          });
+        }
+      } else if (e.code == 'user-not-found') {
+        // Email doesn't exist in Auth, likely not registered. Don't record attempt.
+        setState(() {
+          _errorMessage = 'Invalid email or password.';
+        });
       } else if (e.code == 'invalid-email') {
-        message = 'The email address is not valid.';
+        setState(() {
+          _errorMessage = 'The email address is not valid.';
+        });
       } else {
-        message = 'Login Error: ${e.message}';
+        setState(() {
+          _errorMessage = 'Login Error: ${e.message}';
+        });
       }
-
-      final newLockoutMessage = LoginThrottleManager.getLockoutMessage();
-      if (newLockoutMessage != null) {
-        message = newLockoutMessage;
-        _startLockoutTimer();
-      }
-
-      setState(() => _errorMessage = message);
     } catch (e) {
-      setState(() => _errorMessage = 'An unexpected error occurred.');
+      setState(() {
+        _errorMessage = 'An unexpected error occurred.';
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Check lockout status on initial load (if email already entered)
+    _emailController.addListener(() {
+      // Optional: you could call _updateLockoutMessage here to update UI as user types
+    });
+  }
+
+  @override
+  void dispose() {
+    _lockoutTimer?.cancel();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -277,10 +403,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 20),
                     _buildGradientButton(
                       text: _isLoading ? 'Logging In...' : 'Login',
-                      onPressed:
-                          (_isLoading || LoginThrottleManager.getLockoutMessage() != null)
-                              ? null
-                              : _handleLogin,
+                      onPressed: _isLoading ? null : _handleLogin,
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -291,7 +414,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(fontSize: 14, color: AppColors.darkText),
                         ),
                         GestureDetector(
-                          onTap: _isLoading || LoginThrottleManager.getLockoutMessage() != null
+                          onTap: _isLoading
                               ? null
                               : () {
                                   Navigator.push(
@@ -400,7 +523,6 @@ class _LoginPageState extends State<LoginPage> {
         TextField(
           controller: controller,
           keyboardType: keyboardType,
-          readOnly: LoginThrottleManager.getLockoutMessage() != null,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
@@ -451,7 +573,6 @@ class _LoginPageState extends State<LoginPage> {
         TextField(
           controller: _passwordController,
           obscureText: !_isPasswordVisible,
-          readOnly: LoginThrottleManager.getLockoutMessage() != null,
           decoration: InputDecoration(
             hintText: '*********',
             hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
@@ -485,9 +606,7 @@ class _LoginPageState extends State<LoginPage> {
                 color: AppColors.primaryPurple,
                 size: 20,
               ),
-              onPressed: LoginThrottleManager.getLockoutMessage() != null
-                  ? null
-                  : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+              onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
             ),
             contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           ),
