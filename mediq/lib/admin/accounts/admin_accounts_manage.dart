@@ -16,13 +16,11 @@ class AppColors {
   static const Color warningOrange = Color(0xFFFF6D00);
   static const Color inputBorder = Color(0xFFE0E0E0);
   
-  // Header gradient colors
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
   static const Color headerGradientEnd = Color(0xFFF7FAFF);  
   static const Color headerTextDark = Color(0xFF333333);
 }
 
-// Enum for filtering users
 enum UserStatusFilter { all, approved, disabled, pending }
 
 class AdminAccountsManagePage extends StatelessWidget {
@@ -48,7 +46,6 @@ class _UserListScreenState extends State<UserListScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   UserStatusFilter _currentFilter = UserStatusFilter.all;
 
-  // Search functionality
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -59,7 +56,6 @@ class _UserListScreenState extends State<UserListScreen> {
   bool _isUserLoading = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ---------- Helper for consistent input decoration ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -135,18 +131,15 @@ class _UserListScreenState extends State<UserListScreen> {
 
   Future<void> _fetchCurrentUserDetails() async {
     setState(() => _isUserLoading = true);
-
     final user = _auth.currentUser;
     _currentUserId = user?.uid;
-
     if (user != null) {
       try {
         final doc = await _userCollection.doc(user.uid).get();
         if (doc.exists) {
           final data = doc.data() as Map<String, dynamic>;
           setState(() {
-            _currentUserName =
-                data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
             _currentUserRole = data['role'] ?? 'Unassigned';
             _profileImageUrl = data['profileImageUrl'];
           });
@@ -197,80 +190,107 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-  // Header
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+// ---------- UPDATED HEADER with 80x80 profile picture and balanced user info ----------
+Widget _buildHeader(BuildContext context) {
+  return Container(
+    padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.arrow_back,
-                    color: AppColors.headerTextDark, size: 24),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Main row: back button, user info (centered), profile picture
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Back button (left)
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.arrow_back,
+                  color: AppColors.headerTextDark, size: 24),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const Spacer(),
+            // User info (centered, vertically aligned)
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _currentUserName,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 const Text(
                   'Logged in as: Administrator',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.headerTextDark),
+                    fontSize: 12,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
               ],
             ),
+            const Spacer(),
+            // Profile picture (right side) - 80x80
+            _buildProfileAvatar(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Title (below the row)
+        Text(
+          'Manage ${widget.role} Accounts',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.headerTextDark,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Manage ${widget.role} Accounts',
-            style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
-          ),
-        ],
-      ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Profile avatar with 80x80 size (radius 40)
+Widget _buildProfileAvatar() {
+  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(_profileImageUrl!),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = null);
+      },
+    );
+  } else {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
     );
   }
+}
 
-  // Search bar
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -297,7 +317,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // Compact filter chips row
   Widget _buildModernFilterChips() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -393,16 +412,12 @@ class _UserListScreenState extends State<UserListScreen> {
                         return _buildModernErrorState(snapshot.error.toString());
                       }
                       final documents = snapshot.data?.docs ?? [];
-
-                      // Apply filters: status + search
                       final filteredDocs = documents.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        
                         if (_currentFilter != UserStatusFilter.all) {
                           final status = data['status'] ?? '';
                           if (status != _getFilterStatusValue(_currentFilter)) return false;
                         }
-                        
                         if (_searchQuery.isNotEmpty) {
                           final fullName = (data['fullName'] ?? '').toLowerCase();
                           final email = (data['email'] ?? '').toLowerCase();
@@ -417,7 +432,6 @@ class _UserListScreenState extends State<UserListScreen> {
                         }
                         return true;
                       }).toList();
-
                       if (filteredDocs.isEmpty) {
                         return _buildModernEmptyState();
                       }
@@ -438,7 +452,6 @@ class _UserListScreenState extends State<UserListScreen> {
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -460,7 +473,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // ----- Updated User Card with larger avatar and horizontal action buttons -----
   Widget _buildModernUserCard(String userId, Map<String, dynamic> data) {
     final fullName = data['fullName'] ?? 'Malitha Tishamal';
     final email = data['email'] ?? 'malithatishamal@gmail.com';
@@ -471,9 +483,7 @@ class _UserListScreenState extends State<UserListScreen> {
     final createdAt = data['createdAt'] != null
         ? (data['createdAt'] as Timestamp).toDate()
         : DateTime.now();
-
     final formattedDate = DateFormat('MMM dd, yyyy – HH:mm').format(createdAt);
-
     Color statusColor;
     String statusText;
     IconData statusIcon;
@@ -493,9 +503,7 @@ class _UserListScreenState extends State<UserListScreen> {
         statusText = 'Pending';
         statusIcon = Icons.pending;
     }
-
     final bool isCurrentUser = userId == _currentUserId;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -531,11 +539,9 @@ class _UserListScreenState extends State<UserListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // User Info Section
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Larger profile avatar (60x60)
                     Container(
                       width: 60,
                       height: 60,
@@ -576,7 +582,6 @@ class _UserListScreenState extends State<UserListScreen> {
                           : null,
                     ),
                     const SizedBox(width: 12),
-                    // User Details
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +598,6 @@ class _UserListScreenState extends State<UserListScreen> {
                                   ),
                                 ),
                               ),
-                              // Edit button with modern container
                               Container(
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryPurple.withOpacity(0.1),
@@ -607,7 +611,6 @@ class _UserListScreenState extends State<UserListScreen> {
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              // Status chip with border
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
@@ -668,7 +671,6 @@ class _UserListScreenState extends State<UserListScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Horizontal Action Buttons
                 Row(
                   children: [
                     Expanded(
@@ -732,7 +734,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // Horizontal action button
   Widget _buildModernActionButton(
     String label,
     Color color,
@@ -780,14 +781,12 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // Modern loading state
   Widget _buildModernLoadingState() {
     return const Center(
       child: CircularProgressIndicator(color: AppColors.primaryPurple),
     );
   }
 
-  // Modern error state
   Widget _buildModernErrorState(String error) {
     return Center(
       child: Padding(
@@ -806,7 +805,6 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // Modern empty state
   Widget _buildModernEmptyState() {
     return Center(
       child: Column(
@@ -835,7 +833,6 @@ class _UserListScreenState extends State<UserListScreen> {
     final mobileController = TextEditingController(text: currentMobile);
     final nicController = TextEditingController(text: currentNic);
     final formKey = GlobalKey<FormState>();
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
