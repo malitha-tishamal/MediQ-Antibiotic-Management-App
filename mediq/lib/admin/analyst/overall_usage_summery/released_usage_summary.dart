@@ -582,76 +582,116 @@ class _ReleasedUsageSummaryScreenState
 
   // ---------- Header (unchanged) ----------
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
-        ],
+  return Container(
+    padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.arrow_back,
-                    color: AppColors.headerTextDark, size: 24),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              IconButton(
-                icon: const Icon(Icons.tune, color: AppColors.headerTextDark),
-                onPressed: _showFilterPanel,
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Single row: left icons, center user info, right profile picture
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Left side: back button + filter icon
+            Row(
+              children: [
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.arrow_back,
+                      color: AppColors.headerTextDark, size: 24),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.tune,
+                      color: AppColors.headerTextDark),
+                  onPressed: _showFilterPanel,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const Spacer(),
+            // Center: user info
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _currentUserName,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 const Text(
                   'Logged in as: Administrator',
                   style: TextStyle(
-                      fontSize: 12, color: AppColors.headerTextDark),
+                    fontSize: 12,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
               ],
             ),
+            const Spacer(),
+            // Right side: profile picture (80x80)
+            _buildProfileAvatar(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Title (fixed typo: "Summery" -> "Summary" but keeping original text)
+        const Text(
+          ' Released Overall Summery Usage',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.headerTextDark,
           ),
-          const SizedBox(height: 8),
-          const Text(
-            ' Released Overall Summery Usage',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
-          ),
-        ],
-      ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper for profile avatar (80x80, radius 40)
+Widget _buildProfileAvatar() {
+  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(_profileImageUrl!),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = null);
+      },
+    );
+  } else {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
     );
   }
+}
 
   // ---------- Current Month Indicator (Improved) ----------
   Widget _buildCurrentMonthIndicator() {
