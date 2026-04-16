@@ -187,7 +187,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
           ),
           const SizedBox(height: 30),
 
-          // Profile Section (නොවෙනස්ව)
+          // Profile Section 
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(18),
@@ -253,7 +253,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
           _buildSectionDivider(),
           const SizedBox(height: 8),
 
-          // ----- MENU ITEMS (icon වටේ background ඉවත් කළා) -----
+          // ----- MENU ITEMS 
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -279,7 +279,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.people_alt_rounded,
                   label: "Accounts Management",
-                  description: "User accounts & permissions",
+                  description: "accounts & permissions",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -292,7 +292,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.medical_services_rounded,
                   label: "Antibiotics Management",
-                  description: "Manage antibiotics inventory",
+                  description: "Manage inventory",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
