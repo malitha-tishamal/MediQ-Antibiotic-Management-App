@@ -6,10 +6,11 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'core/firebase_options.dart';
 
-// Import your screens (adjust paths as needed)
-import '../auth/firebase_load_check_screen.dart';
-import '../auth/login_page.dart';
-import '../core/dashboard_wrapper.dart';
+// Import screens
+import 'auth/firebase_load_check_screen.dart';
+import 'auth/login_page.dart';
+import 'auth/simple_preload_screen.dart';   // 👈 new 1‑second loading screen
+import 'core/dashboard_wrapper.dart';
 
 // ------------------- App Colors -------------------
 class AppColors {
@@ -37,11 +38,9 @@ class AppColors {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize timezone (required for tz.local)
   tz_data.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
-  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -62,7 +61,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.lightBackground,
         useMaterial3: true,
       ),
-      // 👇 Directly use AuthWrapper – it handles login persistence
       home: const AuthWrapper(),
     );
   }
@@ -77,17 +75,17 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading screen while checking auth state
+        // Show initial loading while checking Firebase auth
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const FirebaseLoadCheckScreen();
         }
 
-        // User is signed in → go to dashboard wrapper (checks role)
+        // User is signed in → show 1‑second loading animation, then dashboard
         if (snapshot.hasData && snapshot.data != null) {
-          return const DashboardWrapper();
+          return const SimplePreloadScreen();  // 👈 1‑second animation
         }
 
-        // No user → go to login page
+        // No user → login page
         return const LoginPage();
       },
     );
