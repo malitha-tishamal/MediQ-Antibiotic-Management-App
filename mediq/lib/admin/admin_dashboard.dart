@@ -271,109 +271,103 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildDashboardHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
+  return Container(
+    padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _currentUserName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Logged in as: Administrator',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 25),
-          const Text(
-            'Administrative Dashboard',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Top row: menu icon (left), user info (center), profile picture (right)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Menu button (left)
+            IconButton(
+              icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
+            const Spacer(),
+            // User info (centered)
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _currentUserName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.headerTextDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Logged in as: Administrator',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.headerTextDark,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            // Profile picture (right) - 80x80 (radius 40)
+            _buildDashboardProfileAvatar(),
+          ],
+        ),
+        const SizedBox(height: 20),
+        // Dashboard title
+        const Text(
+          'Administrative Dashboard',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.headerTextDark,
           ),
-        ],
-      ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper for the dashboard profile avatar (80x80)
+Widget _buildDashboardProfileAvatar() {
+  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(_profileImageUrl!),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = null);
+      },
+    );
+  } else {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
     );
   }
+}
 
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
