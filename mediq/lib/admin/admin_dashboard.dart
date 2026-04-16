@@ -1,10 +1,10 @@
-// admin_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;   // ✅ timezone data import
 
 import '../auth/login_page.dart';
 import 'admin_drawer.dart';
@@ -94,7 +94,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   // End of current month in Sri Lanka (last day, 23:59:59.999) as UTC
   DateTime _getUtcEndOfCurrentMonth() {
     final startUtc = _getUtcStartOfCurrentMonth();
-    // Get the first day of next month in local time, then convert to UTC
     final startLocal = tz.TZDateTime.from(startUtc, tz.local);
     final nextMonth = DateTime(startLocal.year, startLocal.month + 1, 1);
     final utcNextMonthStart = tz.TZDateTime.from(nextMonth, tz.local).toUtc();
@@ -103,6 +102,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   void initState() {
+    // ✅ Initialize timezone for Sri Lanka (required for tz.local)
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
+
     super.initState();
     _currentUserName = widget.userName;
     _currentUserRole = widget.userRole;
