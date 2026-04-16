@@ -55,17 +55,10 @@ class _SignUpPageState extends State<SignUpPage> {
       String assetPath = _selectedRole == UserRole.Admin
           ? 'assets/admin-default.jpg'
           : 'assets/pharmacist-default.jpg';
-
-      debugPrint('🖼️ Loading default profile picture from: $assetPath');
-
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
-      final String base64String = base64Encode(bytes);
-      
-      debugPrint('✅ Successfully loaded default profile picture for ${_selectedRole.name}');
-      return base64String;
+      return base64Encode(bytes);
     } catch (e) {
-      debugPrint('❌ Failed to load default profile picture: $e');
       return '';
     }
   }
@@ -79,7 +72,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _handleSignUp() async {
     FocusManager.instance.primaryFocus?.unfocus();
-
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
@@ -90,9 +82,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final String? defaultProfileImage = await _getDefaultProfilePicture();
-      
-      final UserCredential userCredential = 
-          await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: _email.trim(),
         password: _password,
       );
@@ -110,10 +100,7 @@ class _SignUpPageState extends State<SignUpPage> {
       };
 
       await _firestore.collection('users').doc(userCredential.user!.uid).set(userData);
-
-      if (mounted) {
-        await _showSuccessDialog();
-      }
+      if (mounted) await _showSuccessDialog();
     } on FirebaseAuthException catch (e) {
       _handleAuthError(e);
     } catch (e) {
@@ -133,7 +120,7 @@ class _SignUpPageState extends State<SignUpPage> {
       case 'invalid-email':
         message = 'The email address is not valid.';
       case 'operation-not-allowed':
-        message = 'Email/password accounts are not enabled. Please contact support.';
+        message = 'Email/password accounts are not enabled.';
       case 'network-request-failed':
         message = 'Network error. Please check your internet connection.';
       default:
@@ -143,11 +130,7 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _handleGenericError(dynamic e) {
-    if (mounted) {
-      setState(() {
-        _errorMessage = 'An unexpected error occurred. Please try again.';
-      });
-    }
+    if (mounted) setState(() => _errorMessage = 'An unexpected error occurred. Please try again.');
     debugPrint('SignUp Error: $e');
   }
 
@@ -162,13 +145,7 @@ class _SignUpPageState extends State<SignUpPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
             ),
             padding: const EdgeInsets.all(30),
             child: Column(
@@ -176,18 +153,13 @@ class _SignUpPageState extends State<SignUpPage> {
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: _selectedRole == UserRole.Admin 
-                        ? Colors.purple.withOpacity(0.1)
-                        : Colors.blue.withOpacity(0.1),
+                    color: _selectedRole == UserRole.Admin ? Colors.purple.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    _selectedRole == UserRole.Admin 
-                        ? Icons.admin_panel_settings 
-                        : Icons.medical_services,
+                    _selectedRole == UserRole.Admin ? Icons.admin_panel_settings : Icons.medical_services,
                     color: _selectedRole == UserRole.Admin ? Colors.purple : Colors.blue,
                     size: 60,
                   ),
@@ -196,18 +168,11 @@ class _SignUpPageState extends State<SignUpPage> {
                 Text(
                   '${_selectedRole.name} Account Created\nSuccessfully!',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkText,
-                    height: 1.3,
-                  ),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkText, height: 1.3),
                 ),
                 const SizedBox(height: 15),
                 Text(
-                  _selectedRole == UserRole.Admin 
-                      ? 'Your admin account is pending approval.'
-                      : 'Your pharmacist account is pending approval.',
+                  _selectedRole == UserRole.Admin ? 'Your admin account is pending approval.' : 'Your pharmacist account is pending approval.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
@@ -218,22 +183,13 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginPage()),
-                        (Route<dynamic> route) => false,
-                      );
+                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryPurple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
-                      'Continue to Login',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
+                    child: const Text('Continue to Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -244,7 +200,7 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // --- Validation methods ---
+  // --- Validators ---
   String? _validateNIC(String? value) {
     if (value == null || value.isEmpty) return 'NIC number is required';
     final nic = value.trim().toUpperCase();
@@ -269,176 +225,177 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
-  // --- Modern Input Decoration ---
-  InputDecoration _inputDecoration({
+  // --- Compact input field (reduced height) ---
+  Widget _buildInputField({
     required String label,
-    required IconData prefixIcon,
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    bool obscureText = false,
     Widget? suffixIcon,
-    String? hintText,
-    bool isEnabled = true,
+    List<TextInputFormatter>? inputFormatters,
+    bool enabled = true,
   }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hintText,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      labelStyle: TextStyle(
-        color: isEnabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-      filled: true,
-      fillColor: isEnabled ? Colors.white : Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 2.0),
-      ),
-      prefixIcon: Container(
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Icon(
-            prefixIcon,
-            color: isEnabled ? AppColors.primaryPurple : Colors.grey.shade400,
-            size: 20,
-          ),
-        ),
-      ),
-      suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-    );
-  }
-
-  // --- Role Dropdown (modernized) ---
-  Widget _buildRoleDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Select Role',
-          style: TextStyle(
-            color: AppColors.darkText,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.darkText, fontSize: 13, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.inputBorder, width: 1.5),
-            color: _isLoading ? Colors.grey.shade100 : Colors.white,
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButtonFormField<UserRole>(
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-              initialValue: _selectedRole,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
-              style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
-              dropdownColor: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              items: UserRole.values.map((UserRole role) {
-                return DropdownMenuItem<UserRole>(
-                  value: role,
-                  child: Row(
-                    children: [
-                      Icon(
-                        role == UserRole.Admin ? Icons.admin_panel_settings : Icons.medical_services,
-                        color: AppColors.primaryPurple,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(role.name, style: const TextStyle(fontSize: 15)),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: _isLoading ? null : (UserRole? newValue) {
-                if (newValue != null) setState(() => _selectedRole = newValue);
-              },
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            enabled: enabled,
+            inputFormatters: inputFormatters,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 13),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
+              prefixIcon: Icon(icon, color: AppColors.primaryPurple, size: 18),
+              suffixIcon: suffixIcon,
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+                borderSide: BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
             ),
+            validator: validator,
+            onSaved: (value) {},
           ),
         ),
       ],
     );
   }
 
-  // --- Gradient Button (same as before) ---
-  Widget _buildGradientButton({
-    required String text,
-    required VoidCallback? onPressed,
-    bool isLoading = false,
-  }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      height: 52,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: LinearGradient(
-          colors: onPressed == null || isLoading
-              ? [Colors.grey.shade400, Colors.grey.shade600]
-              : const [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  // --- Role Dropdown (compact) ---
+  Widget _buildRoleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select Role',
+          style: TextStyle(color: AppColors.darkText, fontSize: 13, fontWeight: FontWeight.w500),
         ),
-        boxShadow: onPressed == null || isLoading
-            ? []
-            : [
-                BoxShadow(
-                  color: AppColors.buttonGradientEnd.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                  spreadRadius: 1,
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            color: _isLoading ? Colors.grey.shade100 : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<UserRole>(
+            value: _selectedRole,
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple, size: 18),
+            style: const TextStyle(color: AppColors.darkText, fontSize: 14, fontWeight: FontWeight.w500),
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+                borderSide: BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+            ),
+            items: UserRole.values.map((UserRole role) {
+              return DropdownMenuItem<UserRole>(
+                value: role,
+                child: Row(
+                  children: [
+                    Icon(
+                      role == UserRole.Admin ? Icons.admin_panel_settings : Icons.medical_services,
+                      color: AppColors.primaryPurple,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(role.name, style: const TextStyle(fontSize: 14)),
+                  ],
                 ),
-              ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(15),
-          child: Center(
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  )
-                : Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+              );
+            }).toList(),
+            onChanged: _isLoading ? null : (UserRole? newValue) {
+              if (newValue != null) setState(() => _selectedRole = newValue);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Gradient Button (compact) ---
+  Widget _buildGradientButton({required String text, required VoidCallback? onPressed, bool isLoading = false}) {
+    final bool isDisabled = onPressed == null;
+    return Opacity(
+      opacity: isDisabled ? 0.6 : 1.0,
+      child: Container(
+        width: double.infinity,
+        height: 46,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          gradient: isDisabled
+              ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade600])
+              : const LinearGradient(
+                  colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+          boxShadow: isDisabled
+              ? []
+              : [BoxShadow(color: AppColors.buttonGradientEnd.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(10),
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)))
+                  : Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
           ),
         ),
       ),
@@ -456,74 +413,61 @@ class _SignUpPageState extends State<SignUpPage> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               children: [
-                // Scrollable content (form)
+                // Minimal header (back button only)
+                SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.darkText, size: 18),
+                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const Spacer(),
+                      const SizedBox(width: 40), // balance the back button
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        children: <Widget>[
-                          const SizedBox(height: 12),
-                          // Header with back button
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                                    color: AppColors.darkText, size: 20),
-                                onPressed: _isLoading ? null : () => Navigator.pop(context),
-                              ),
-                              const Spacer(),
-                              const Text(
-                                'Create Account',
-                                style: TextStyle(
-                                  color: AppColors.darkText,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Spacer(),
-                              const SizedBox(width: 48),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Logo (slightly smaller)
+                        children: [
+                          // Logo
                           Hero(
                             tag: 'app-logo',
-                            child: Image.asset(
-                              'assets/logo/logo.png',
-                              height: 180,
-                              fit: BoxFit.contain,
+                            child: Image.asset('assets/logo/logo.png', height: 120, fit: BoxFit.contain),
+                          ),
+                          const SizedBox(height: 12),
+                          // Heading label (new)
+                          const Text(
+                            'Create Your Account',
+                            style: TextStyle(
+                              color: AppColors.darkText,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          // Role Dropdown
+                          const SizedBox(height: 16),
                           _buildRoleDropdown(),
-                          const SizedBox(height: 14),
-                          // NIC
-                          TextFormField(
-                            decoration: _inputDecoration(
-                              label: 'NIC Number',
-                              hintText: '901234567V / 202312345678',
-                              prefixIcon: Icons.badge_outlined,
-                              isEnabled: !_isLoading,
-                            ),
-                            textCapitalization: TextCapitalization.characters,
-                            onSaved: (value) => _nic = value!.trim().toUpperCase(),
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'NIC Number',
+                            hint: '901234567V / 12 digits',
+                            icon: Icons.badge_outlined,
+                            controller: TextEditingController(text: _nic),
                             validator: _validateNIC,
                             enabled: !_isLoading,
                           ),
-                          const SizedBox(height: 14),
-                          // Full Name
-                          TextFormField(
-                            decoration: _inputDecoration(
-                              label: 'Full Name',
-                              hintText: 'Your full name',
-                              prefixIcon: Icons.person_outline_rounded,
-                              isEnabled: !_isLoading,
-                            ),
-                            textCapitalization: TextCapitalization.words,
-                            onSaved: (value) => _fullName = value!.trim(),
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'Full Name',
+                            hint: 'Your full name',
+                            icon: Icons.person_outline_rounded,
+                            controller: TextEditingController(text: _fullName),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) return 'Full name is required';
                               if (value.trim().length < 2) return 'Name must be at least 2 characters';
@@ -531,17 +475,13 @@ class _SignUpPageState extends State<SignUpPage> {
                             },
                             enabled: !_isLoading,
                           ),
-                          const SizedBox(height: 14),
-                          // Email
-                          TextFormField(
-                            decoration: _inputDecoration(
-                              label: 'Email Address',
-                              hintText: 'example@email.com',
-                              prefixIcon: Icons.email_outlined,
-                              isEnabled: !_isLoading,
-                            ),
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'Email Address',
+                            hint: 'example@email.com',
+                            icon: Icons.email_outlined,
+                            controller: TextEditingController(text: _email),
                             keyboardType: TextInputType.emailAddress,
-                            onSaved: (value) => _email = value!.trim(),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) return 'Email is required';
                               if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
@@ -551,21 +491,14 @@ class _SignUpPageState extends State<SignUpPage> {
                             },
                             enabled: !_isLoading,
                           ),
-                          const SizedBox(height: 14),
-                          // Mobile Number
-                          TextFormField(
-                            decoration: _inputDecoration(
-                              label: 'Mobile Number',
-                              hintText: '07X XXX XXXX',
-                              prefixIcon: Icons.phone_android_outlined,
-                              isEnabled: !_isLoading,
-                            ),
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'Mobile Number',
+                            hint: '07X XXX XXXX',
+                            icon: Icons.phone_android_outlined,
+                            controller: TextEditingController(text: _mobileNumber),
                             keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(10),
-                            ],
-                            onSaved: (value) => _mobileNumber = value!.trim(),
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
                             validator: (value) {
                               if (value == null || value.isEmpty) return 'Mobile number is required';
                               if (value.length != 10) return 'Must be exactly 10 digits';
@@ -574,122 +507,90 @@ class _SignUpPageState extends State<SignUpPage> {
                             },
                             enabled: !_isLoading,
                           ),
-                          const SizedBox(height: 14),
-                          // Password
-                          TextFormField(
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'Password',
+                            hint: 'At least 6 characters',
+                            icon: Icons.lock_outline_rounded,
                             controller: _passwordController,
                             obscureText: !_isPasswordVisible,
-                            decoration: _inputDecoration(
-                              label: 'Password',
-                              hintText: 'At least 6 characters',
-                              prefixIcon: Icons.lock_outline_rounded,
-                              isEnabled: !_isLoading,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                  color: AppColors.primaryPurple,
-                                  size: 20,
-                                ),
-                                onPressed: _isLoading ? null : () => setState(
-                                    () => _isPasswordVisible = !_isPasswordVisible),
-                              ),
-                            ),
-                            onSaved: (value) => _password = value!,
                             validator: _validatePassword,
                             enabled: !_isLoading,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                color: AppColors.primaryPurple,
+                                size: 18,
+                              ),
+                              onPressed: _isLoading ? null : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                            ),
                           ),
-                          const SizedBox(height: 14),
-                          // Confirm Password
-                          TextFormField(
+                          const SizedBox(height: 8),
+                          _buildInputField(
+                            label: 'Confirm Password',
+                            hint: 'Re-enter your password',
+                            icon: Icons.lock_reset_rounded,
                             controller: _confirmPasswordController,
                             obscureText: !_isConfirmPasswordVisible,
-                            decoration: _inputDecoration(
-                              label: 'Confirm Password',
-                              hintText: 'Re-enter your password',
-                              prefixIcon: Icons.lock_reset_rounded,
-                              isEnabled: !_isLoading,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isConfirmPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                  color: AppColors.primaryPurple,
-                                  size: 20,
-                                ),
-                                onPressed: _isLoading ? null : () => setState(
-                                    () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
-                              ),
-                            ),
-                            onSaved: (value) => _confirmPassword = value!,
                             validator: _validateConfirmPassword,
                             enabled: !_isLoading,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isConfirmPasswordVisible ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                color: AppColors.primaryPurple,
+                                size: 18,
+                              ),
+                              onPressed: _isLoading ? null : () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                            ),
                           ),
-                          // Error message inline
                           if (_errorMessage != null) ...[
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 8),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade50,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: Colors.red.shade200),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500, fontSize: 13),
-                                    ),
-                                  ),
+                                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500, fontSize: 12))),
                                 ],
                               ),
                             ),
                           ],
-                          const SizedBox(height: 20),
-                          // Sign Up Button
+                          const SizedBox(height: 16),
                           _buildGradientButton(
                             text: _isLoading ? 'Creating Account...' : 'Create Account',
                             onPressed: _isLoading ? null : _handleSignUp,
                             isLoading: _isLoading,
                           ),
-                          const SizedBox(height: 18),
-                          // Sign In Link
+                          const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                "Already have an account? ",
-                                style: TextStyle(fontSize: 14, color: AppColors.darkText),
-                              ),
+                              const Text("Already have an account? ", style: TextStyle(fontSize: 12, color: AppColors.darkText)),
                               GestureDetector(
                                 onTap: _isLoading ? null : () => Navigator.pop(context),
                                 child: const Text(
                                   'Sign In',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.primaryPurple,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                  ),
+                                  style: TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                         ],
                       ),
                     ),
                   ),
                 ),
-                // Fixed footer (never scrolls)
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 12.0),
-                  child: Text(
-                    'Developed By Malitha Tishamal',
-                    style: TextStyle(color: AppColors.darkText, fontSize: 11),
-                  ),
+                  padding: EdgeInsets.only(bottom: 8.0),
+                  child: Text('Developed By Malitha Tishamal', style: TextStyle(color: AppColors.darkText, fontSize: 10)),
                 ),
               ],
             ),
