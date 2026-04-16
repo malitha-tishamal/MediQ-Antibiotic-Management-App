@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MediQ — Antibiotic Management App | Project Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#fff;color:#1a1a2e;font-size:13px;line-height:1.7}
+  .cover{background:linear-gradient(135deg,#6c3fc1 0%,#9f7aea 50%,#c084fc 100%);color:#fff;padding:80px 60px;min-height:320px;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
+  .cover h1{font-size:42px;font-weight:800;letter-spacing:-1px;margin-bottom:8px}
+  .cover .subtitle{font-size:18px;font-weight:300;opacity:.85;margin-bottom:32px}
+  .cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}
+  .cover-item{background:rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;backdrop-filter:blur(8px)}
+  .cover-item .label{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7}
+  .cover-item .value{font-size:13px;font-weight:600;margin-top:2px}
+  .badge-row{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.2);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:500;border:1px solid rgba(255,255,255,.3)}
+  .content{padding:40px 60px}
+  h2{font-size:20px;font-weight:700;color:#6c3fc1;border-bottom:3px solid #6c3fc1;padding-bottom:8px;margin:32px 0 16px}
+  h3{font-size:15px;font-weight:700;color:#1a1a2e;margin:24px 0 10px}
+  h4{font-size:13px;font-weight:600;color:#6c3fc1;margin:16px 0 8px}
+  p{margin-bottom:12px;color:#2d2d44}
+  ul,ol{margin:8px 0 12px 20px;color:#2d2d44}
+  li{margin-bottom:4px}
+  pre{background:#f3f0ff;border:1px solid #d8c8ff;border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow-x:auto;margin:12px 0;color:#2d2d44;white-space:pre-wrap;word-break:break-word}
+  code{background:#f3f0ff;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#6c3fc1}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px}
+  th{background:#6c3fc1;color:#fff;padding:10px 12px;text-align:left;font-weight:600}
+  td{padding:9px 12px;border-bottom:1px solid #ede8ff;color:#2d2d44}
+  tr:nth-child(even) td{background:#f9f7ff}
+  tr:hover td{background:#f0ebff}
+  .section-block{background:#f9f7ff;border-left:4px solid #9f7aea;border-radius:0 10px 10px 0;padding:16px 20px;margin:16px 0}
+  .highlight{color:#6c3fc1;font-weight:600}
+  .footer{text-align:center;padding:24px;color:#888;font-size:11px;border-top:1px solid #eee;margin-top:32px}
+  @media print{
+    body{font-size:11px}
+    .cover{padding:60px 40px}
+    .content{padding:30px 40px}
+    h2{page-break-before:auto}
+    pre{font-size:10px}
+    table{font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <h1>MediQ</h1>
+  <div class="subtitle">Antibiotic Management App — Full Project Report</div>
+  <div class="cover-grid">
+    <div class="cover-item"><div class="label">Platform</div><div class="value">Flutter (Multi-Platform)</div></div>
+    <div class="cover-item"><div class="label">Backend</div><div class="value">Firebase (Firestore + Auth + Storage)</div></div>
+    <div class="cover-item"><div class="label">Version</div><div class="value">1.0.0+1</div></div>
+    <div class="cover-item"><div class="label">Developer</div><div class="value">Malitha Tishamal</div></div>
+    <div class="cover-item"><div class="label">Institution</div><div class="value">Hospitals Srilanka</div></div>
+    <div class="cover-item"><div class="label">SDK</div><div class="value">Dart ≥ 3.0.0 &lt; 4.0.0</div></div>
+  </div>
+  <div class="badge-row">
+    <span class="badge">Android</span><span class="badge">iOS</span><span class="badge">Web</span>
+    <span class="badge">Windows</span><span class="badge">Linux</span><span class="badge">macOS</span>
+    <span class="badge">April 2026</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<h2>1. Project Overview</h2>
+<p>MediQ is a cross-platform mobile/desktop application built with Flutter, designed specifically as an <strong>Antibiotic Usage Analysis and Management System</strong> for Hospitals Srilanka. The app digitises and streamlines the entire antibiotic lifecycle — from pharmacist dispensing (releasing) and ward returns, through stock management, all the way to graphical usage analysis — replacing manual paper-based book systems.</p>
+<h3>Key Goals</h3>
+<ul>
+  <li>Digitise antibiotic release and return records per ward</li>
+  <li>Provide real-time stock visibility (Main Store &amp; Return Store)</li>
+  <li>Enable role-based access for Administrators and Pharmacists</li>
+  <li>Deliver graphical usage analysis (by antibiotic category and by ward)</li>
+  <li>Maintain security through progressive account lockout and admin-approval workflows</li>
+  <li>Support CSV data export for reporting</li>
+</ul>
+
+<h2>2. Technology Stack &amp; Dependencies</h2>
+<table>
+<tr><th>Category</th><th>Package</th><th>Version</th><th>Purpose</th></tr>
+<tr><td>UI Framework</td><td>flutter</td><td>SDK</td><td>Core UI</td></tr>
+<tr><td>Database</td><td>cloud_firestore</td><td>^4.17.5</td><td>NoSQL real-time database</td></tr>
+<tr><td>Authentication</td><td>firebase_auth</td><td>^4.20.0</td><td>User login/session</td></tr>
+<tr><td>File Storage</td><td>firebase_storage</td><td>^11.7.7</td><td>Profile image storage</td></tr>
+<tr><td>Core Firebase</td><td>firebase_core</td><td>^2.32.0</td><td>Firebase initialization</td></tr>
+<tr><td>Charts</td><td>fl_chart</td><td>^0.66.0</td><td>Usage analysis graphs</td></tr>
+<tr><td>Timezone</td><td>timezone</td><td>^0.9.2</td><td>Sri Lanka (Asia/Colombo) time</td></tr>
+<tr><td>Autocomplete</td><td>flutter_typeahead</td><td>^5.2.0</td><td>Antibiotic/Ward search</td></tr>
+<tr><td>CSV Export</td><td>csv</td><td>^5.0.1</td><td>Data export</td></tr>
+<tr><td>File Sharing</td><td>share_plus</td><td>^7.2.0</td><td>Share CSV reports</td></tr>
+<tr><td>File Paths</td><td>path_provider</td><td>^2.1.1</td><td>Temp directory for exports</td></tr>
+<tr><td>Image Picker</td><td>image_picker</td><td>^1.2.0</td><td>Profile photo upload</td></tr>
+<tr><td>Image Compress</td><td>flutter_image_compress</td><td>^2.3.0</td><td>Optimize uploaded images</td></tr>
+<tr><td>HTTP</td><td>http</td><td>^1.1.1</td><td>Cloudinary image upload</td></tr>
+<tr><td>URL Launcher</td><td>url_launcher</td><td>^6.2.0</td><td>Open external links</td></tr>
+<tr><td>Date Formatting</td><td>intl</td><td>^0.19.0</td><td>Date/time display</td></tr>
+<tr><td>Preferences</td><td>shared_preferences</td><td>^2.2.3</td><td>Local storage</td></tr>
+<tr><td>Toast</td><td>fluttertoast</td><td>^8.2.1</td><td>User feedback toasts</td></tr>
+<tr><td>Icons</td><td>font_awesome_flutter</td><td>^10.7.0</td><td>Extended icon set</td></tr>
+<tr><td>Icons</td><td>fluentui_system_icons</td><td>^1.1.232</td><td>Fluent UI icons</td></tr>
+<tr><td>Icons</td><td>material_symbols_icons</td><td>^4.2874.0</td><td>Material symbols</td></tr>
+<tr><td>Launcher Icons</td><td>flutter_launcher_icons</td><td>^0.13.1</td><td>App icon generation</td></tr>
+</table>
+
+<h2>3. App Architecture</h2>
+<pre>mediq/lib/
+├── main.dart                     ← App entry point, AppColors, AuthWrapper
+├── core/
+│   ├── firebase_options.dart     ← Auto-generated Firebase config
+│   ├── dashboard_screen.dart     ← Generic dashboard shell
+│   └── dashboard_wrapper.dart   ← Role-based routing (Admin / Pharmacist)
+├── auth/
+│   ├── auth_wrapper.dart
+│   ├── start_page.dart
+│   ├── start_up_check_screen.dart
+│   ├── firebase_load_check_screen.dart
+│   ├── loading_start.dart
+│   ├── login_page.dart
+│   ├── signup_page.dart
+│   ├── forgot_password_page.dart
+│   └── user_agreement_page.dart
+├── admin/
+│   ├── admin_dashboard.dart
+│   ├── admin_drawer.dart
+│   ├── admin_profile_screen.dart
+│   ├── admin_developer_about_screen.dart
+│   ├── accounts-manage-details.dart
+│   ├── accounts/ (admin_accounts_manage.dart, pharmacist_accounts_manage.dart)
+│   ├── antibiotics/ (add_antibiotic_screen.dart, manage_antibiotics_screen.dart)
+│   ├── wards/ (add_ward_screen.dart, manage_wards_screen.dart)
+│   ├── usages/ (antibiotic_release.dart, antibiotic_return.dart)
+│   ├── stoks/ (main_store_screen.dart, return_store_screen.dart)
+│   └── analyst/
+│       ├── antibiotics_analysis_screen.dart
+│       ├── ward_wise_usage_screen.dart
+│       ├── overall_summery.dart
+│       ├── overall_usage overview/ (charts + summary screens)
+│       └── overall_usage_summery/ (released + returned summaries)
+└── pharmacist/
+    ├── pharmacist_dashboard.dart
+    ├── pharmacist_drawer.dart
+    ├── pharmacist_profile_screen.dart
+    ├── main_actions/ (antibiotics_release_screen.dart, return_antibiotics_screen.dart)
+    └── usages/ (release_antibiotics_details.dart, return_antibiotics_details.dart)</pre>
+
+<h2>4. Firebase Firestore Data Collections</h2>
+<table>
+<tr><th>Collection</th><th>Purpose</th><th>Key Fields</th></tr>
+<tr><td><code>users</code></td><td>All app accounts</td><td>email, role, fullName, nic, mobileNumber, status, profileImageUrl, failedLoginAttempts, lockoutUntil, createdAt</td></tr>
+<tr><td><code>antibiotics</code></td><td>Antibiotic master list</td><td>name, category, dosages[] (dosage + srNumber), createdAt, updatedAt</td></tr>
+<tr><td><code>wards</code></td><td>Hospital wards</td><td>wardName, team, managedBy, category, description, createdAt, updatedAt</td></tr>
+<tr><td><code>releases</code></td><td>Release records</td><td>antibioticId, antibioticName, dosage, itemCount, wardId, wardName, stockType, bookNumber, pageNumber, releaseDateTime, createdBy, createdAt</td></tr>
+<tr><td><code>returns</code></td><td>Return records</td><td>antibioticId, antibioticName, dosage, itemCount, wardId, wardName, stockType, bookNumber, pageNumber, returnDateTime, createdBy, createdAt</td></tr>
+<tr><td><code>main_stock</code></td><td>Main Store stock levels</td><td>antibioticId, dosageIndex, srNumber, drugName, dosage, quantity, lastUpdated</td></tr>
+<tr><td><code>return_stock</code></td><td>Return Store stock levels</td><td>Same structure as main_stock</td></tr>
+</table>
+
+<h2>5. Global Design System (AppColors)</h2>
+<table>
+<tr><th>Token</th><th>Color</th><th>Use</th></tr>
+<tr><td>primaryPurple</td><td>#9F7AEA / #865AD9</td><td>Primary accent, buttons, icons</td></tr>
+<tr><td>lightBackground</td><td>#F3F0FF / #F3F3FA</td><td>Page background</td></tr>
+<tr><td>drawerBackground</td><td>#E2E7F3</td><td>Side drawer</td></tr>
+<tr><td>buttonGradientStart</td><td>#9C27B0</td><td>Button gradient start</td></tr>
+<tr><td>buttonGradientEnd</td><td>#673AB7</td><td>Button gradient end</td></tr>
+<tr><td>headerGradientStart</td><td>#EB97E1</td><td>Dashboard header gradient</td></tr>
+<tr><td>headerGradientEnd</td><td>#F7FAFF</td><td>Dashboard header gradient</td></tr>
+<tr><td>successGreen</td><td>#48BB78</td><td>Success states</td></tr>
+<tr><td>warningOrange</td><td>#ED8936</td><td>Warning states</td></tr>
+</table>
+<p>All buttons use a <strong>purple-to-deep-purple linear gradient</strong> with a soft drop shadow. All input fields use <strong>rounded 10–12px borders</strong> that turn purple when focused.</p>
+
+<h2>6. Authentication Module (lib/auth/)</h2>
+<h3>6.1 App Startup Flow</h3>
+<pre>StartUpCheckScreen
+  └── FirebaseLoadCheckScreen (shows spinner while Firebase connects)
+        └── AuthWrapper (StreamBuilder on FirebaseAuth.authStateChanges)
+              ├── DashboardWrapper  (if logged in)
+              └── LoginPage         (if not logged in)</pre>
+
+<h3>6.2 Login Page (login_page.dart)</h3>
+<p>A clean purple-themed login screen with the MediQ logo at the top, email and password fields, a "Forgot Password?" link, and a gradient "Login" button.</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_getLockoutDuration(int attempts)</td><td>Returns lockout duration: 3 attempts=30s, 4=60s, 5=3min, 6=10min, 7=30min, 8+=permanent</td></tr>
+<tr><td>_getUserDocByEmail(String email)</td><td>Queries Firestore users collection by email address</td></tr>
+<tr><td>_recordFailedAttempt(String email)</td><td>Increments failedLoginAttempts in Firestore; sets lockoutUntil or permanent Locked status</td></tr>
+<tr><td>_resetFailedAttempts(String email)</td><td>Clears failedLoginAttempts and lockoutUntil on successful login</td></tr>
+<tr><td>_checkLockoutStatus(String email)</td><td>Returns {isLocked, message, lockoutEnd} — checks permanent or temporary lockout</td></tr>
+<tr><td>_startLockoutTimer()</td><td>Starts a 1-second periodic timer that updates the countdown message</td></tr>
+<tr><td>_updateLockoutMessage()</td><td>Recalculates remaining lockout time and updates error message in real time</td></tr>
+<tr><td>_handleLogin()</td><td>Main login handler: validates → checks lockout → Firebase sign-in → verifies Approved → navigates</td></tr>
+</table>
+<div class="section-block"><strong>Security:</strong> Progressive lockout (30s → 1m → 3m → 10m → 30m → permanent). Account must have <code>status: Approved</code>. Incorrect email does NOT record a failed attempt (prevents enumeration).</div>
+
+<h3>6.3 Sign Up Page (signup_page.dart)</h3>
+<p>A scrollable registration form with role selector (Admin/Pharmacist), NIC, Full Name, Email, Mobile, Password, Confirm Password fields.</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_getDefaultProfilePicture()</td><td>Loads default profile image from assets based on role, encodes as Base64</td></tr>
+<tr><td>_handleSignUp()</td><td>Validates form → loads default picture → creates Firebase Auth user → writes Firestore doc with status: Pending</td></tr>
+<tr><td>_handleAuthError()</td><td>Maps Firebase error codes to user-friendly messages</td></tr>
+<tr><td>_validateNIC()</td><td>Validates Sri Lankan NIC: old format (9 digits + V/X) or new format (12 digits)</td></tr>
+</table>
+<div class="section-block">New accounts always created with <code>status: Pending</code>. Admin must approve before login is allowed.</div>
+
+<h3>6.4 Forgot Password Page</h3>
+<p>Simple email input page. Sends a Firebase password-reset link via <code>FirebaseAuth.sendPasswordResetEmail()</code>.</p>
+
+<h3>6.5 User Agreement Page</h3>
+<p>Standalone page displaying the app's terms and conditions that new users must review.</p>
+
+<h2>7. Core Module (lib/core/)</h2>
+<h3>7.1 Dashboard Wrapper (dashboard_wrapper.dart)</h3>
+<p>The <strong>central role-routing component</strong>. After login, all users land here. Opens a real-time Firestore StreamBuilder on the user's document, reads the <code>role</code> field, and routes to <code>AdminDashboard</code> or <code>PharmacistDashboard</code>.</p>
+
+<h3>7.2 Firebase Options (firebase_options.dart)</h3>
+<p>Auto-generated by FlutterFire CLI. Contains platform-specific Firebase project configurations (API keys, app IDs, project IDs) for Android, iOS, and Web.</p>
+
+<h2>8. Admin Module (lib/admin/)</h2>
+<p>The Admin module is the full management portal. Admins have access to all features: account management, antibiotic/ward CRUD, stock management, usage records, and analytics.</p>
+
+<h3>8.1 Admin Dashboard (admin_dashboard.dart)</h3>
+<p>A gradient header showing the admin's profile avatar, name, and "Administrative Dashboard" title, followed by a 2-column grid of quick-access tiles.</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_getSriLankaNow()</td><td>Returns current datetime in Sri Lanka timezone (tz.TZDateTime.now(tz.local))</td></tr>
+<tr><td>_getUtcStartOfToday()</td><td>Converts Sri Lanka midnight to UTC for Firestore date queries</td></tr>
+<tr><td>_listenToUserChanges()</td><td>Firestore real-time listener on logged-in user's document — updates avatar, name, role live</td></tr>
+<tr><td>_handleLogout()</td><td>Signs out from Firebase Auth and navigates back to LoginPage</td></tr>
+<tr><td>_onNavTap(String title)</td><td>Switch-case navigation: maps tile titles to their corresponding screens</td></tr>
+<tr><td>_tileAccountsManage()</td><td>Live tile — streams all users, counts Admins vs Pharmacists, shows live counts</td></tr>
+<tr><td>_tileAntibiotics()</td><td>Live tile — streams antibiotics, shows total count and category count</td></tr>
+<tr><td>_tileWards()</td><td>Live tile — streams wards, shows total and category count</td></tr>
+<tr><td>_tileUsageDetails()</td><td>Live tile — streams releases and returns for current month (Sri Lanka time)</td></tr>
+</table>
+<p><strong>Dashboard Grid (9 tiles):</strong> Accounts Manage, Antibiotics, Wards, Stocks, Usage Details, Usage Analyst, Book Numbers, Profile Manage, Developer About</p>
+
+<h3>8.2 Admin Drawer (admin_drawer.dart)</h3>
+<p>A slide-out navigation drawer with profile avatar, full name, role, navigation links, and a Logout button. Mirrors the dashboard tile navigation.</p>
+
+<h3>8.3 Account Management (admin/accounts/)</h3>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_fetchAllUsers()</td><td>Queries Firestore users filtered by role, real-time stream</td></tr>
+<tr><td>_approveUser(String uid)</td><td>Sets status: Approved in Firestore — allows that user to log in</td></tr>
+<tr><td>_lockUser(String uid)</td><td>Sets status: Locked — prevents login</td></tr>
+<tr><td>_deleteUser(String uid)</td><td>Deletes the Firestore document</td></tr>
+<tr><td>_showUserDetailModal()</td><td>Full-screen modal showing complete user profile, status, and action buttons</td></tr>
+<tr><td>_buildStatusBadge()</td><td>Colour-coded chip: green=Approved, orange=Pending, red=Locked</td></tr>
+</table>
+<p>Account status values: <code>Pending</code>, <code>Approved</code>, <code>Locked</code></p>
+
+<h3>8.4 Antibiotic Management (admin/antibiotics/)</h3>
+<h4>add_antibiotic_screen.dart — Add / Edit Antibiotic</h4>
+<p>A form for adding or editing antibiotics. Fields: Antibiotic Name, Category (dropdown), and multiple Dosage rows (value, unit, SR Number).</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_loadAntibioticForEdit(String id)</td><td>Fetches existing antibiotic and populates all form fields for editing mode</td></tr>
+<tr><td>_mapUnitToOption(String unit)</td><td>Maps raw unit strings to standardised full option strings</td></tr>
+<tr><td>_parseDosage(String dosageStr)</td><td>Uses regex to extract numeric value and unit from stored dosage strings</td></tr>
+<tr><td>_addDosageField()</td><td>Appends a new dosage row (value, unit, SR number) to _dosageRows list</td></tr>
+<tr><td>_removeDosageField(int index)</td><td>Disposes and removes a dosage row by index</td></tr>
+<tr><td>_saveAntibiotic()</td><td>Validates form, builds dosage list, creates or updates Firestore document</td></tr>
+</table>
+<p><strong>Categories:</strong> Access, Watch, Reserve, Other (WHO AWaRe classification)</p>
+<p><strong>Unit Options:</strong> mg, g, mcg, U, IU, mL, cc, IV, mg/kg</p>
+
+<h4>manage_antibiotics_screen.dart — Manage / Search Antibiotics</h4>
+<p>Searchable list with category filter chips. Each card shows name, category badge, all dosages with SR numbers, and Edit/Delete buttons.</p>
+
+<h3>8.5 Ward Management (admin/wards/)</h3>
+<h4>add_ward_screen.dart — Add / Edit Ward</h4>
+<p>Form with fields for Ward Name, Managed By (Team), Managed By (Doctor's Name), Category (dropdown), and Description.</p>
+<p><strong>Ward Categories:</strong> Pediatrics, Medicine, ICU, Surgery, Medicine Subspecialty, Surgery Subspecialty</p>
+<pre>{
+  "wardName": "3 &amp; 5 (Surgical prof.)",
+  "team": "Team A",
+  "managedBy": "Dr. Fernando",
+  "category": "Surgery",
+  "description": "Any notice details",
+  "createdAt": "Timestamp"
+}</pre>
+
+<h3>8.6 Stocks Management (admin/stoks/)</h3>
+<h4>main_store_screen.dart — Main Store Stock</h4>
+<p>Lists all antibiotics joined with stock quantities from <code>main_stock</code> collection. Shows an Overview card (Total/In Stock/Low/Out of Stock counts). Supports search and CSV export.</p>
+<table>
+<tr><th>Stock Status</th><th>Condition</th></tr>
+<tr><td>Out of Stock</td><td>quantity == 0</td></tr>
+<tr><td>Low Stock</td><td>quantity &lt; 50</td></tr>
+<tr><td>In Stock</td><td>quantity ≥ 50</td></tr>
+</table>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_exportToCSV()</td><td>Fetches all stock entries, converts to CSV, saves to temp file, shares via Share.shareXFiles()</td></tr>
+<tr><td>_updateQuantity(String stockId, int newQuantity)</td><td>Sets the stock quantity to a fixed value</td></tr>
+<tr><td>_addQuantity(String stockId, int currentQuantity, int addAmount)</td><td>Increments the stock quantity by the entered amount</td></tr>
+<tr><td>_createStockEntry(...)</td><td>Creates a new document in main_stock when no record yet exists</td></tr>
+<tr><td>_buildSummaryCard()</td><td>Computes Total, In Stock, Low Stock, Out of Stock counts and renders overview</td></tr>
+</table>
+<p>The stock display merges two Firestore streams: <code>antibiotics</code> (drug names + SR numbers) and <code>main_stock</code> (quantities). Each antibiotic's dosage variant is shown as a separate stock item.</p>
+<h4>return_store_screen.dart — Return Store Stock</h4>
+<p>Identical structure to Main Store but uses the <code>return_stock</code> Firestore collection.</p>
+
+<h3>8.7 Antibiotic Usage Module (admin/usages/)</h3>
+<h4>antibiotic_release.dart — Release Records (Admin View)</h4>
+<p>Comprehensive list showing all release records. Includes search bar, category filter chips, and an advanced filter bottom sheet.</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_fetchFilterData()</td><td>Pre-loads all wards and antibiotics for filter dropdowns and category map</td></tr>
+<tr><td>_showFilterPanel()</td><td>Opens DraggableScrollableSheet with ward/antibiotic filters and date range picker</td></tr>
+<tr><td>_filterRelease(Map data)</td><td>Applies all active filters: search, category, ward, antibiotic, date range</td></tr>
+<tr><td>_getUserName(String userId)</td><td>Fetches user's full name from Firestore with in-memory cache</td></tr>
+<tr><td>_editRelease(String docId, int currentQuantity)</td><td>Dialog to edit the quantity of an existing release record</td></tr>
+<tr><td>_confirmDelete(String docId, String name)</td><td>Confirmation dialog before deleting a release record</td></tr>
+<tr><td>_showDetailsModal(Map data, String docId)</td><td>Full-screen card dialog with all record details, Edit and Delete actions</td></tr>
+</table>
+
+<h4>antibiotic_return.dart — Return Records (Admin View)</h4>
+<p>Identical structure to antibiotic_release.dart but reads from the <code>returns</code> Firestore collection.</p>
+
+<h3>8.8 Book Numbers Screen (book_numbers_screen.dart)</h3>
+<p>Manages the mapping between the digital system and the hospital's manual antibiotic logbooks. Each entry has a Book Number and optional notes. Enables quick reference when cross-checking paper records. Supports add, view, and delete operations.</p>
+
+<h3>8.9 Usage Analysis Screen</h3>
+<p>Entry point to the analytics section. Shows two analyst blocks: <strong>Antibiotic Overview Analysis</strong> and <strong>Ward-Wise Usage Analysis</strong>.</p>
+
+<h3>8.10 Antibiotics Usage Analyst (admin/analyst/)</h3>
+<table>
+<tr><th>Card</th><th>Navigates To</th><th>Description</th></tr>
+<tr><td>Releases Overview Charts</td><td>AntibioticsUsageChartsAnalysisScreen</td><td>Bar/pie charts of all releases by category</td></tr>
+<tr><td>Returns Overview Charts</td><td>AntibioticsReturnsAnalysisScreen</td><td>Charts of all returns by category</td></tr>
+<tr><td>Releases Details Analyst</td><td>ReleasedUsageSummaryScreen</td><td>A–Z sortable tabular summary of all releases</td></tr>
+<tr><td>Returns Details Analyst</td><td>ReturnUsageSummaryScreen</td><td>A–Z sortable tabular summary of all returns</td></tr>
+</table>
+
+<h4>antibiotics_usage_charts_analysis.dart — Release Charts (63KB)</h4>
+<ul>
+  <li>Bar charts of releases grouped by antibiotic name</li>
+  <li>Pie/donut charts by category (Access / Watch / Reserve / Other)</li>
+  <li>Time-range filtering (weekly/monthly/yearly)</li>
+  <li>Uses fl_chart package for all visualisations</li>
+</ul>
+
+<h4>released_usage_summary.dart / return_usage_summary.dart</h4>
+<ul>
+  <li>Sortable table of every release/return record</li>
+  <li>Filters: date range, ward, antibiotic, category</li>
+  <li>Summary statistics (total items, unique antibiotics, unique wards)</li>
+  <li>CSV export functionality</li>
+</ul>
+
+<h4>ward_wise_usage_screen.dart — Ward-Wise Analysis</h4>
+<p>Analysis focused on per-ward antibiotic usage. Dropdown to select ward, bar charts comparing release/return counts, top-N ward ranking list. Integrates <code>releases</code> + <code>wards</code> collections.</p>
+
+<h3>8.11 Admin Profile Screen (41KB)</h3>
+<p>Full profile management: view/edit personal details, upload profile photo (image_picker → compress → Cloudinary → Firestore URL), edit name/mobile, change password via Firebase Auth. Real-time Firestore listener updates header avatar live.</p>
+
+<h3>8.12 Developer About Screen (23KB)</h3>
+<p>Information page about the developer (Malitha Tishamal). Shows developer photo, contact details (email, GitHub), and links to portfolio/social profiles via url_launcher.</p>
+
+<h2>9. Pharmacist Module (lib/pharmacist/)</h2>
+<p>Pharmacists have a focused, action-oriented interface. They can issue/return antibiotics, view antibiotic and ward lists, check their own usage records, and manage their profile.</p>
+
+<h3>9.1 Pharmacist Dashboard (pharmacist_dashboard.dart)</h3>
+<p>Same gradient header/grid tile layout as admin dashboard but tailored for the Pharmacist role. Shows personal stats (your releases/returns today) rather than system-wide counts.</p>
+<table>
+<tr><th>Tile</th><th>Live Data</th></tr>
+<tr><td>Antibiotics Release</td><td>Count of releases made by this pharmacist today</td></tr>
+<tr><td>Antibiotics Returns</td><td>Count of returns made by this pharmacist today</td></tr>
+<tr><td>Antibiotics</td><td>Total antibiotics + categories (system-wide)</td></tr>
+<tr><td>Wards</td><td>Total wards + categories (system-wide)</td></tr>
+<tr><td>Usage Details</td><td>This pharmacist's releases + returns for current month</td></tr>
+<tr><td>Book Numbers</td><td>Manual book reference</td></tr>
+<tr><td>Profile Manage</td><td>Own profile</td></tr>
+<tr><td>Developer About</td><td>Developer info</td></tr>
+</table>
+<div class="section-block"><strong>Key difference from admin:</strong> The pharmacist's release/return tiles filter by <code>createdBy == currentUserId</code> so pharmacists only see their own activity counts.</div>
+
+<h3>9.2 Release Antibiotics Screen (42KB)</h3>
+<p>Primary action screen. A comprehensive form for recording a new antibiotic release to a ward.</p>
+<p><strong>Form Fields:</strong> Ward (typeahead), Antibiotic (typeahead), Dosage (dropdown), Quantity, Stock Type (Main/Return Store), Book Number, Page Number, Release Date &amp; Time</p>
+<table>
+<tr><th>Function</th><th>Description</th></tr>
+<tr><td>_fetchWards()</td><td>Loads all wards into the typeahead source list</td></tr>
+<tr><td>_fetchAntibiotics()</td><td>Loads all antibiotics into the typeahead source list</td></tr>
+<tr><td>_onAntibioticSelected()</td><td>Populates dosage dropdown with selected antibiotic's dosages and SR numbers</td></tr>
+<tr><td>_submitRelease()</td><td>Validates all fields → writes to Firestore releases collection with all required fields</td></tr>
+<tr><td>_clearForm()</td><td>Resets all selections back to empty state</td></tr>
+</table>
+
+<h3>9.3 Return Antibiotics Screen (42KB)</h3>
+<p>Structurally identical to the Release screen but writes to the <code>returns</code> Firestore collection. Release DateTime becomes Return DateTime.</p>
+
+<h3>9.4 Release Details / Return Details (pharmacist/usages/) — 51KB each</h3>
+<p>Personal usage history screens. Pharmacist can view only their own records. Includes search, date range filter, category chips, detailed card view, edit quantity, and delete own records.</p>
+
+<h3>9.5 View Antibiotics Screen (27KB)</h3>
+<p><strong>Read-only</strong> list of all antibiotics. Pharmacists can search, filter by category, and view dosage/SR number details. No edit/delete capability.</p>
+
+<h3>9.6 View Wards Screen (28KB)</h3>
+<p><strong>Read-only</strong> list of all wards with search and category filtering. Cannot modify.</p>
+
+<h3>9.7 Pharmacist Antibiotic Usage Screen (16KB)</h3>
+<p>Combined view of this pharmacist's personal release and return activity. Summary statistics and navigation to detailed lists.</p>
+
+<h3>9.8 Pharmacist Book Numbers Screen (28KB)</h3>
+<p>Allows pharmacists to view and reference book number entries when filling release/return forms.</p>
+
+<h3>9.9 Pharmacist Profile Screen (41KB)</h3>
+<p>Identical to Admin Profile Screen — view, edit, upload profile photo, and change password. Uses the same Cloudinary upload pipeline.</p>
+
+<h2>10. Security &amp; Access Control</h2>
+<table>
+<tr><th>Feature</th><th>Implementation</th></tr>
+<tr><td>Role-based routing</td><td>DashboardWrapper reads Firestore role field and routes to correct dashboard</td></tr>
+<tr><td>Account approval</td><td>New accounts set status: Pending; admin must set status: Approved before login is allowed</td></tr>
+<tr><td>Progressive lockout</td><td>3–7 failed attempts → temporary lockouts (30s to 30min); ≥8 attempts → permanent Locked status</td></tr>
+<tr><td>Real-time countdown</td><td>Timer.periodic(1 second) updates the error message with remaining lockout time</td></tr>
+<tr><td>Session management</td><td>FirebaseAuth.authStateChanges() stream handles session persistence and auto-login</td></tr>
+<tr><td>Data scoping</td><td>Pharmacist dashboards filter all queries by createdBy == currentUserId</td></tr>
+<tr><td>Input validation</td><td>NIC format (old/new), email regex, mobile 10-digit format, min password length enforced</td></tr>
+</table>
+
+<h2>11. Data Flow Summary</h2>
+<pre>Pharmacist → Release Antibiotics Screen
+    ↓ Selects ward, antibiotic, dosage, quantity, stock type, book/page number
+    ↓ Submits form
+    → Firestore: releases/{docId}
+
+Admin → Antibiotic Release Records Screen
+    ↓ Streams all releases with filters
+    → Reads from: releases collection
+    → Joins with: antibiotics (category), users (name)
+
+Admin → Main Store Screen
+    ↓ Streams antibiotics + main_stock
+    → Merged view: each dosage variant shown with stock quantity
+    ↓ Admin enters quantity and clicks Add/Update
+    → Firestore: main_stock/{docId} updated
+
+Admin → Usage Analyst
+    ↓ Reads releases + returns + wards + antibiotics
+    → fl_chart graphs rendered client-side
+    → CSV export via share_plus</pre>
+
+<h2>12. Assets Structure</h2>
+<pre>assets/
+├── logo/           (logo.png, logo2.png)
+├── developer/      (developer_photo.png)
+├── accounts/       (admin-default.jpg, pharmizist-default.jpg)
+├── antibiotics/    (manage_antibiotic.jpg, add_antibiotic.jpg)
+├── wards/          (add-ward.png, manage-ward.png)
+├── stores/         (main_store.jpg, return_store.jpg)
+├── usages/         (release_details.png, return_details.jpg)
+└── analyst/
+    ├── antibiotic-usage.jpg, ward-usage.jpg, all-usage.jpg
+    └── cards/
+        ├── antibiotics-overviews/
+        ├── ward-wise-overviews/
+        └── overviews-summery/</pre>
+
+<h2>13. File Size Summary (Key Files)</h2>
+<table>
+<tr><th>File</th><th>Size</th><th>Role</th></tr>
+<tr><td>return_usage_summary.dart</td><td>74.1 KB</td><td>Most complex — full sortable summary with filters</td></tr>
+<tr><td>released_usage_summary.dart</td><td>74.4 KB</td><td>Same for releases</td></tr>
+<tr><td>antibiotics_returns_charts_analysis.dart</td><td>64.0 KB</td><td>Returns chart analysis</td></tr>
+<tr><td>antibiotics_usage_charts_analysis.dart</td><td>63.9 KB</td><td>Releases chart analysis</td></tr>
+<tr><td>antibiotic_release.dart (admin)</td><td>51.4 KB</td><td>Admin release records list</td></tr>
+<tr><td>antibiotic_return.dart (admin)</td><td>50.8 KB</td><td>Admin return records list</td></tr>
+<tr><td>release_antibiotics_details.dart</td><td>51.8 KB</td><td>Pharmacist personal releases</td></tr>
+<tr><td>return_antibiotics_details.dart</td><td>51.3 KB</td><td>Pharmacist personal returns</td></tr>
+<tr><td>admin_profile_screen.dart</td><td>41.2 KB</td><td>Admin profile management</td></tr>
+<tr><td>pharmacist_profile_screen.dart</td><td>41.2 KB</td><td>Pharmacist profile management</td></tr>
+</table>
+
+<h2>14. Platform Support</h2>
+<table>
+<tr><th>Platform</th><th>Status</th></tr>
+<tr><td>Android</td><td>✅ Primary target</td></tr>
+<tr><td>iOS</td><td>✅ Supported</td></tr>
+<tr><td>Web</td><td>✅ Supported (firebase.json configured)</td></tr>
+<tr><td>Windows</td><td>✅ Supported</td></tr>
+<tr><td>Linux</td><td>✅ Supported</td></tr>
+<tr><td>macOS</td><td>✅ Supported</td></tr>
+</table>
+
+<h2>15. Feature Completeness Summary</h2>
+<table>
+<tr><th>Feature</th><th>Admin</th><th>Pharmacist</th></tr>
+<tr><td>Login / Logout</td><td>✅</td><td>✅</td></tr>
+<tr><td>Account Registration</td><td>✅</td><td>✅</td></tr>
+<tr><td>Forgot Password</td><td>✅</td><td>✅</td></tr>
+<tr><td>Progressive Lockout</td><td>✅</td><td>✅</td></tr>
+<tr><td>Account Approval</td><td>✅ (approve others)</td><td>❌ (awaits approval)</td></tr>
+<tr><td>Profile Management</td><td>✅</td><td>✅</td></tr>
+<tr><td>Profile Photo Upload</td><td>✅</td><td>✅</td></tr>
+<tr><td>Antibiotic CRUD</td><td>✅</td><td>❌ (read-only)</td></tr>
+<tr><td>Ward CRUD</td><td>✅</td><td>❌ (read-only)</td></tr>
+<tr><td>Main Store Management</td><td>✅</td><td>❌</td></tr>
+<tr><td>Return Store Management</td><td>✅</td><td>❌</td></tr>
+<tr><td>Release Antibiotics</td><td>✅ (via records)</td><td>✅ (action)</td></tr>
+<tr><td>Return Antibiotics</td><td>✅ (via records)</td><td>✅ (action)</td></tr>
+<tr><td>View All Release Records</td><td>✅</td><td>Own only</td></tr>
+<tr><td>View All Return Records</td><td>✅</td><td>Own only</td></tr>
+<tr><td>Edit Release Quantity</td><td>✅</td><td>Own only</td></tr>
+<tr><td>Delete Release Records</td><td>✅</td><td>Own only</td></tr>
+<tr><td>Book Numbers</td><td>✅</td><td>✅ (view)</td></tr>
+<tr><td>Usage Analysis Charts</td><td>✅</td><td>❌</td></tr>
+<tr><td>Ward-Wise Analysis</td><td>✅</td><td>❌</td></tr>
+<tr><td>CSV Export</td><td>✅</td><td>❌</td></tr>
+<tr><td>Manage Admin Accounts</td><td>✅</td><td>❌</td></tr>
+<tr><td>Manage Pharmacist Accounts</td><td>✅</td><td>❌</td></tr>
+<tr><td>Sri Lanka Timezone Support</td><td>✅</td><td>✅</td></tr>
+<tr><td>Developer About</td><td>✅</td><td>✅</td></tr>
+</table>
+
+<div class="footer">
+  Report generated: April 2026 &nbsp;|&nbsp; MediQ v1.0.0+1 &nbsp;|&nbsp; Developed by Malitha Tishamal &nbsp;|&nbsp; Hospitals Srilanka
+</div>
+
+</div><!-- /content -->
+</body>
+</html>
