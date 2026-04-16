@@ -1,22 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'core/firebase_options.dart';
 
-// Import your screens
+// Import your screens (adjust paths as needed)
 import '../auth/firebase_load_check_screen.dart';
 import '../auth/login_page.dart';
 import '../core/dashboard_wrapper.dart';
-import '../auth/start_up_check_screen.dart';
 
+// ------------------- App Colors -------------------
+class AppColors {
+  static const Color primaryPurple = Color(0xFF865AD9);
+  static const Color lightBackground = Color(0xFFF3F3FA);
+  static const Color drawerBackground = Color(0xFFE2E7F3);
+  static const Color darkestText = Color(0xFF1C1B1F);
+  static const Color darkText = darkestText;
+  static const Color buttonGradientStart = Color(0xFF9C27B0);
+  static const Color buttonGradientEnd = Color(0xFF673AB7);
+  static const Color inputBorder = Color(0xFFCAC4D0);
+  static const Color adminsCountColor = Color(0xFFE53935);
+  static const Color pharmacistCountColor = Color(0xFFE53935);
+  static const Color totalFoundColor = Color(0xFF865AD9);
+  static const Color totalWardsColor = Color(0xFF865AD9);
+  static const Color stockTypesColor = Color(0xFF865AD9);
+  static const Color releasesCountColor = Color(0xFFE53935);
+  static const Color returnsCountColor = Color(0xFF865AD9);
+  static const Color cardBg1 = Colors.white;
+  static const Color cardBg2 = Color(0xFFF3E5F5);
+  static const Color cardBg3 = Color(0xFFE0F7FA);
+}
+
+// ------------------- Main Entry Point -------------------
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Initialize timezone (required for tz.local)
+  // Initialize timezone (required for tz.local)
   tz_data.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
@@ -28,40 +49,7 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-// ------------------- App Colors -------------------
-class AppColors {
-  // Primary theme colors
-  static const Color primaryPurple = Color(0xFF865AD9);
-  static const Color lightBackground = Color(0xFFF3F3FA);
-
-  // Drawer color
-  static const Color drawerBackground = Color(0xFFE2E7F3);
-
-  // Text colors
-  static const Color darkestText = Color(0xFF1C1B1F);
-  static const Color darkText = darkestText;
-
-  // Gradients & borders
-  static const Color buttonGradientStart = Color(0xFF9C27B0);
-  static const Color buttonGradientEnd = Color(0xFF673AB7);
-  static const Color inputBorder = Color(0xFFCAC4D0);
-
-  // Dashboard metric colors
-  static const Color adminsCountColor = Color(0xFFE53935);
-  static const Color pharmacistCountColor = Color(0xFFE53935);
-  static const Color totalFoundColor = Color(0xFF865AD9);
-  static const Color totalWardsColor = Color(0xFF865AD9);
-  static const Color stockTypesColor = Color(0xFF865AD9);
-  static const Color releasesCountColor = Color(0xFFE53935);
-  static const Color returnsCountColor = Color(0xFF865AD9);
-
-  // Card backgrounds
-  static const Color cardBg1 = Colors.white;
-  static const Color cardBg2 = Color(0xFFF3E5F5);
-  static const Color cardBg3 = Color(0xFFE0F7FA);
-}
-
-// ------------------- Main App -------------------
+// ------------------- Main App Widget -------------------
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -74,7 +62,8 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.lightBackground,
         useMaterial3: true,
       ),
-      home: const StartUpCheckScreen(),
+      // 👇 Directly use AuthWrapper – it handles login persistence
+      home: const AuthWrapper(),
     );
   }
 }
@@ -88,14 +77,17 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Show loading screen while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const FirebaseLoadCheckScreen();
         }
 
+        // User is signed in → go to dashboard wrapper (checks role)
         if (snapshot.hasData && snapshot.data != null) {
           return const DashboardWrapper();
         }
 
+        // No user → go to login page
         return const LoginPage();
       },
     );
