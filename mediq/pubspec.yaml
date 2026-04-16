@@ -53,7 +53,7 @@ dependencies:
 
   # Utilities
   path: ^1.9.1
-  fluttertoast: ^8.2.1
+
 
 dev_dependencies:
   flutter_test:
