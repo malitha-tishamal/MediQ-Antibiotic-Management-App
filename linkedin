@@ -1,0 +1,137 @@
+🚀 I’m excited to share my latest project: MediQ, a cross-platform hospital antibiotics management system designed to handle release, return, stock tracking, analytics, and user management with a modern, role-based interface. 💊🏥🖥️📊
+
+Platform & Technical Details
+    📱 Platform: Flutter (Multi-Platform)
+    ☁️ Backend: Firebase (Firestore + Auth + Storage)
+    📝 Version: 1.0.0+1
+    👨‍💻 Developer: Malitha Tishamal
+    🏥 Institution: Hospitals Sri Lanka
+    ⚙️ SDK: Dart ≥ 3.0.0 < 4.0.0
+    💻 Supported Platforms: Android |iOS |Web |Windows |Linux |macOS
+
+Project Overview:
+    MediQ digitises the entire antibiotic lifecycle — from pharmacist dispensing and ward returns, to stock management, and graphical usage analysis, replacing manual paper-based systems.
+
+Key Goals:
+    💊 Digitise antibiotic release & return records per ward
+    📦 Real-time stock visibility (Main & Return Store)
+    🔑 Role-based access for Admins & Pharmacists
+    📊 Graphical usage analysis by category & ward
+    🛡️ Security through progressive account lockouts & audit trails
+
+Security & Architecture
+    🛡 Secure Authentication: Email/NIC verification, admin-approved login
+    ⏱ Progressive Lockouts: 30s → 1m → 3m → 10m → 30m → permanent
+    🔑 Role-Based Access:
+    Admin: Full access (dashboards, wards, stock, users, analytics)
+    Pharmacist: Release/return actions, stock view
+    ⚡ Backend: Firebase Firestore (real-time updates), Storage (attachments), Auth (login)
+    🧩 Modular Design: auth/, admin/, pharmacist/ with reusable components
+
+Technical Stack
+    📱 Frontend: Flutter (single codebase across all platforms)
+    ☁️ Firebase Services: Auth, Firestore, Storage
+    📊 Data Visualization: fl_chart — line, bar, pie charts
+    🗂 Utilities & Packages:
+    flutter_typeahead — autocomplete search
+    http & url_launcher — API & link handling
+    intl — timezone-aware datetime
+    fluttertoast — notifications
+    🎨 Icons: font_awesome_flutter, material_symbols_icons, fluentui_system_icons
+
+UI / UX Design
+    🟣 Material 3 Theme: Purple primary, gradient buttons & tiles
+    🖼 Dashboard Layout: 9 interactive tiles, responsive across all devices
+    ✨ Animations: Smooth page transitions, hover effects, interactive charts
+    🔍 UX Features: Searchable tables, filterable dropdowns, auto-refresh streams, confirmation dialogs
+
+
+Admin App Sections & Functions
+
+Full control: users, stock, wards, analytics
+
+1️⃣ Dashboard 🖥️
+
+Total Antibiotics 💊 | Wards 🏥 | Releases/Returns Today 📤📥 | Pending Approvals 👤 | Low Stock Alerts ⚠️
+Interactive widgets with live updates
+
+2️⃣ User Management 👥
+    ✅ Approve new users
+    ❌ Disable/Delete accounts
+    ⏱ Track failed logins & lockouts
+    🔑 Assign roles & update permissions
+    📝 Audit logs
+
+💊Antibiotics Management 
+    Add/Edit/Delete antibiotics
+    Multi-dosage & AWaRe classification
+    ⚠️Stock threshold alerts 
+    📎Attach resource files (PDFs/images) 
+
+🏥Ward Management 
+    Add/Edit/Delete wards
+    Assign managers & pharmacists 👨‍⚕️
+    Ward-specific antibiotic usage reports 📊
+
+📦Stock Management 
+    Main & Return Store views
+    Low stock & expiry alerts ⚠️
+    CSV/PDF exports
+    Stock history logs
+
+📤Release & Return Logs 
+    Track all releases/returns with filters
+    Undo errors
+    Logs with user, date/time, ward
+
+📊Analytics & Reporting 
+    Line/Bar/Pie charts
+    Exportable reports (CSV/PDF)
+    Trend analysis for stock planning
+
+⚡Notifications & Alerts 
+    Toasts for stock alerts
+    Email push for critical events
+    Auto-disable expired items
+
+
+Pharmacist App Sections & Functions
+
+🖥️ Dashboard 
+    Today’s Releases 📤 | Today’s Returns 📥 | Low Stock Alerts ⚠️
+
+💊Release Management 
+    Select antibiotic, dosage, ward, quantity
+    Confirm release & live stock updates
+    View release history
+
+📥Return Management 
+    Record returns & notes for damaged/expired
+    Auto-update return stock
+    Ward-wise reports
+
+📦Stock Overview 
+    Ward-specific stock
+    Low stock/expiry alerts
+    Search & filter
+
+⚡Notifications & Alerts 
+    Toast confirmations
+    Low stock & expiry warnings
+
+📊Reports 
+    Quick ward usage reports (PDF/CSV)
+    Trend overview of released/returned items
+
+🔧Utilities 
+    Real-time stock updates
+    Search/typeahead for antibiotics & wards
+
+Key Takeaways
+    🏥 Streamlines hospital antibiotic management
+    📈 Real-time analytics & stock monitoring
+    🎨 Modern, intuitive UI with responsive dashboards
+    🔐 Secure, role-based, multi-platform
+    ⚡ Designed for scalability, maintainability, and audit readiness
+
+#Flutter #Firebase #HealthcareTech #HospitalManagement #UIUXDesign #CrossPlatform #Analytics #Security #MediQ #AntibioticsManagement #DigitalHealth #HospitalTech
