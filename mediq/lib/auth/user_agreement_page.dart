@@ -1,8 +1,11 @@
 // user_agreement_page.dart
-
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import '../main.dart'; // For AppColors
+
+// Darker purple shades for text and accents (not for the button)
+const Color _darkPurple = Color(0xFF6A1B9A);
+const Color _deepPurple = Color(0xFF4A148C);
 
 class UserAgreementPage extends StatefulWidget {
   const UserAgreementPage({super.key});
@@ -12,192 +15,69 @@ class UserAgreementPage extends StatefulWidget {
 }
 
 class _UserAgreementPageState extends State<UserAgreementPage> {
-  bool _isAgreed = false;
+  final ScrollController _scrollController = ScrollController();
+  bool _isScrolledToBottom = false;
 
-  void _showDeclineMessage() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(30),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Warning Icon
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.orange.shade700,
-                    size: 60,
-                  ),
-                ),
-                const SizedBox(height: 25),
-                
-                // Title
-                const Text(
-                  'Agreement Required',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.darkText,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                
-                // Message
-                const Text(
-                  'You must accept the User Agreement & Terms and Conditions to use this application.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 25),
-                
-                // OK Button
-                _buildGradientButton(
-                  text: 'I Understand',
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfScrolledToBottom();
+    });
   }
 
-  void _handleAccept() {
-    if (_isAgreed) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _checkIfScrolledToBottom() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final isBottom = currentScroll >= maxScroll - 5.0;
+    if (isBottom != _isScrolledToBottom) {
+      setState(() {
+        _isScrolledToBottom = isBottom;
+      });
     }
   }
 
-  void _handleAcceptButton() {
-    if (_isAgreed) {
-      _handleAccept();
-    }
-    // If not agreed, do nothing (button will be disabled visually)
+  void _scrollListener() {
+    _checkIfScrolledToBottom();
   }
 
-  Widget _buildGradientButton({
-    required String text,
-    required VoidCallback onPressed,
-    bool isEnabled = true,
+  Widget _buildTermsSection({
+    required String title,
+    required String content,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: isEnabled
-            ? const LinearGradient(
-                colors: [
-                  AppColors.buttonGradientStart,
-                  AppColors.buttonGradientEnd,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : LinearGradient(
-                colors: [
-                  Colors.grey.shade400,
-                  Colors.grey.shade600,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-        boxShadow: isEnabled
-            ? [
-                BoxShadow(
-                  color: AppColors.buttonGradientEnd.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                  spreadRadius: 1,
-                ),
-              ]
-            : [],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isEnabled ? onPressed : null,
-          borderRadius: BorderRadius.circular(15),
-          child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: isEnabled ? Colors.white : Colors.grey.shade300,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkText.withOpacity(0.9),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutlineButton({
-    required String text,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: Colors.red.shade400,
-          width: 2,
-        ),
-        color: Colors.transparent,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(15),
-          child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: Colors.red.shade600,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
+          const SizedBox(height: 8),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: AppColors.darkText.withOpacity(0.8),
             ),
+            textAlign: TextAlign.justify,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -206,262 +86,226 @@ class _UserAgreementPageState extends State<UserAgreementPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.lightBackground,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            children: [
-              // Header
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.darkText),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'User Agreement',
-                    style: TextStyle(
-                      color: AppColors.darkText,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+      body: Stack(
+        children: [
+          // Scrollable content
+          SingleChildScrollView(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(
+              left: 24.0,
+              right: 24.0,
+              top: 16.0,
+              bottom: 140.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Compact header: back button
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: _deepPurple),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
-                  ),
-                  const Spacer(),
-                  const SizedBox(width: 48), // Balance the row
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Logo
-              Image.asset(
-                'assets/logo/logo.png',
-                height: 150,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 5),
-
-              // Title
-              const Text(
-                'MediQ - User Agreement &',
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                    const Spacer(),
+                  ],
                 ),
-              ),
-              const Text(
-                'Terms and Conditions',
-                style: TextStyle(
-                  color: AppColors.darkText,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 30),
+                const SizedBox(height: 4),
 
-              // Agreement Text Container
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: AppColors.inputBorder, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: const TextStyle(
-                              color: AppColors.darkText,
-                              fontSize: 14,
-                              height: 1.6,
-                            ),
-                            children: [
-                              const TextSpan(
-                                text: 'By accessing or using ',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'MediQ - Antibiotic Usage Analysis System',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const TextSpan(
-                                text: ', you agree to use the platform responsibly and exclusively for authorized hospital purposes, including antibiotic management, inventory control, and data reporting. ',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'MediQ',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const TextSpan(
-                                text: ' may securely collect operational records, system activity logs, and limited user information to enhance performance, strengthen security, and support hospital oversight. All data is handled with strict confidentiality and will only be accessed or shared when required by hospital administration or applicable laws.\n\n',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'Users must comply with hospital rules, maintain accurate entries, safeguard login credentials, and operate the system according to official guidelines. Unauthorized use, data manipulation, or attempts to breach system security may result in account suspension or administrative action. ',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'MediQ',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const TextSpan(
-                                text: ' is provided "as is," and while reasonable measures are taken to ensure accuracy and availability, the platform is not liable for user errors, network issues, or delays caused by external factors. System updates, feature enhancements, and maintenance activities may occur without prior notice to improve functionality and reliability.\n\n',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'Your continued use of ',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              const TextSpan(
-                                text: 'MediQ',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const TextSpan(
-                                text: ' confirms your acceptance of these terms and your commitment to responsible and secure use of the platform.\n\n',
-                                style: TextStyle(fontWeight: FontWeight.normal),
-                              ),
-                              WidgetSpan(
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  margin: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryPurple.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: AppColors.primaryPurple.withOpacity(0.3),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: RichText(
-                                    text: const TextSpan(
-                                      style: TextStyle(
-                                        color: AppColors.darkText,
-                                        fontSize: 13,
-                                        height: 1.5,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: 'MediQ – User Agreement & Terms\n\n',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontStyle: FontStyle.normal,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: 'By using MediQ, you agree to use the system responsibly for authorized hospital tasks like antibiotic management and inventory control. MediQ may collect usage data and limited user information to improve performance and security. All data is kept confidential and only shared when required by the hospital or law. You must protect your account, enter data accurately, and follow hospital guidelines. Continued use means you accept these terms.',
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                // Logo and title row with Hero animation
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Hero(
+                      tag: 'app-logo',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/logo/logo.png',
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.medical_services,
+                            color: _darkPurple,
+                            size: 60,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Agreement Checkbox
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.inputBorder, width: 1.5),
-                ),
-                child: Row(
-                  children: [
-                    Transform.scale(
-                      scale: 1.2,
-                      child: Checkbox(
-                        value: _isAgreed,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            _isAgreed = value ?? false;
-                          });
-                        },
-                        activeColor: AppColors.primaryPurple,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                    const SizedBox(width: 16),
+                    Expanded(
                       child: Text(
-                        'I have read and accept the User Agreement & Terms and Conditions',
+                        'MediQ – User\nAgreement & Terms and\nConditions',
                         style: TextStyle(
-                          color: AppColors.darkText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic, // Bold + Italic
+                          color: _darkPurple,
+                          height: 1.3,
+                          letterSpacing: -0.3,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 8),
 
-              const SizedBox(height: 20),
+                // Last updated
+                const Text(
+                  'Last Updated: April 2025',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.darkText,
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildOutlineButton(
-                      text: 'Decline',
-                      onPressed: _showDeclineMessage,
+                // Agreement sections
+                _buildTermsSection(
+                  title: '1. Approved Use and Data Collection',
+                  content: 'By accessing or using MediQ - Antibiotic Usage Analysis System, you agree to use the platform responsibly and exclusively for authorized hospital purposes, including antibiotic management, inventory control, and data reporting. MediQ may securely collect operational records, system activity logs, and limited user information to enhance performance, strengthen security, and support hospital oversight.',
+                ),
+                _buildTermsSection(
+                  title: '2. Confidentiality and Compliance',
+                  content: 'All data is handled with strict confidentiality and will only be accessed or shared when required by hospital administration or applicable laws.',
+                ),
+                _buildTermsSection(
+                  title: '3. User Responsibility and Misuse',
+                  content: 'Users must comply with hospital rules, maintain accurate entries, safeguard login credentials, and operate the system according to official guidelines. Unauthorized use, data manipulation, or attempts to breach system security may result in account suspension or administrative action.',
+                ),
+                _buildTermsSection(
+                  title: '4. Service Disclaimer',
+                  content: 'MediQ is provided "as is," and while reasonable measures are taken to ensure accuracy and availability, the platform is not liable for user errors, network issues, or delays caused by external factors. System updates, feature enhancements, and maintenance activities may occur without prior notice to improve functionality and reliability.',
+                ),
+                const SizedBox(height: 24),
+
+                // Final acceptance card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_darkPurple.withOpacity(0.08), _deepPurple.withOpacity(0.03)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _darkPurple.withOpacity(0.2),
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildGradientButton(
-                      text: 'Accept',
-                      onPressed: _handleAcceptButton,
-                      isEnabled: _isAgreed,
+                  child: const Text(
+                    'By continuing, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.darkText,
+                      height: 1.4,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+
+          // Fixed footer with button
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              decoration: BoxDecoration(
+                color: AppColors.lightBackground,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, -6),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
-              // Footer
-              const Padding(
-                padding: EdgeInsets.only(bottom: 20.0),
-                child: Text(
-                  'Developed By Malitha Tishamal',
-                  style: TextStyle(
-                    color: AppColors.darkText,
-                    fontSize: 12,
+              child: Column(
+                children: [
+                  // Agree button with original gradient
+                  SizedBox(
+                    height: 54,
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isScrolledToBottom
+                          ? () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginPage()),
+                              );
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        disabledBackgroundColor: AppColors.buttonGradientEnd.withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 6,
+                        shadowColor: AppColors.buttonGradientEnd.withOpacity(0.5),
+                        padding: EdgeInsets.zero,
+                      ).copyWith(
+                        backgroundColor: _isScrolledToBottom
+                            ? null
+                            : WidgetStatePropertyAll(AppColors.buttonGradientEnd.withOpacity(0.3)),
+                      ),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          gradient: _isScrolledToBottom
+                              ? const LinearGradient(
+                                  colors: [
+                                    AppColors.buttonGradientStart,
+                                    AppColors.buttonGradientEnd,
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: _isScrolledToBottom ? null : AppColors.buttonGradientEnd.withOpacity(0.3),
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: Text(
+                            _isScrolledToBottom
+                                ? "I Agree and Continue"
+                                : "Scroll to Read Agreement",
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Developed By Malitha Tishamal',
+                    style: TextStyle(
+                      color: AppColors.darkText,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
