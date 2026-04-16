@@ -1,3 +1,4 @@
+// forgot_password_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../main.dart'; // AppColors
@@ -73,118 +74,64 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         backgroundColor: AppColors.lightBackground,
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: Column(
               children: [
-                // Scrollable content
+                // Back button row (minimal, like login page)
+                SizedBox(
+                  height: 56,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: AppColors.darkText,
+                          size: 20,
+                        ),
+                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                      ),
+                      const Spacer(),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const ClampingScrollPhysics(),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: AppColors.darkText,
-                                size: 20,
-                              ),
-                              onPressed: _isLoading ? null : () => Navigator.pop(context),
-                            ),
-                            const Spacer(),
-                            const Text(
-                              'Forgot Password',
-                              style: TextStyle(
-                                color: AppColors.darkText,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Spacer(),
-                            const SizedBox(width: 48),
-                          ],
-                        ),
-                        const SizedBox(height: 30),
-                        Center(
-                          child: Hero(
-                            tag: 'app-logo',
-                            child: Image.asset(
-                              'assets/logo/logo.png',
-                              height: 200,
-                              fit: BoxFit.contain,
-                            ),
+                        // Hero logo
+                        Hero(
+                          tag: 'app-logo',
+                          child: Image.asset(
+                            'assets/logo/logo.png',
+                            height: 200,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Reset Your Password',
+                          style: TextStyle(
+                            color: AppColors.darkText,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         const Text(
                           'Enter your email address and we will send you a link to reset your password.',
                           style: TextStyle(fontSize: 14, color: AppColors.darkText),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 32),
+                        // Form with styled input field (matching LoginPage)
                         Form(
                           key: _formKey,
-                          child: TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            enabled: !_isLoading,
-                            decoration: InputDecoration(
-                              labelText: 'Email Address',
-                              hintText: 'example@email.com',
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
-                              labelStyle: TextStyle(
-                                color: _isLoading ? Colors.grey.shade600 : AppColors.primaryPurple,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                              filled: true,
-                              fillColor: _isLoading ? Colors.grey.shade100 : Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
-                              ),
-                              prefixIcon: Container(
-                                margin: const EdgeInsets.only(right: 12),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    right: BorderSide(color: Colors.grey.shade300, width: 1.5),
-                                  ),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Icon(
-                                    Icons.email_outlined,
-                                    color: AppColors.primaryPurple,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter your email address';
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                                return 'Enter a valid email address';
-                              }
-                              return null;
-                            },
-                          ),
+                          child: _buildEmailInput(),
                         ),
                         const SizedBox(height: 20),
+                        // Message box
                         if (_message != null)
                           Container(
                             width: double.infinity,
@@ -218,12 +165,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             ),
                           ),
                         const SizedBox(height: 30),
+                        // Gradient button
                         _buildGradientButton(
                           text: _isLoading ? 'Sending...' : 'Send Reset Link',
                           onPressed: _isLoading ? null : _sendResetEmail,
                           isLoading: _isLoading,
                         ),
                         const SizedBox(height: 20),
+                        // Login link
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -239,18 +188,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                   fontSize: 14,
                                   color: AppColors.primaryPurple,
                                   fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),
                 ),
-                // Fixed footer
+                // Footer
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12.0),
                   child: Text(
@@ -266,59 +214,125 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
+  // ----------------------------------------------------------------------
+  // Email input styled exactly like LoginPage's _buildInputField
+  // ----------------------------------------------------------------------
+  Widget _buildEmailInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Enter Your Email',
+          style: TextStyle(
+            color: AppColors.darkText,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            enabled: !_isLoading,
+            decoration: InputDecoration(
+              hintText: 'example@email.com',
+              hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primaryPurple),
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter your email address';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                return 'Enter a valid email address';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------------------
+  // Gradient button (matches LoginPage style)
+  // ----------------------------------------------------------------------
   Widget _buildGradientButton({
     required String text,
     required VoidCallback? onPressed,
     bool isLoading = false,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      height: 52,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: LinearGradient(
-          colors: onPressed == null || isLoading
-              ? [Colors.grey.shade400, Colors.grey.shade600]
-              : const [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: onPressed == null || isLoading
-            ? []
-            : [
-                BoxShadow(
-                  color: AppColors.buttonGradientEnd.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                  spreadRadius: 1,
+    final bool isDisabled = onPressed == null || isLoading;
+    return Opacity(
+      opacity: isDisabled ? 0.6 : 1.0,
+      child: Container(
+        width: double.infinity,
+        height: 52,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: isDisabled
+              ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade600])
+              : const LinearGradient(
+                  colors: [AppColors.buttonGradientStart, AppColors.buttonGradientEnd],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                 ),
-              ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(15),
-          child: Center(
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  )
-                : Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
+          boxShadow: isDisabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.buttonGradientEnd.withOpacity(0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
+                ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
           ),
         ),
       ),
