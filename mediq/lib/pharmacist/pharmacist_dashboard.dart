@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz_data;   // needed for timezone data
+import 'package:timezone/data/latest.dart' as tz_data;
 
 import '../auth/login_page.dart';
 import 'pharmacist_drawer.dart';
@@ -19,7 +19,6 @@ import 'pharmacist_antibiotic_usage_screen.dart';
 import 'pharmacist_book_numbers_screen.dart';
 import 'pharmacist_profile_screen.dart';
 
-// ---------------- App Colors ----------------
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
@@ -34,7 +33,6 @@ class AppColors {
   static const Color headerTextDark = Color(0xFF333333);
 }
 
-// ---------------- Dashboard ----------------
 class PharmacistDashboard extends StatefulWidget {
   final String userName;
   final String userRole;
@@ -68,11 +66,20 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
+  // ---------- DYNAMIC TIMESTAMP GETTERS (recomputed each query) ----------
+  Timestamp get _todayStartTs =>
+      Timestamp.fromDate(_getUtcStartOfToday());
+  Timestamp get _todayEndTs =>
+      Timestamp.fromDate(_getUtcEndOfToday());
+  Timestamp get _monthStartTs =>
+      Timestamp.fromDate(_getUtcStartOfCurrentMonth());
+  Timestamp get _monthEndTs =>
+      Timestamp.fromDate(_getUtcEndOfCurrentMonth());
+
   @override
   void initState() {
     super.initState();
-
-    // ---------- Timezone initialization (Sri Lanka) ----------
+    // Initialize timezone for Sri Lanka
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
@@ -111,30 +118,26 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     super.dispose();
   }
 
-  // ---------- Sri Lanka time helpers (using timezone package) ----------
+  // ---------- Sri Lanka time helpers (return DateTime) ----------
   DateTime _getSriLankaNow() => tz.TZDateTime.now(tz.local);
 
-  // Start of today in Sri Lanka (00:00:00) as UTC
   DateTime _getUtcStartOfToday() {
     final now = _getSriLankaNow();
     final localStart = DateTime(now.year, now.month, now.day);
     return tz.TZDateTime.from(localStart, tz.local).toUtc();
   }
 
-  // End of today in Sri Lanka (23:59:59.999) as UTC
   DateTime _getUtcEndOfToday() {
     final startUtc = _getUtcStartOfToday();
     return startUtc.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
   }
 
-  // Start of current month in Sri Lanka (first day, 00:00:00) as UTC
   DateTime _getUtcStartOfCurrentMonth() {
     final now = _getSriLankaNow();
     final localStart = DateTime(now.year, now.month, 1);
     return tz.TZDateTime.from(localStart, tz.local).toUtc();
   }
 
-  // End of current month in Sri Lanka (last day, 23:59:59.999) as UTC
   DateTime _getUtcEndOfCurrentMonth() {
     final startUtc = _getUtcStartOfCurrentMonth();
     final startLocal = tz.TZDateTime.from(startUtc, tz.local);
@@ -211,7 +214,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
-  // ---------- Build Methods ----------
+  // ---------- UI Helpers (matching Admin Panel style) ----------
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -235,75 +238,45 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Top row: menu left, user info center, profile right
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
+              const Spacer(),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     _currentUserName,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.headerTextDark,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     'Logged in as: Pharmacist',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
                     ),
                   ),
                 ],
               ),
+              const Spacer(),
+              _buildDashboardProfileAvatar(),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
           const Text(
             'Pharmacist Dashboard',
             style: TextStyle(
@@ -315,6 +288,25 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         ],
       ),
     );
+  }
+
+  Widget _buildDashboardProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   Widget _buildSectionTitle(String title, IconData icon) {
@@ -352,18 +344,20 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         _tileWards(),
         _tileUsageDetails(),
         _buildSmallTile(
-            icon: Icons.menu_book,
-            title: 'Book Numbers',
-            subtitle: 'For Connecting Manual System'),
+          icon: Icons.menu_book,
+          title: 'Book Numbers',
+          subtitle: 'For Connecting Manual System',
+        ),
         _buildSmallTile(
-            icon: Icons.person_outline,
-            title: 'Profile Manage',
-            subtitle: 'Manage Profile Details'),
+          icon: Icons.person_outline,
+          title: 'Profile Manage',
+          subtitle: 'Manage Profile Details',
+        ),
         _buildSmallTile(
-            icon: Icons.developer_board,
-            title: 'Developer About',
-            subtitle: 'Contact Developers'),
-        const SizedBox.shrink(),
+          icon: Icons.developer_board,
+          title: 'Developer About',
+          subtitle: 'Contact Developers',
+        ),
       ],
     );
   }
@@ -376,9 +370,10 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 4))
+            color: AppColors.primaryPurple.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: child,
@@ -389,21 +384,29 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 12, color: AppColors.darkText.withOpacity(0.7))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: AppColors.darkText.withOpacity(0.7)),
+        ),
         const SizedBox(height: 4),
-        Text(value,
-            style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: valueColor)),
+        Text(
+          value,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: valueColor),
+        ),
       ],
     );
   }
 
-  // ---------- Tiles ----------
+  // ---------- Tiles (Pharmacist-specific, all using createdAt & dynamic getters) ----------
+
   Widget _tileAntibioticsRelease() {
     final userId = _currentUserId;
-    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow()); // ✅ define currentMonth
+    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
+
+    if (userId == null) {
+      return _smallCard(child: const Center(child: CircularProgressIndicator()));
+    }
+
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Release'),
       child: _smallCard(
@@ -412,15 +415,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           children: [
             const Row(
               children: [
-                Icon(Icons.receipt_long,
-                    color: AppColors.primaryPurple, size: 28),
+                Icon(Icons.receipt_long, color: AppColors.primaryPurple, size: 28),
                 Spacer(),
-                Text('Antibiotics\nRelease',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
+                Text(
+                  'Antibiotics\nRelease',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+                ),
               ],
             ),
             const Spacer(),
@@ -428,28 +429,15 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               children: [
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: userId != null
-                        ? _releasesCollection
-                            .where('createdBy', isEqualTo: userId)
-                            .where('releaseDateTime',
-                                isGreaterThanOrEqualTo: _getUtcStartOfToday())
-                            .where('releaseDateTime',
-                                isLessThanOrEqualTo: _getUtcEndOfToday())
-                            .snapshots()
-                        : Stream.empty(),
+                    stream: _releasesCollection
+                        .where('createdBy', isEqualTo: userId)
+                        .where('createdAt', isGreaterThanOrEqualTo: _todayStartTs)
+                        .where('createdAt', isLessThanOrEqualTo: _todayEndTs)
+                        .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint(
-                            'Error fetching user releases: ${snapshot.error}');
-                      }
-                      return _miniStat(
-                        '$currentMonth You Issued',
-                        count.toString().padLeft(2, '0'),
-                        AppColors.primaryPurple,
-                      );
+                      if (snapshot.hasData) count = snapshot.data!.docs.length;
+                      return _miniStat('$currentMonth You Issued', count.toString().padLeft(2, '0'), AppColors.primaryPurple);
                     },
                   ),
                 ),
@@ -463,7 +451,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   Widget _tileAntibioticsReturns() {
     final userId = _currentUserId;
-    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow()); // ✅ define currentMonth
+    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
+
+    if (userId == null) {
+      return _smallCard(child: const Center(child: CircularProgressIndicator()));
+    }
+
     return InkWell(
       onTap: () => _onNavTap('Antibiotics Returns'),
       child: _smallCard(
@@ -472,15 +465,13 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           children: [
             const Row(
               children: [
-                Icon(Icons.archive,
-                    color: AppColors.primaryPurple, size: 28),
+                Icon(Icons.archive, color: AppColors.primaryPurple, size: 28),
                 Spacer(),
-                Text('Antibiotics\nReturns',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
+                Text(
+                  'Antibiotics\nReturns',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+                ),
               ],
             ),
             const Spacer(),
@@ -488,28 +479,15 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               children: [
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: userId != null
-                        ? _returnsCollection
-                            .where('createdBy', isEqualTo: userId)
-                            .where('returnDateTime',
-                                isGreaterThanOrEqualTo: _getUtcStartOfToday())
-                            .where('returnDateTime',
-                                isLessThanOrEqualTo: _getUtcEndOfToday())
-                            .snapshots()
-                        : Stream.empty(),
+                    stream: _returnsCollection
+                        .where('createdBy', isEqualTo: userId)
+                        .where('createdAt', isGreaterThanOrEqualTo: _todayStartTs)
+                        .where('createdAt', isLessThanOrEqualTo: _todayEndTs)
+                        .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint(
-                            'Error fetching user returns: ${snapshot.error}');
-                      }
-                      return _miniStat(
-                        '$currentMonth You Issued',
-                        count.toString().padLeft(2, '0'),
-                        AppColors.primaryPurple,
-                      );
+                      if (snapshot.hasData) count = snapshot.data!.docs.length;
+                      return _miniStat('$currentMonth You Returned', count.toString().padLeft(2, '0'), AppColors.primaryPurple);
                     },
                   ),
                 ),
@@ -537,22 +515,14 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               for (var doc in docs) {
                 final data = doc.data() as Map<String, dynamic>;
                 final category = data['category'] ?? '';
-                if (category.isNotEmpty) {
-                  categories.add(category);
-                }
+                if (category.isNotEmpty) categories.add(category);
               }
             }
 
-            int categoryCount = categories.length;
+            final categoryCount = categories.length;
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
+              return const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)));
             }
 
             return Column(
@@ -560,32 +530,17 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               children: [
                 const Row(
                   children: [
-                    Icon(
-                      Icons.medication_liquid,
-                      color: AppColors.primaryPurple,
-                      size: 28,
-                    ),
+                    Icon(Icons.medication_liquid, color: AppColors.primaryPurple, size: 28),
                     Spacer(),
-                    Text('Antibiotics',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkText,
-                            fontSize: 14)),
+                    Text('Antibiotics', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14)),
                   ],
                 ),
                 const Spacer(),
                 Row(
                   children: [
-                    Expanded(
-                      child: _miniStat('Total Found', total.toString().padLeft(2, '0'),
-                          AppColors.totalFoundColor),
-                    ),
+                    Expanded(child: _miniStat('Total Found', total.toString().padLeft(2, '0'), AppColors.totalFoundColor)),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
-                          AppColors.primaryPurple),
-                    ),
+                    Expanded(child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'), AppColors.primaryPurple)),
                   ],
                 ),
               ],
@@ -612,22 +567,14 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               for (var doc in docs) {
                 final data = doc.data() as Map<String, dynamic>;
                 final category = data['category'] ?? '';
-                if (category.isNotEmpty) {
-                  categories.add(category);
-                }
+                if (category.isNotEmpty) categories.add(category);
               }
             }
 
-            int categoryCount = categories.length;
+            final categoryCount = categories.length;
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
+              return const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)));
             }
 
             return Column(
@@ -635,32 +582,17 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
               children: [
                 const Row(
                   children: [
-                    Icon(
-                      Icons.local_hospital_rounded,
-                      color: AppColors.primaryPurple,
-                      size: 28,
-                    ),
+                    Icon(Icons.local_hospital_rounded, color: AppColors.primaryPurple, size: 28),
                     Spacer(),
-                    Text('Wards',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.darkText,
-                            fontSize: 14)),
+                    Text('Wards', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14)),
                   ],
                 ),
                 const Spacer(),
                 Row(
                   children: [
-                    Expanded(
-                      child: _miniStat('Total Wards', total.toString().padLeft(2, '0'),
-                          AppColors.totalFoundColor),
-                    ),
+                    Expanded(child: _miniStat('Total Wards', total.toString().padLeft(2, '0'), AppColors.totalFoundColor)),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'),
-                          AppColors.primaryPurple),
-                    ),
+                    Expanded(child: _miniStat('Categories', categoryCount.toString().padLeft(2, '0'), AppColors.primaryPurple)),
                   ],
                 ),
               ],
@@ -673,7 +605,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   Widget _tileUsageDetails() {
     final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
-    final userId = _currentUserId;
 
     return InkWell(
       onTap: () => _onNavTap('Usage Details'),
@@ -683,75 +614,42 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           children: [
             const Row(
               children: [
-                Icon(Icons.receipt_long,
-                    color: AppColors.primaryPurple, size: 28),
+                Icon(Icons.receipt_long, color: AppColors.primaryPurple, size: 28),
                 Spacer(),
-                Text('Usage Details',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.darkText,
-                        fontSize: 14)),
+                Text('Usage Details', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14)),
               ],
             ),
             const Spacer(),
             Row(
               children: [
-                // Releases count for current month (current user only)
+                // Releases count (global, for current month)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: userId != null
-                        ? FirebaseFirestore.instance
-                            .collection('releases')
-                            .where('createdBy', isEqualTo: userId)
-                            .where('createdAt',
-                                isGreaterThanOrEqualTo:
-                                    _getUtcStartOfCurrentMonth())
-                            .where('createdAt',
-                                isLessThanOrEqualTo:
-                                    _getUtcEndOfCurrentMonth())
-                            .snapshots()
-                        : Stream.empty(),
+                    stream: FirebaseFirestore.instance
+                        .collection('releases')
+                        .where('createdAt', isGreaterThanOrEqualTo: _monthStartTs)
+                        .where('createdAt', isLessThanOrEqualTo: _monthEndTs)
+                        .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint(
-                            'Error fetching user releases: ${snapshot.error}');
-                      }
-                      return _miniStat('$currentMonth Releases',
-                          count.toString().padLeft(2, '0'),
-                          AppColors.releasesCountColor);
+                      if (snapshot.hasData) count = snapshot.data!.docs.length;
+                      return _miniStat('$currentMonth Releases', count.toString().padLeft(2, '0'), AppColors.releasesCountColor);
                     },
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Returns count for current month (current user only)
+                // Returns count (global, for current month)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: userId != null
-                        ? FirebaseFirestore.instance
-                            .collection('returns')
-                            .where('createdBy', isEqualTo: userId)
-                            .where('createdAt',
-                                isGreaterThanOrEqualTo:
-                                    _getUtcStartOfCurrentMonth())
-                            .where('createdAt',
-                                isLessThanOrEqualTo:
-                                    _getUtcEndOfCurrentMonth())
-                            .snapshots()
-                        : Stream.empty(),
+                    stream: FirebaseFirestore.instance
+                        .collection('returns')
+                        .where('createdAt', isGreaterThanOrEqualTo: _monthStartTs)
+                        .where('createdAt', isLessThanOrEqualTo: _monthEndTs)
+                        .snapshots(),
                     builder: (context, snapshot) {
                       int count = 0;
-                      if (snapshot.hasData) {
-                        count = snapshot.data!.docs.length;
-                      } else if (snapshot.hasError) {
-                        debugPrint(
-                            'Error fetching user returns: ${snapshot.error}');
-                      }
-                      return _miniStat('$currentMonth \nReturns',
-                          count.toString().padLeft(2, '0'),
-                          AppColors.returnsCountColor);
+                      if (snapshot.hasData) count = snapshot.data!.docs.length;
+                      return _miniStat('$currentMonth Returns', count.toString().padLeft(2, '0'), AppColors.returnsCountColor);
                     },
                   ),
                 ),
@@ -763,8 +661,11 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  Widget _buildSmallTile(
-      {required IconData icon, required String title, String? subtitle}) {
+  Widget _buildSmallTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+  }) {
     return InkWell(
       onTap: () => _onNavTap(title),
       child: _smallCard(
@@ -773,17 +674,20 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           children: [
             Icon(icon, color: AppColors.primaryPurple, size: 26),
             const SizedBox(height: 8),
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.darkText,
-                    fontSize: 14)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: 4),
-              Text(subtitle,
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.darkText.withOpacity(0.6))),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ],
         ),
@@ -830,15 +734,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              color: const Color.fromARGB(255, 255, 255, 255),
+              color: Colors.white,
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 'Developed By Malitha Tishamal',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.darkText.withOpacity(0.7),
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppColors.darkText.withOpacity(0.7), fontSize: 12),
               ),
             ),
           ),
