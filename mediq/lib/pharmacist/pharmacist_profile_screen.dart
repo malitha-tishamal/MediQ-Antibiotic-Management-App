@@ -1,3 +1,4 @@
+// lib/pharmacist_profile_screen.dart
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -17,13 +18,11 @@ class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
   static const Color darkText = Color(0xFF333333);
-  
-  // Header gradient colors
+
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
-  
-  // Added for consistent input styling
+
   static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
@@ -31,111 +30,52 @@ class PharmacistProfileScreen extends StatefulWidget {
   const PharmacistProfileScreen({super.key});
 
   @override
-  State<PharmacistProfileScreen> createState() => _PharmacistProfileScreenState();
+  State<PharmacistProfileScreen> createState() =>
+      _PharmacistProfileScreenState();
 }
 
-class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
-  // --- Firebase Instances ---
+class _PharmacistProfileScreenState extends State<PharmacistProfileScreen>
+    with WidgetsBindingObserver {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
   final _imagePicker = ImagePicker();
 
-  // --- Cloudinary Configuration ---
   final String _cloudName = "dqeptzlsb";
   final String _uploadPreset = "flutter_mediq_upload";
 
-  // --- Controllers for Form Fields ---
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _nicController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
 
-  // --- State Variables ---
   bool _loading = true;
   bool _saving = false;
   String? _error;
   String? _profileImageUrl;
   DateTime? _createdAt;
   String _role = '';
-  
-  // Auth state management
+
   User? _currentUser;
   late StreamSubscription<User?> _authStateSubscription;
   bool _showEmailChangePopup = false;
   bool _showVerificationSuccessPopup = false;
 
-  // Image handling
   XFile? _pickedImageFile;
   bool _uploadingImage = false;
   bool _hasUnsavedChanges = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ---------- Helper for consistent input decoration ----------
-  InputDecoration _inputDecoration({
-    required String label,
-    IconData? prefixIcon,
-    String? hintText,
-    bool enabled = true,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hintText,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      labelStyle: TextStyle(
-        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-      filled: true,
-      fillColor: enabled ? Colors.white : Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Colors.red, width: 2.0),
-      ),
-      prefixIcon: prefixIcon == null
-          ? null
-          : Container(
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
-              ),
-            ),
-      suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeAuthListener();
     _loadUserProfile();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authStateSubscription.cancel();
     _fullNameController.dispose();
     _emailController.dispose();
@@ -144,13 +84,19 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     super.dispose();
   }
 
-  // --- Initialization Methods ---
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // යෙදුම නැවත ඉදිරියට ආ විට ස්වයංක්‍රීයව refresh වේ
+      _refreshProfile();
+    }
+  }
+
   void _initializeAuthListener() {
     _authStateSubscription = _auth.authStateChanges().listen((user) {
       if (user != null) {
         user.reload().then((_) {
           if (!mounted) return;
-          
           final reloadedUser = _auth.currentUser;
           _handleAuthStateChange(reloadedUser);
         });
@@ -159,32 +105,23 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
   }
 
   void _handleAuthStateChange(User? reloadedUser) {
-    final justVerified = reloadedUser != null && 
-                        reloadedUser.emailVerified && 
-                        _currentUser?.emailVerified == false;
-    
+    final justVerified = reloadedUser != null &&
+        reloadedUser.emailVerified &&
+        _currentUser?.emailVerified == false;
+
     setState(() {
       _currentUser = reloadedUser;
     });
 
     if (justVerified) {
-      setState(() {
-        _showVerificationSuccessPopup = true;
-      });
-      
+      setState(() => _showVerificationSuccessPopup = true);
       Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) {
-          setState(() {
-            _showVerificationSuccessPopup = false;
-          });
-        }
+        if (mounted) setState(() => _showVerificationSuccessPopup = false);
       });
-      
       _loadUserProfile();
     }
   }
 
-  // --- Data Loading Methods ---
   Future<void> _loadUserProfile() async {
     setState(() {
       _loading = true;
@@ -198,8 +135,9 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     }
 
     try {
-      _currentUser = user;
-      
+      await user.reload();
+      _currentUser = _auth.currentUser;
+
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (!doc.exists) {
         _setError('User profile not found in Firestore.');
@@ -210,11 +148,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     } catch (e) {
       _setError('Failed to load profile: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -229,15 +163,14 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
 
   Future<void> _updateLocalStateFromDocument(DocumentSnapshot doc) async {
     final data = doc.data()! as Map<String, dynamic>;
-    
+
     _fullNameController.text = (data['fullName'] ?? '') as String;
-    _emailController.text = (_currentUser?.email ?? data['email'] ?? '') as String;
+    _emailController.text =
+        (_currentUser?.email ?? data['email'] ?? '') as String;
     _nicController.text = (data['nic'] ?? '') as String;
     _mobileController.text = (data['mobileNumber'] ?? '') as String;
-    
-    // Load profile image URL from Cloudinary
+
     _profileImageUrl = (data['profileImageUrl'] ?? '') as String?;
-    
     _role = (data['role'] ?? '') as String;
 
     final ts = data['createdAt'];
@@ -261,131 +194,112 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
 
   void _onFieldChanged() {
     if (!_hasUnsavedChanges) {
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
+      setState(() => _hasUnsavedChanges = true);
     }
   }
 
-  // 🌟 NEW HEADER - Factory Owner Dashboard Style
-  Widget _buildDashboardHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 10),
-          
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [Color(0xFF2764E7), Color(0xFF457AED)], // Blue gradient
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2764E7).withOpacity(0.4), // Blue shadow
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // User Info
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User Name
-                  Text(
-                    _displayName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark,
-                    ),
-                  ),
-                  // Role
-                  Text(
-                    'Logged in as: Pharmacist',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 25),
-          
-          // Page Title
-          const Text(
-            'Profile Management',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.headerTextDark,
-            ),
-          ),
-        ],
-      ),
-    );
+  Future<void> _refreshProfile() async {
+    await _loadUserProfile();
   }
 
-  // --- Image Handling Methods ---
+ Widget _buildDashboardHeader(BuildContext context) {
+  return Container(
+    padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Row with menu (left), centered user info, profile avatar (right)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Menu button (left)
+            IconButton(
+              icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const Spacer(),
+            // Centered user info
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _displayName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.headerTextDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Logged in as: Pharmacist',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.headerTextDark,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            // Profile avatar (right)
+            _buildProfileAvatar(),
+          ],
+        ),
+        const SizedBox(height: 20),
+        // Screen title
+        const Text(
+           'Profile Management',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.headerTextDark,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildProfileAvatar() {
+  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(_profileImageUrl!),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = null);
+      },
+    );
+  } else {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+    );
+  }
+}
+
   void _openImageOptions() {
     if (_isVerificationPending) return;
 
@@ -412,11 +326,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
                   isDestructive: true,
                   onTap: _confirmRemoveImage,
                 ),
-              _buildImageOptionTile(
-                icon: Icons.close,
-                title: 'Cancel',
-                onTap: () => Navigator.of(ctx).pop(),
-              ),
+              
             ],
           ),
         );
@@ -431,8 +341,10 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     bool isDestructive = false,
   }) {
     return ListTile(
-      leading: Icon(icon, color: isDestructive ? Colors.red : AppColors.primaryPurple),
-      title: Text(title, style: TextStyle(color: isDestructive ? Colors.red : null)),
+      leading: Icon(icon,
+          color: isDestructive ? Colors.red : AppColors.primaryPurple),
+      title: Text(title,
+          style: TextStyle(color: isDestructive ? Colors.red : null)),
       onTap: () {
         Navigator.of(context).pop();
         onTap();
@@ -454,7 +366,6 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         _pickedImageFile = picked;
         _hasUnsavedChanges = true;
       });
-
     } catch (e) {
       debugPrint('Image pick error: $e');
       _showSnackBar('Failed to pick image: ${e.toString()}');
@@ -466,7 +377,8 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Profile Photo'),
-        content: const Text('Are you sure you want to remove your profile photo?'),
+        content:
+            const Text('Are you sure you want to remove your profile photo?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -490,9 +402,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    setState(() {
-      _uploadingImage = true;
-    });
+    setState(() => _uploadingImage = true);
 
     try {
       await _firestore.collection('users').doc(user.uid).update({
@@ -508,30 +418,24 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
 
       _showSnackBar('Profile photo removed');
     } catch (e) {
-      setState(() {
-        _uploadingImage = false;
-      });
+      setState(() => _uploadingImage = false);
       _showSnackBar('Failed to remove photo: ${e.toString()}');
     }
   }
 
-  // --- Cloudinary Upload Method ---
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
       debugPrint('🔄 Starting Cloudinary upload process...');
-      debugPrint('🌩️ Cloud Name: $_cloudName');
-      debugPrint('📝 Upload Preset: $_uploadPreset');
 
       final bytes = await imageFile.readAsBytes();
-      debugPrint('📊 Image size: ${bytes.length} bytes');
-
       if (bytes.length > 1000000) {
-        _showSnackBar('Image is too large. Please choose a smaller image (max 1MB).');
+        _showSnackBar('Image is too large. Max 1MB allowed.');
         return null;
       }
 
-      final url = Uri.parse("https://api.cloudinary.com/v1_1/dqeptzlsb/image/upload");
-      
+      final url =
+          Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
+
       final request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = _uploadPreset
         ..files.add(http.MultipartFile.fromBytes(
@@ -540,44 +444,28 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
           filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ));
 
-      debugPrint('📤 Uploading to Cloudinary...');
-      
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 30),
-        onTimeout: () {
-          throw TimeoutException('Cloudinary upload timed out');
-        },
+        onTimeout: () => throw TimeoutException('Upload timed out'),
       );
 
       final response = await http.Response.fromStream(streamedResponse);
       final responseData = json.decode(response.body);
-      
+
       if (response.statusCode == 200) {
-        final imageUrl = responseData['secure_url'];
-        debugPrint('✅ Cloudinary upload successful! URL: $imageUrl');
-        return imageUrl;
+        return responseData['secure_url'];
       } else {
-        debugPrint('❌ Cloudinary upload failed: ${response.statusCode}');
-        String errorMessage = 'Unknown error';
-        if (responseData['error'] != null) {
-          errorMessage = responseData['error']['message'] ?? 'Unknown Cloudinary error';
-        }
-        _showSnackBar('Upload failed: $errorMessage');
+        final errorMsg = responseData['error']?['message'] ?? 'Upload failed';
+        _showSnackBar('Upload failed: $errorMsg');
         return null;
       }
-      
-    } on TimeoutException catch (e) {
-      debugPrint('⏰ Upload timeout: $e');
-      _showSnackBar('Upload timed out. Please try again.');
-      return null;
     } catch (e) {
-      debugPrint('❌ Upload error: $e');
-      _showSnackBar('Failed to upload image. Please try again.');
+      debugPrint('Upload error: $e');
+      _showSnackBar('Upload failed. Please try again.');
       return null;
     }
   }
 
-  // --- Profile Save Logic ---
   Future<void> _saveProfile() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -606,14 +494,11 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
       bool imageUpdated = false;
 
       if (_pickedImageFile != null) {
-        debugPrint('🖼️ Starting image upload...');
         final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
         if (cloudinaryUrl != null) {
           finalProfileImageUrl = cloudinaryUrl;
           imageUpdated = true;
-          debugPrint('✅ Image uploaded successfully');
         } else {
-          debugPrint('❌ Image upload failed');
           setState(() {
             _saving = false;
             _uploadingImage = false;
@@ -642,9 +527,9 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         await _handleEmailChange(user, newEmail);
       } else {
         if (imageUpdated) {
-          _showSnackBar('Profile updated successfully with new photo!');
+          _showSnackBar('Profile updated with new photo!');
         } else if (_pickedImageFile == null && _profileImageUrl == null) {
-          _showSnackBar('Profile updated successfully - photo removed');
+          _showSnackBar('Profile updated - photo removed');
         } else {
           _showSnackBar('Profile updated successfully');
         }
@@ -655,9 +540,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         _hasUnsavedChanges = false;
         _profileImageUrl = finalProfileImageUrl;
       });
-
     } catch (e) {
-      debugPrint('❌ Save profile error: $e');
       _setError('Failed to save profile: ${e.toString()}');
     } finally {
       if (mounted) {
@@ -672,45 +555,28 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
   Future<void> _handleEmailChange(User user, String newEmail) async {
     try {
       await user.verifyBeforeUpdateEmail(newEmail);
-      
-      setState(() {
-        _showEmailChangePopup = true;
-      });
-      
+      setState(() => _showEmailChangePopup = true);
       Future.delayed(const Duration(seconds: 6), () {
-        if (mounted) {
-          setState(() {
-            _showEmailChangePopup = false;
-          });
-        }
+        if (mounted) setState(() => _showEmailChangePopup = false);
       });
-
     } on FirebaseAuthException catch (e) {
-      debugPrint('Auth email update failed: $e');
-      _showSnackBar(
-        'Profile updated but email change failed: ${e.code}',
-        duration: const Duration(seconds: 4),
-      );
+      _showSnackBar('Email change failed: ${e.code}');
     }
   }
 
-  // --- Email Verification Methods ---
   Future<void> _resendVerificationEmail() async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     try {
       await user.sendEmailVerification();
       _showSnackBar('Verification email sent to ${user.email}');
     } catch (e) {
-      _showSnackBar('Failed to send verification email: ${e.toString()}');
+      _showSnackBar('Failed to send verification email');
     }
   }
 
-  // --- UI Helper Methods ---
   Widget _buildEmailChangePopup() {
     if (!_showEmailChangePopup) return const SizedBox.shrink();
-
     return Container(
       color: Colors.black54,
       child: Dialog(
@@ -723,23 +589,12 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
             children: [
               const Icon(Icons.email_outlined, size: 50, color: AppColors.primaryPurple),
               const SizedBox(height: 16),
-              const Text(
-                'Email Change Initiated',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('Email Change Initiated', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-              const Text(
-                'Please check your inbox to verify the new email. All profile actions are temporarily disabled until verification is complete.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
+              const Text('Please check your inbox to verify the new email.', textAlign: TextAlign.center),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _showEmailChangePopup = false;
-                  });
-                },
+                onPressed: () => setState(() => _showEmailChangePopup = false),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryPurple,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -756,7 +611,6 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
 
   Widget _buildVerificationSuccessPopup() {
     if (!_showVerificationSuccessPopup) return const SizedBox.shrink();
-
     return Container(
       color: Colors.black54,
       child: Dialog(
@@ -769,16 +623,9 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
             children: [
               Icon(Icons.verified, size: 50, color: Colors.green),
               SizedBox(height: 16),
-              Text(
-                'Email Verified Successfully!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-              ),
+              Text('Email Verified Successfully!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
               SizedBox(height: 12),
-              Text(
-                'Your email has been verified successfully. All profile actions are now re-enabled.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
+              Text('All profile actions are now re-enabled.', textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -788,7 +635,6 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
 
   Widget _buildVerificationStatusWidget(bool isPending) {
     if (!isPending) return const SizedBox.shrink();
-
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 15),
@@ -801,7 +647,6 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
               SizedBox(width: 10),
@@ -809,15 +654,8 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Action Disabled: Email Verification Pending',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Please check your inbox for the verification link.',
-                      style: TextStyle(color: Colors.red, fontSize: 13),
-                    ),
+                    Text('Action Disabled: Email Verification Pending', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                    Text('Please check your inbox for the verification link.', style: TextStyle(color: Colors.red, fontSize: 13)),
                   ],
                 ),
               ),
@@ -828,16 +666,8 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
             width: double.infinity,
             child: TextButton(
               onPressed: _resendVerificationEmail,
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.red.shade50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Resend Verification Email',
-                style: TextStyle(color: Colors.red.shade700),
-              ),
+              style: TextButton.styleFrom(backgroundColor: Colors.red.shade50),
+              child: Text('Resend Verification Email', style: TextStyle(color: Colors.red.shade700)),
             ),
           ),
         ],
@@ -845,23 +675,48 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     );
   }
 
-  // Updated text field builder using modern input decoration
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
+    required String hint,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      enabled: enabled,
-      style: TextStyle(color: enabled ? Colors.black : Colors.grey.shade600),
-      decoration: _inputDecoration(
-        label: label,
-        enabled: enabled,
-        // No prefix icon for profile fields
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            enabled: enabled,
+            style: TextStyle(color: enabled ? Colors.black : Colors.grey.shade600),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              prefixIcon: Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5))),
+                child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Icon(icon, color: AppColors.primaryPurple, size: 20)),
+              ),
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2)),
+              errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+              focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.red, width: 2)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -882,25 +737,13 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Center(
             child: _saving
-                ? const SizedBox(
-                    height: 18, 
-                    width: 18, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  )
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (_hasUnsavedChanges) 
-                        const Icon(Icons.save, size: 18, color: Colors.white),
+                      if (_hasUnsavedChanges) const Icon(Icons.save, size: 18, color: Colors.white),
                       if (_hasUnsavedChanges) const SizedBox(width: 6),
-                      Text(
-                        _hasUnsavedChanges ? 'Save' : 'Update',
-                        style: const TextStyle(
-                          color: Colors.white, 
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold
-                        ),
-                      ),
+                      Text(_hasUnsavedChanges ? 'Save' : 'Update', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
           ),
@@ -909,7 +752,6 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     );
   }
 
-  // --- Image Preview Widget ---
   Widget _buildImagePreview() {
     return GestureDetector(
       onTap: _isVerificationPending ? null : _openImageOptions,
@@ -918,15 +760,11 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: _isVerificationPending ? Colors.grey.shade300 : AppColors.inputBorder,
-            width: 1.5,
-          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _isVerificationPending ? Colors.grey.shade300 : AppColors.inputBorder, width: 1.5),
         ),
         child: Column(
           children: [
-            // Image preview (circular)
             Stack(
               alignment: Alignment.center,
               children: [
@@ -935,74 +773,25 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    image: _getProfileImage() != null
-                        ? DecorationImage(
-                            image: _getProfileImage()!,
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                    gradient: _getProfileImage() == null
-                        ? const LinearGradient(
-                            colors: [Color(0xFF2764E7), Color(0xFF457AED)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    border: Border.all(
-                      color: _getProfileImage() == null
-                          ? Colors.transparent
-                          : AppColors.primaryPurple,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryPurple.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    image: _getProfileImage() != null ? DecorationImage(image: _getProfileImage()!, fit: BoxFit.cover) : null,
+                    gradient: _getProfileImage() == null ? const LinearGradient(colors: [Color(0xFF2764E7), Color(0xFF457AED)]) : null,
+                    border: Border.all(color: _getProfileImage() == null ? Colors.transparent : AppColors.primaryPurple, width: 2),
+                    boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
                   ),
-                  child: _getProfileImage() == null
-                      ? const Icon(Icons.person, size: 60, color: Colors.white)
-                      : null,
+                  child: _getProfileImage() == null ? const Icon(Icons.person, size: 60, color: Colors.white) : null,
                 ),
                 if (_uploadingImage)
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.black54,
-                    ),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  ),
+                  Container(width: 120, height: 120, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.black54), child: const Center(child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))),
               ],
             ),
             const SizedBox(height: 12),
-            // Status text
             Text(
               _uploadingImage
                   ? 'Uploading to Cloudinary...'
                   : _isVerificationPending
-                      ? 'Image Change Disabled (Verification Pending)'
-                      : (_pickedImageFile != null
-                          ? 'Tap to Change Image'
-                          : (_hasExistingImage
-                              ? 'Tap to Change Image'
-                              : 'Tap to Add Image')),
-              style: TextStyle(
-                fontSize: 14,
-                color: _uploadingImage
-                    ? AppColors.primaryPurple
-                    : (_isVerificationPending
-                        ? Colors.grey.shade500
-                        : AppColors.primaryPurple),
-              ),
+                      ? 'Image Change Disabled'
+                      : (_pickedImageFile != null ? 'Tap to Change Image' : (_hasExistingImage ? 'Tap to Change Image' : 'Tap to Add Image')),
+              style: TextStyle(fontSize: 14, color: _uploadingImage ? AppColors.primaryPurple : (_isVerificationPending ? Colors.grey.shade500 : AppColors.primaryPurple)),
             ),
           ],
         ),
@@ -1010,40 +799,24 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     );
   }
 
-  // --- Helper Methods ---
   ImageProvider? _getProfileImage() {
-    // Priority: New picked image > Cloudinary URL
-    if (_pickedImageFile != null) {
-      return FileImage(File(_pickedImageFile!.path));
-    } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-      return NetworkImage(_profileImageUrl!);
-    }
+    if (_pickedImageFile != null) return FileImage(File(_pickedImageFile!.path));
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) return NetworkImage(_profileImageUrl!);
     return null;
   }
 
   void _showSnackBar(String message, {Duration duration = const Duration(seconds: 3)}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), duration: duration, behavior: SnackBarBehavior.floating));
   }
 
   Future<void> _handleLogout() async {
     try {
       await _auth.signOut();
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
-        );
+        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
       }
     } catch (e) {
-      if (mounted) {
-        _showSnackBar('Logout failed: ${e.toString()}');
-      }
+      _showSnackBar('Logout failed: $e');
     }
   }
 
@@ -1052,13 +825,10 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
     return DateFormat('yyyy-MM-dd • hh:mm a').format(_createdAt!);
   }
 
-  // --- Computed Properties ---
   bool get _isVerificationPending => _currentUser?.emailVerified == false && _currentUser != null;
-  bool get _hasExistingImage => _profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null;
+  bool get _hasExistingImage => (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) || _pickedImageFile != null;
   bool get _disableFieldsAndButton => _isVerificationPending || _saving;
-  String get _displayName => _fullNameController.text.isNotEmpty 
-      ? _fullNameController.text 
-      : (_currentUser?.displayName ?? 'Pharmacist');
+  String get _displayName => _fullNameController.text.isNotEmpty ? _fullNameController.text : (_currentUser?.displayName ?? 'Pharmacist');
 
   @override
   Widget build(BuildContext context) {
@@ -1069,9 +839,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
         userName: _displayName,
         userRole: _role.isNotEmpty ? _role : 'Pharmacist',
         profileImageUrl: _profileImageUrl,
-        onNavTap: (title) {
-          _showSnackBar('$title tapped');
-        },
+        onNavTap: (title) => _showSnackBar('$title tapped'),
         onLogout: _handleLogout,
       ),
       body: Stack(
@@ -1080,133 +848,87 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-                
-                // Main Content
                 Expanded(
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 10),
-                              
-                              _buildVerificationStatusWidget(_isVerificationPending), 
-                              
-                              const Text(
-                                'Manage Profile Details', 
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
-                              ),
-                              const SizedBox(height: 18),
-
-                              const Text(
-                                'Profile Picture', 
-                                style: TextStyle(
-                                  fontSize: 15, 
-                                  fontWeight: FontWeight.w600, 
-                                  color: AppColors.primaryPurple
+                  child: RefreshIndicator(
+                    onRefresh: _refreshProfile,
+                    color: AppColors.primaryPurple,
+                    child: _loading
+                        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+                        : SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 10),
+                                _buildVerificationStatusWidget(_isVerificationPending),
+                                const Text('Manage Profile Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 18),
+                                const Text('Profile Picture', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primaryPurple)),
+                                const SizedBox(height: 8),
+                                _buildImagePreview(),
+                                const SizedBox(height: 18),
+                                _buildTextField(
+                                  controller: _fullNameController,
+                                  label: 'Full Name',
+                                  hint: 'Enter your full name',
+                                  icon: Icons.person_outline,
+                                  enabled: !_isVerificationPending,
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Image preview
-                              _buildImagePreview(),
-
-                              const SizedBox(height: 18),
-
-                              // Full Name field with modern styling
-                              _buildTextField(
-                                controller: _fullNameController,
-                                label: 'Full Name',
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Email field
-                              _buildTextField(
-                                controller: _emailController,
-                                label: 'Email',
-                                keyboardType: TextInputType.emailAddress,
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // NIC field
-                              _buildTextField(
-                                controller: _nicController,
-                                label: 'NIC',
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Mobile Number field
-                              _buildTextField(
-                                controller: _mobileController,
-                                label: 'Mobile Number',
-                                keyboardType: TextInputType.phone,
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              Center(
-                                child: _buildSaveButton(_disableFieldsAndButton),
-                              ),
-
-                              const SizedBox(height: 18),
-
-                              Padding(
-                                padding: const EdgeInsets.only(left: 6.0),
-                                child: Text(
-                                  'Account Created: ${_formatCreatedAt()}',
-                                  style: const TextStyle(
-                                    fontSize: 13, 
-                                    fontWeight: FontWeight.w600, 
-                                    color: Colors.black
-                                  ),
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _emailController,
+                                  label: 'Email',
+                                  hint: 'example@email.com',
+                                  icon: Icons.email_outlined,
+                                  keyboardType: TextInputType.emailAddress,
+                                  enabled: !_isVerificationPending,
                                 ),
-                              ),
-
-                              const SizedBox(height: 30),
-
-                              if (_error != null)
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _nicController,
+                                  label: 'NIC',
+                                  hint: 'NIC number',
+                                  icon: Icons.badge_outlined,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _mobileController,
+                                  label: 'Mobile Number',
+                                  hint: 'Mobile number',
+                                  icon: Icons.phone_outlined,
+                                  keyboardType: TextInputType.phone,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 24),
+                                Center(child: _buildSaveButton(_disableFieldsAndButton)),
+                                const SizedBox(height: 18),
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: Text(
-                                    'Error: $_error', 
-                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
-                                  ),
+                                  padding: const EdgeInsets.only(left: 6.0),
+                                  child: Text('Account Created: ${_formatCreatedAt()}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black)),
                                 ),
-
-                              // 👇 Add bottom padding to avoid content hiding behind footer
-                              const SizedBox(height: 50),
-                            ],
+                                const SizedBox(height: 30),
+                                if (_error != null)
+                                  Padding(padding: const EdgeInsets.only(bottom: 8.0), child: Text('Error: $_error', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+                                const SizedBox(height: 50),
+                              ],
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ],
             ),
           ),
-
-          // 🔹 Static Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
               color: Colors.white,
               padding: const EdgeInsets.all(8.0),
-              child: const Text(
-                'Developed By Malitha Tishamal',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
+              child: const Text('Developed By Malitha Tishamal', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.black54)),
             ),
           ),
-
           if (_showEmailChangePopup) _buildEmailChangePopup(),
           if (_showVerificationSuccessPopup) _buildVerificationSuccessPopup(),
         ],
