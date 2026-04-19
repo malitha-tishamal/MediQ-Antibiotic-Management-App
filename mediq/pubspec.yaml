@@ -51,6 +51,8 @@ dependencies:
   # URL Launcher
   url_launcher: ^6.2.0
 
+  image_cropper: ^12.2.1
+
   # Utilities
   path: ^1.9.1
 
