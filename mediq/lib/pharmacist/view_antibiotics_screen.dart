@@ -123,76 +123,110 @@ class _ViewAntibioticsScreenState extends State<ViewAntibioticsScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
-        ],
+  return Container(
+    padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
-                onPressed: () {
-                  if (_scaffoldKey.currentState != null) {
-                    _scaffoldKey.currentState!.openDrawer();
-                  } else {
-                    Scaffold.of(context).openDrawer();
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(30),
+        bottomRight: Radius.circular(30),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Single row: menu (left), user info (center), profile picture (right)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Menu button (left)
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.menu,
+                  color: AppColors.headerTextDark, size: 24),
+              onPressed: () {
+                if (_scaffoldKey.currentState != null) {
+                  _scaffoldKey.currentState!.openDrawer();
+                } else {
+                  Scaffold.of(context).openDrawer();
+                }
+              },
+            ),
+            const Spacer(),
+            // User info (centered)
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _currentUserName,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   'Logged in as: $_userRole',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.headerTextDark),
+                    fontSize: 12,
+                    color: AppColors.headerTextDark,
+                  ),
                 ),
               ],
             ),
+            const Spacer(),
+            // Profile picture (right) - 80x80 (radius 40)
+            _buildProfileAvatar(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Title
+        const Text(
+          'Antibiotics List',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.headerTextDark,
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Antibiotics List',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
-          ),
-        ],
-      ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper for profile avatar (80x80, radius 40)
+Widget _buildProfileAvatar() {
+  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(_profileImageUrl!),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = null);
+      },
+    );
+  } else {
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
     );
   }
+}
 
   // Search bar with reduced vertical margin
   Widget _buildSearchBar() {
