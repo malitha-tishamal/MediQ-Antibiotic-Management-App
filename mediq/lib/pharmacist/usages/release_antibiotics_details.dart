@@ -1,5 +1,6 @@
 // release_antibiotics_details.dart
 // Improved UI with modern design, better visual hierarchy, and timezone support
+// Edit/Delete buttons visible only to the creator
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -64,9 +65,6 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
 
   // Cache for user names
   final Map<String, String> _userNameCache = {};
-
-  // Current month releases count
-  int _currentMonthReleasesCount = 0;
 
   // Animation controller for fade-in effects
   late AnimationController _animationController;
@@ -515,7 +513,8 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
     return true;
   }
 
-  void _updateCurrentMonthCount(List<DocumentSnapshot> docs) {
+  // Helper to compute current month count without setState
+  int _computeCurrentMonthCount(List<DocumentSnapshot> docs) {
     final now = tz.TZDateTime.now(tz.local);
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
@@ -534,9 +533,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
         }
       }
     }
-    if (_currentMonthReleasesCount != count) {
-      setState(() => _currentMonthReleasesCount = count);
-    }
+    return count;
   }
 
   Future<String> _getUserName(String userId) async {
@@ -698,6 +695,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
                   _detailRow(Icons.calendar_today, 'Created At', formattedCreated),
                   _detailRow(Icons.fingerprint, 'Document ID', docId),
                   const SizedBox(height: 24),
+                  // Action buttons: Close always visible, Edit/Delete only for creator
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -705,34 +703,36 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
                         onPressed: () => Navigator.pop(ctx),
                         child: const Text('Close'),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _editRelease(docId, quantity);
-                        },
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: const Text('Edit'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      if (createdBy == _auth.currentUser?.uid) ...[
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _editRelease(docId, quantity);
+                          },
+                          icon: const Icon(Icons.edit, size: 18),
+                          label: const Text('Edit'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _confirmDelete(docId, antibioticName);
-                        },
-                        icon: const Icon(Icons.delete, size: 18),
-                        label: const Text('Delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _confirmDelete(docId, antibioticName);
+                          },
+                          icon: const Icon(Icons.delete, size: 18),
+                          label: const Text('Delete'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -857,26 +857,28 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
                             ),
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.orange, size: 18),
-                              onPressed: () => _editRelease(doc.id, quantity),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              tooltip: 'Edit',
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                              onPressed: () => _confirmDelete(doc.id, antibioticName),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              tooltip: 'Delete',
-                            ),
-                          ],
-                        ),
+                        // Edit/Delete icons only visible to the creator
+                        if (createdBy == _auth.currentUser?.uid)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.orange, size: 18),
+                                onPressed: () => _editRelease(doc.id, quantity),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Edit',
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                                onPressed: () => _confirmDelete(doc.id, antibioticName),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                tooltip: 'Delete',
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -994,7 +996,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
     }
   }
 
-  Widget _buildCurrentMonthIndicator() {
+  Widget _buildCurrentMonthIndicator(int count) {
     final monthName = DateFormat('MMMM').format(_getSriLankaNow());
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1024,11 +1026,11 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: _currentMonthReleasesCount > 0 ? AppColors.primaryPurple : Colors.red,
+              color: count > 0 ? AppColors.primaryPurple : Colors.red,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _currentMonthReleasesCount.toString(),
+              count.toString(),
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ),
@@ -1041,7 +1043,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 16),
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -1053,61 +1055,94 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
           bottomRight: Radius.circular(30),
         ),
         boxShadow: [
-          BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 5),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
-                onPressed: () => Navigator.of(context).pop(),
+              Row(
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.tune, color: AppColors.headerTextDark, size: 24),
+                    onPressed: _showFilterPanel,
+                  ),
+                ],
               ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.tune, color: AppColors.headerTextDark, size: 24),
-                onPressed: _showFilterPanel,
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Logged in as: Pharmacist',
-                  style: TextStyle(fontSize: 12, color: AppColors.headerTextDark),
-                ),
-              ],
-            ),
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Pharmacist',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           const Text(
             'Release Antibiotics',
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   @override
@@ -1157,7 +1192,8 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       final docs = snapshot.data?.docs ?? [];
-                      _updateCurrentMonthCount(docs);
+                      // Compute current month count directly (no setState)
+                      final currentMonthCount = _computeCurrentMonthCount(docs);
                       final categoryFilterRow = _buildCategoryFilterRow(docs);
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
@@ -1166,7 +1202,7 @@ class _ReleaseAntibioticsDetailsState extends State<ReleaseAntibioticsDetails>
 
                       return Column(
                         children: [
-                          _buildCurrentMonthIndicator(),
+                          _buildCurrentMonthIndicator(currentMonthCount),
                           categoryFilterRow,
                           Expanded(
                             child: filteredDocs.isEmpty
