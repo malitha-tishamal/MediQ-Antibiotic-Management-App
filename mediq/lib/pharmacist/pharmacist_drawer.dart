@@ -138,7 +138,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
 
           // Logo Section
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
                 SizedBox(
@@ -188,7 +188,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
 
           // Profile Section
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: const EdgeInsets.symmetric(horizontal: 10),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -209,13 +209,13 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
             child: Row(
               children: [
                 _buildProfileImage(),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$_firstName! 👋',
+                        '$_firstName👋',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -235,7 +235,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                         child: Text(
                           widget.userRole.toUpperCase(),
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF2764E7),
                             letterSpacing: 0.8,
@@ -280,7 +280,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.receipt_long_rounded,
                   label: "Antibiotics Release",
-                  description: "Today's releases",
+                  description: "Dispensing Antibiotics",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -292,7 +292,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.archive_rounded,
                   label: "Antibiotics Returns",
-                  description: "Today's returns",
+                  description: "Antibiotics Restocking",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -305,7 +305,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.medical_services_rounded,
                   label: "Antibiotics",
-                  description: "Antibiotics inventory",
+                  description: "Antibiotics Details",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -319,7 +319,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.local_hospital_rounded,
                   label: "Wards",
-                  description: "Hospital wards & departments",
+                  description: "Hospital wards",
                    onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -333,7 +333,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.receipt_long_rounded,
                   label: "Usage Details",
-                  description: "Medication usage records",
+                  description: "Usage Statistics",
                    onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -347,7 +347,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.menu_book_rounded,
                   label: "Record Books",
-                  description: "Medical record books",
+                  description: "Record Books",
                   onTap: () {
                     Navigator.of(context).pop();
                     Navigator.of(context).push(
@@ -677,7 +677,7 @@ class _PharmacistDrawerState extends State<PharmacistDrawer> {
                           widget.onLogout();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color.fromARGB(255, 237, 16, 0),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
