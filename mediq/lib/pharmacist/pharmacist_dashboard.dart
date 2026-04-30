@@ -66,11 +66,12 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   StreamSubscription<DocumentSnapshot>? _userSubscription;
 
-  // ---------- DYNAMIC TIMESTAMP GETTERS (recomputed each query) ----------
-  Timestamp get _todayStartTs =>
-      Timestamp.fromDate(_getUtcStartOfToday());
-  Timestamp get _todayEndTs =>
-      Timestamp.fromDate(_getUtcEndOfToday());
+  // ---------- Month change detection ----------
+  int _monthKey = 0;
+  Timer? _monthCheckTimer;
+  int _lastMonthYear = 0;
+
+  // ---------- Dynamic timestamp getters (recomputed each time they are accessed) ----------
   Timestamp get _monthStartTs =>
       Timestamp.fromDate(_getUtcStartOfCurrentMonth());
   Timestamp get _monthEndTs =>
@@ -87,6 +88,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     _currentUserRole = widget.userRole;
     _currentUserId = FirebaseAuth.instance.currentUser?.uid;
     _listenToUserChanges();
+    _startMonthCheckTimer();
   }
 
   void _listenToUserChanges() {
@@ -112,25 +114,37 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
+  void _startMonthCheckTimer() {
+    _monthCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _checkMonthChange();
+    });
+  }
+
+  void _checkMonthChange() {
+    final now = _getSriLankaNow();
+    final currentMonthYear = now.year * 12 + now.month;
+    if (_lastMonthYear == 0) {
+      _lastMonthYear = currentMonthYear;
+    } else if (_lastMonthYear != currentMonthYear) {
+      _lastMonthYear = currentMonthYear;
+      if (mounted) {
+        setState(() {
+          _monthKey++; // Forces all KeyedSubtree widgets to rebuild
+        });
+        debugPrint("Month changed! Rebuilding streams with new boundaries.");
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _monthCheckTimer?.cancel();
     _userSubscription?.cancel();
     super.dispose();
   }
 
-  // ---------- Sri Lanka time helpers (return DateTime) ----------
+  // ---------- Sri Lanka time helpers (return UTC DateTime) ----------
   DateTime _getSriLankaNow() => tz.TZDateTime.now(tz.local);
-
-  DateTime _getUtcStartOfToday() {
-    final now = _getSriLankaNow();
-    final localStart = DateTime(now.year, now.month, now.day);
-    return tz.TZDateTime.from(localStart, tz.local).toUtc();
-  }
-
-  DateTime _getUtcEndOfToday() {
-    final startUtc = _getUtcStartOfToday();
-    return startUtc.add(const Duration(days: 1)).subtract(const Duration(microseconds: 1));
-  }
 
   DateTime _getUtcStartOfCurrentMonth() {
     final now = _getSriLankaNow();
@@ -214,7 +228,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     }
   }
 
-  // ---------- UI Helpers (matching Admin Panel style) ----------
+  // ---------- UI Helpers ----------
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -240,7 +254,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Top row: menu left, user info center, profile right
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -364,7 +377,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
 
   Widget _smallCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -372,7 +385,7 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
           BoxShadow(
             color: AppColors.primaryPurple.withOpacity(0.03),
             blurRadius: 8,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -397,108 +410,139 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
     );
   }
 
-  // ---------- Tiles (Pharmacist-specific, all using createdAt & dynamic getters) ----------
+  // ---------- Tiles with month change support ----------
 
-  Widget _tileAntibioticsRelease() {
-    final userId = _currentUserId;
-    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
+Widget _tileAntibioticsRelease() {
+  final userId = _currentUserId;
+  final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
 
-    if (userId == null) {
-      return _smallCard(child: const Center(child: CircularProgressIndicator()));
-    }
-
-    return InkWell(
-      onTap: () => _onNavTap('Antibiotics Release'),
-      child: _smallCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.receipt_long, color: AppColors.primaryPurple, size: 28),
-                Spacer(),
-                Text(
-                  'Antibiotics\nRelease',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _releasesCollection
-                        .where('createdBy', isEqualTo: userId)
-                        .where('createdAt', isGreaterThanOrEqualTo: _todayStartTs)
-                        .where('createdAt', isLessThanOrEqualTo: _todayEndTs)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      int count = 0;
-                      if (snapshot.hasData) count = snapshot.data!.docs.length;
-                      return _miniStat('$currentMonth You Issued', count.toString().padLeft(2, '0'), AppColors.primaryPurple);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  if (userId == null) {
+    return _smallCard(child: const Center(child: CircularProgressIndicator()));
   }
 
-  Widget _tileAntibioticsReturns() {
-    final userId = _currentUserId;
-    final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
+  return InkWell(
+    onTap: () => _onNavTap('Antibiotics Release'),
+    child: _smallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.receipt_long, color: AppColors.primaryPurple, size: 28),
+              Spacer(),
+              Text(
+                'Antibiotics\nRelease',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _releasesCollection
+                      .where('createdBy', isEqualTo: userId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = 0;
 
-    if (userId == null) {
-      return _smallCard(child: const Center(child: CircularProgressIndicator()));
-    }
+                    if (snapshot.hasData) {
+                      final docs = snapshot.data!.docs;
+                      final now = _getSriLankaNow();
 
-    return InkWell(
-      onTap: () => _onNavTap('Antibiotics Returns'),
-      child: _smallCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.archive, color: AppColors.primaryPurple, size: 28),
-                Spacer(),
-                Text(
-                  'Antibiotics\nReturns',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+                      for (var doc in docs) {
+                        final createdAt = (doc['createdAt'] as Timestamp).toDate();
+                        if (createdAt.year == now.year && createdAt.month == now.month) {
+                          count++;
+                        }
+                      }
+                      debugPrint('📊 Releases filtered for $currentMonth: $count');
+                    } else if (snapshot.hasError) {
+                      debugPrint('❌ Error loading releases: ${snapshot.error}');
+                    }
+
+                    return _miniStat(
+                      '$currentMonth You Issued',
+                      count.toString().padLeft(2, '0'),
+                      AppColors.primaryPurple,
+                    );
+                  },
                 ),
-              ],
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _returnsCollection
-                        .where('createdBy', isEqualTo: userId)
-                        .where('createdAt', isGreaterThanOrEqualTo: _todayStartTs)
-                        .where('createdAt', isLessThanOrEqualTo: _todayEndTs)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      int count = 0;
-                      if (snapshot.hasData) count = snapshot.data!.docs.length;
-                      return _miniStat('$currentMonth You Returned', count.toString().padLeft(2, '0'), AppColors.primaryPurple);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
+    ),
+  );
+}
+
+ Widget _tileAntibioticsReturns() {
+  final userId = _currentUserId;
+  final currentMonth = DateFormat('MMMM').format(_getSriLankaNow());
+
+  if (userId == null) {
+    return _smallCard(child: const Center(child: CircularProgressIndicator()));
   }
 
+  return InkWell(
+    onTap: () => _onNavTap('Antibiotics Returns'),
+    child: _smallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.archive, color: AppColors.primaryPurple, size: 28),
+              Spacer(),
+              Text(
+                'Antibiotics\nReturns',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText, fontSize: 14),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _returnsCollection
+                      .where('createdBy', isEqualTo: userId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = 0;
+
+                    if (snapshot.hasData) {
+                      final docs = snapshot.data!.docs;
+                      final now = _getSriLankaNow();
+
+                      for (var doc in docs) {
+                        final createdAt = (doc['createdAt'] as Timestamp).toDate();
+                        if (createdAt.year == now.year && createdAt.month == now.month) {
+                          count++;
+                        }
+                      }
+                      debugPrint('📊 Returns filtered for $currentMonth: $count');
+                    }
+
+                    return _miniStat(
+                      '$currentMonth You Returned',
+                      count.toString().padLeft(2, '0'),
+                      AppColors.primaryPurple,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
   Widget _tileAntibiotics() {
     return InkWell(
       onTap: () => _onNavTap('Antibiotics'),
@@ -622,7 +666,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
             const Spacer(),
             Row(
               children: [
-                // Releases count (global, for current month)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -638,7 +681,6 @@ class _PharmacistDashboardState extends State<PharmacistDashboard> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Returns count (global, for current month)
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
