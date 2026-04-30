@@ -121,7 +121,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
     }
   }
 
-  // Header - uses state variables
+  // ========== HEADER (centered layout) ==========
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -145,78 +145,49 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Row with menu (left), centered user info, profile avatar (right)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Menu button (left)
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [Color(0xFF2764E7), Color(0xFF457AED)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2764E7).withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
-              // User Info
+              const Spacer(),
+              // Centered user info
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     _userName,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Logged in as: Pharmacist',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
                     ),
                   ),
                 ],
               ),
+              const Spacer(),
+              // Profile avatar (right)
+              _buildProfileAvatar(),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
+          // Screen title
           const Text(
             'Developer About Me',
             style: TextStyle(
@@ -230,7 +201,26 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
     );
   }
 
-  // Developer image (unchanged)
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
+  }
+
+  // ========== DEVELOPER IMAGE (FIX: added missing method) ==========
   Widget _buildDeveloperImage() {
     return Column(
       children: [
@@ -298,7 +288,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
     );
   }
 
-  // Social icons row (unchanged)
+  // Social icons row
   Widget _buildSocialIconsRow(Future<void> Function(String) launcher) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -375,7 +365,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
     );
   }
 
-  // Skills section (unchanged)
+  // Skills section
   Widget _buildSkillsSection() {
     final skills = [
       {'icon': Icons.phone_iphone, 'name': 'Flutter Development', 'color': Colors.blue},
@@ -456,7 +446,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
     );
   }
 
-  // Contact information (unchanged)
+  // Contact information
   Widget _buildContactInfo() {
     return Container(
       width: double.infinity,
@@ -572,7 +562,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
       drawer: PharmacistDrawer(
         userName: _userName,
         userRole: _userRole,
-        profileImageUrl: _profileImageUrl, // 👈 FIX: now passing the image URL
+        profileImageUrl: _profileImageUrl,
         onNavTap: _handleNavTap,
         onLogout: _handleLogout,
       ),
@@ -609,7 +599,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
                                     ),
                                     child: Column(
                                       children: [
-                                        _buildDeveloperImage(),
+                                        _buildDeveloperImage(), // ✅ Now defined
                                         const SizedBox(height: 20),
                                         const Text(
                                           "Malitha Tishamal",
@@ -651,7 +641,7 @@ class _PharmacistDeveloperAboutScreenState extends State<PharmacistDeveloperAbou
                                   const SizedBox(height: 25),
                                   _buildContactInfo(),
                                   const SizedBox(height: 30),
-                                  const SizedBox(height: 50), // bottom padding
+                                  const SizedBox(height: 50),
                                 ],
                               ),
                             ),
