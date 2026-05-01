@@ -196,7 +196,7 @@ class _ViewWardsScreenState extends State<ViewWardsScreen> {
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Wards List',
+          'Wards Details',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
