@@ -196,7 +196,7 @@ class _ViewAntibioticsScreenState extends State<ViewAntibioticsScreen> {
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Antibiotics List',
+          'Antibiotics Details',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
