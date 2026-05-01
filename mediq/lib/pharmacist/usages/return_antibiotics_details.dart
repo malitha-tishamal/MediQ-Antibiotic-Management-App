@@ -1115,7 +1115,7 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
           const SizedBox(height: 16),
           // Title
           const Text(
-            'Return Antibiotics',
+            'Return Antibiotics Details',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
