@@ -1,0 +1,56 @@
+erDiagram
+    ADMIN ||--o{ PHARMACIST : "Approves Accounts"
+    PHARMACIST ||--o{ TRANSACTION : "Executes"
+    WARD ||--o{ TRANSACTION : "Receives/Returns"
+    ANTIBIOTIC ||--o{ TRANSACTION : "Involved in"
+    ANTIBIOTIC ||--|| STOCK : "Tracked via"
+    
+    PHARMACIST {
+        string uid PK
+        string name
+        string email
+        string role "Pharmacist"
+        boolean isApproved
+    }
+    
+    ADMIN {
+        string uid PK
+        string name
+        string email
+        string role "Admin"
+    }
+    
+    ANTIBIOTIC {
+        string antibioticId PK
+        string name
+        string srNumber
+        string awareCategory "Access, Watch, Reserve"
+        string dosage
+    }
+    
+    WARD {
+        string wardId PK
+        string name
+        string team
+        string category
+    }
+    
+    TRANSACTION {
+        string transactionId PK
+        string type "Release / Return"
+        datetime timestamp
+        int quantity
+        string logbookBookNo
+        string logbookPageNo
+        string pharmacistId FK
+        string wardId FK
+        string antibioticId FK
+    }
+    
+    STOCK {
+        string stockId PK
+        string antibioticId FK
+        int mainStoreQuantity
+        int returnStoreQuantity
+        string status
+    }

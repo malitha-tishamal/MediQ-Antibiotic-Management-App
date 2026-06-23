@@ -1,0 +1,59 @@
+flowchart LR
+    %% Actors
+    Pharmacist((Pharmacist))
+    Admin((Admin))
+
+    subgraph MediQ_System ["MediQ Antibiotic Management App"]
+        direction TB
+        
+        %% Common Use Cases
+        Login([Login])
+        Signup([Sign Up])
+        ResetPass([Reset Password])
+        ManageProfile([Manage Profile])
+        ViewDashboard([View Dashboard])
+
+        %% Pharmacist Specific
+        ReleaseAnti([Release Antibiotics to Wards])
+        ReturnAnti([Return Antibiotics from Wards])
+        ViewWards([View Ward Details])
+        ViewAntiList([View Antibiotic List])
+        ViewRecords([View Usage Records])
+        ViewBooks([View Book Numbers])
+
+        %% Admin Specific
+        ManagePharmacists([Manage Pharmacist Accounts])
+        ManageAntibiotics([Manage Antibiotic Inventory])
+        ManageWards([Manage Ward List])
+        ManageStocks([Manage Main & Return Stocks])
+        UsageAnalysis([Analyze Usage Data])
+        ViewAllHistory([View All Release/Return History])
+    end
+
+    %% Connections for Pharmacist
+    Pharmacist --- Login
+    Pharmacist --- Signup
+    Pharmacist --- ResetPass
+    Pharmacist --- ManageProfile
+    Pharmacist --- ViewDashboard
+    Pharmacist --- ReleaseAnti
+    Pharmacist --- ReturnAnti
+    Pharmacist --- ViewWards
+    Pharmacist --- ViewAntiList
+    Pharmacist --- ViewRecords
+    Pharmacist --- ViewBooks
+
+    %% Connections for Admin
+    Admin --- Login
+    Admin --- ResetPass
+    Admin --- ManageProfile
+    Admin --- ViewDashboard
+    Admin --- ManagePharmacists
+    Admin --- ManageAntibiotics
+    Admin --- ManageWards
+    Admin --- ManageStocks
+    Admin --- UsageAnalysis
+    Admin --- ViewAllHistory
+
+    %% Relationships
+    ManagePharmacists -.-> |Approve/Disable| Signup
