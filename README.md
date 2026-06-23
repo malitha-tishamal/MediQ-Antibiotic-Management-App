@@ -1,6 +1,6 @@
 # 🚀 MediQ — Cross-Platform Hospital Antibiotics Management System
 
-**MediQ** is a **Cross-Platform Hospital Antibiotics Management System** designed to handle **Release, Return, Stock Tracking, Analytics, and User Management** with a **Modern Role-Based Interface**.
+**MediQ** is a **Cross-Platform Hospital Antibiotics Management System** designed to handle **Hospitals Release, Return, Stock Tracking, Analytics, and User Management** with a **Modern Role-Based Interface**.
 
 It **digitises the entire antibiotic lifecycle** from **dispensing and returns** to **stock management and usage analytics**, while supporting **parallel operation with existing manual paper-based systems**. 💊🏥
 
