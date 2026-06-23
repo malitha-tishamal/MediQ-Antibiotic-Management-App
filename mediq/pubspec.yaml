@@ -58,6 +58,9 @@ dependencies:
 
   crypto: ^3.0.3
 
+  pdf: ^3.10.4
+  printing: ^5.11.1
+
 
 dev_dependencies:
   flutter_test:
