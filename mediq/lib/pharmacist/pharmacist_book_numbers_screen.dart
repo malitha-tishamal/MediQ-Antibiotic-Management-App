@@ -45,7 +45,6 @@ class _PharmacistBookNumbersScreenState
   // Scaffold key for drawer
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ✅ New: Text Field builder matching LoginPage style
   Widget _buildTextField({
     required String label,
     required String hint,
