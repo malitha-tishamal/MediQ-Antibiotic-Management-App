@@ -1,6 +1,5 @@
-// return_antibiotics_details.dart
-// Improved UI with modern design, better visual hierarchy, and timezone support
-// Edit/Delete buttons visible only to the creator
+// return_antibiotics_details.dart (ultra‑compact + modern bottom sheet)
+// Improved UI with modern design, timezone support, and edit/delete buttons visible only to creator
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -47,42 +46,32 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
   String? _profileImageUrl;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Search & category filter
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _selectedCategory = 'All'; // 'All', 'Access', 'Watch', 'Reserve', 'Other'
+  String _selectedCategory = 'All';
 
-  // Advanced filters (from bottom sheet)
   String? _selectedWardId;
   String? _selectedAntibioticId;
   DateTime? _startDate;
   DateTime? _endDate;
 
-  // Data for dropdowns
   List<Map<String, dynamic>> _wards = [];
   List<Map<String, dynamic>> _antibiotics = [];
-  Map<String, String> _antibioticCategoryMap = {}; // id -> category
-
-  // Cache for user names
+  Map<String, String> _antibioticCategoryMap = {};
   final Map<String, String> _userNameCache = {};
 
-  // Animation controller for fade-in effects
   late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize timezone
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
-    // Set default date range to current month
     final now = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(now.year, now.month, 1);
     _endDate = now;
 
-    // Initialize animation
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -184,10 +173,10 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
       floatingLabelBehavior: FloatingLabelBehavior.always,
       labelStyle: TextStyle(
         color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12),
       filled: true,
       fillColor: enabled ? Colors.white : Colors.grey.shade100,
       border: OutlineInputBorder(
@@ -218,12 +207,12 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                 border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 18),
               ),
             ),
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
     );
   }
 
@@ -271,10 +260,7 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                               decoration: _inputDecoration(label: 'Ward', prefixIcon: Icons.place),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Wards')),
-                                ..._wards.map((w) => DropdownMenuItem(
-                                      value: w['id'],
-                                      child: Text(w['name']),
-                                    )),
+                                ..._wards.map((w) => DropdownMenuItem(value: w['id'], child: Text(w['name']))),
                               ],
                               onChanged: (value) {
                                 setState(() => _selectedWardId = value);
@@ -287,10 +273,7 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                               decoration: _inputDecoration(label: 'Antibiotic', prefixIcon: Icons.medication),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Antibiotics')),
-                                ..._antibiotics.map((a) => DropdownMenuItem(
-                                      value: a['id'],
-                                      child: Text(a['name']),
-                                    )),
+                                ..._antibiotics.map((a) => DropdownMenuItem(value: a['id'], child: Text(a['name']))),
                               ],
                               onChanged: (value) {
                                 setState(() => _selectedAntibioticId = value);
@@ -401,40 +384,30 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     );
   }
 
+  // Ultra‑compact filter chip
   Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
     final isSelected = _selectedCategory == filterValue;
     return GestureDetector(
       onTap: () => setState(() => _selectedCategory = filterValue),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
           color: isSelected ? color : AppColors.chipBackground,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: isSelected ? Colors.transparent : color.withOpacity(0.3),
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isSelected ? Colors.transparent : color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isSelected) ...[
-              const Icon(Icons.check_circle, size: 14, color: Colors.white),
-              const SizedBox(width: 6),
+              const Icon(Icons.check_circle, size: 10, color: Colors.white),
+              const SizedBox(width: 4),
             ],
             Text(
               '$label $count',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 color: isSelected ? Colors.white : color,
               ),
@@ -459,8 +432,8 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      height: 50,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      height: 38,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
@@ -478,11 +451,8 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     if (_searchQuery.isNotEmpty) {
       final antibiotic = (data['antibioticName'] ?? '').toLowerCase();
       final ward = (data['wardName'] ?? '').toLowerCase();
-      if (!antibiotic.contains(_searchQuery) && !ward.contains(_searchQuery)) {
-        return false;
-      }
+      if (!antibiotic.contains(_searchQuery) && !ward.contains(_searchQuery)) return false;
     }
-
     if (_selectedCategory != 'All') {
       final antibioticId = data['antibioticId'] ?? '';
       final category = _antibioticCategoryMap[antibioticId] ?? 'Other';
@@ -492,15 +462,8 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
         if (category != _selectedCategory) return false;
       }
     }
-
-    if (_selectedWardId != null && data['wardId'] != _selectedWardId) {
-      return false;
-    }
-
-    if (_selectedAntibioticId != null && data['antibioticId'] != _selectedAntibioticId) {
-      return false;
-    }
-
+    if (_selectedWardId != null && data['wardId'] != _selectedWardId) return false;
+    if (_selectedAntibioticId != null && data['antibioticId'] != _selectedAntibioticId) return false;
     if (_startDate != null || _endDate != null) {
       final returnDate = (data['returnDateTime'] as Timestamp?)?.toDate();
       if (returnDate == null) return false;
@@ -513,14 +476,12 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     return true;
   }
 
-  // Pure helper to compute current month returns count (no setState)
   int _computeCurrentMonthCount(List<DocumentSnapshot> docs) {
     final now = tz.TZDateTime.now(tz.local);
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     final startLocal = tz.TZDateTime.from(startOfMonth, tz.local);
     final endLocal = tz.TZDateTime.from(endOfMonth, tz.local);
-
     int count = 0;
     for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
@@ -622,6 +583,7 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     }
   }
 
+  // ========== MODERN BOTTOM SHEET MODAL ==========
   void _showDetailsModal(Map<String, dynamic> data, String docId) {
     final antibioticName = data['antibioticName'] ?? 'Unknown';
     final dosage = data['dosage'] ?? '';
@@ -637,121 +599,228 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
     final formattedCreated = createdAt != null ? DateFormat('dd MMM yyyy, hh:mm a').format(createdAt) : 'N/A';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.white, Color(0xFFF9F7FF)],
-            ),
-            borderRadius: BorderRadius.circular(24),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, -2))],
           ),
-          child: FutureBuilder<String>(
-            future: _getUserName(createdBy),
-            builder: (context, snapshot) {
-              final returnedByName = snapshot.data ?? 'Loading...';
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        antibioticName,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Text(
-                          'Return Store',
-                          style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _detailRow(Icons.medical_services, 'Dosage', dosage),
-                  _detailRow(Icons.inventory, 'Quantity', quantity.toString()),
-                  _detailRow(Icons.place, 'Ward', wardName),
-                  _detailRow(Icons.menu_book, 'Book Number', bookNumber),
-                  _detailRow(Icons.pages, 'Page Number', pageNumber),
-                  _detailRow(Icons.access_time, 'Return Time', formattedDate),
-                  _detailRow(Icons.person, 'Returned by', returnedByName),
-                  _detailRow(Icons.calendar_today, 'Created At', formattedCreated),
-                  _detailRow(Icons.fingerprint, 'Document ID', docId),
-                  const SizedBox(height: 24),
-                  // Action buttons: Close always visible, Edit/Delete only for creator
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Close'),
-                      ),
-                      if (createdBy == _auth.currentUser?.uid) ...[
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _editReturn(docId, quantity);
-                          },
-                          icon: const Icon(Icons.edit, size: 18),
-                          label: const Text('Edit'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: FutureBuilder<String>(
+                    future: _getUserName(createdBy),
+                    builder: (context, snapshot) {
+                      final returnedByName = snapshot.data ?? 'Loading...';
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  antibioticName,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.darkText,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.orange.shade200),
+                                ),
+                                child: const Text(
+                                  'Return Store',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _confirmDelete(docId, antibioticName);
-                          },
-                          icon: const Icon(Icons.delete, size: 18),
-                          label: const Text('Delete'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [AppColors.primaryPurple, Color(0xFFB794F4)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryPurple.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Returned Quantity',
+                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ],
+                          const SizedBox(height: 20),
+                          _modernDetailRow(Icons.medical_services, 'Dosage', dosage),
+                          _modernDetailRow(Icons.place, 'Ward', wardName),
+                          _modernDetailRow(Icons.menu_book, 'Book Number', bookNumber),
+                          _modernDetailRow(Icons.pages, 'Page Number', pageNumber),
+                          _modernDetailRow(Icons.access_time, 'Return Time', formattedDate),
+                          _modernDetailRow(Icons.person, 'Returned by', returnedByName),
+                          _modernDetailRow(Icons.calendar_today, 'Created At', formattedCreated),
+                          _modernDetailRow(Icons.fingerprint, 'Document ID', docId),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  label: const Text('Close'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey.shade700,
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (createdBy == _auth.currentUser?.uid) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _editReturn(docId, quantity);
+                                    },
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    label: const Text('Edit'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _confirmDelete(docId, antibioticName);
+                                    },
+                                    icon: const Icon(Icons.delete, size: 18),
+                                    label: const Text('Delete'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
                   ),
-                ],
-              );
-            },
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
+  // Modern detail row for bottom sheet
+  Widget _modernDetailRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppColors.primaryPurple),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 110,
-            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText)),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primaryPurple),
           ),
-          Expanded(child: Text(value, style: const TextStyle(color: AppColors.darkText))),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
@@ -762,18 +831,19 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
       SnackBar(
         content: Row(
           children: [
-            Icon(isSuccess ? Icons.check_circle : Icons.error, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(msg)),
+            Icon(isSuccess ? Icons.check_circle : Icons.error, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(msg, style: const TextStyle(fontSize: 13))),
           ],
         ),
         backgroundColor: isSuccess ? AppColors.successGreen : AppColors.disabledColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
+  // Ultra‑compact return card
   Widget _buildReturnCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final antibioticName = data['antibioticName'] ?? 'Unknown';
@@ -796,29 +866,27 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
       child: GestureDetector(
         onTap: () => _showDetailsModal(data, doc.id),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             color: Colors.white,
             boxShadow: [
               BoxShadow(
                 color: AppColors.cardShadow,
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: Material(
               color: Colors.transparent,
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: categoryColor, width: 6),
-                  ),
+                  border: Border(left: BorderSide(color: categoryColor, width: 3)),
                 ),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -829,119 +897,125 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                           child: Text(
                             antibioticName,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                               color: AppColors.darkText,
                             ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          margin: const EdgeInsets.only(right: 4),
                           decoration: BoxDecoration(
                             color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
                             'Return',
                             style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.orange,
+                              fontSize: 9,
                               fontWeight: FontWeight.w600,
+                              color: Colors.orange,
                             ),
                           ),
                         ),
-                        // Edit/Delete icons only visible to the creator
                         if (createdBy == _auth.currentUser?.uid)
                           Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.orange, size: 18),
-                                onPressed: () => _editReturn(doc.id, quantity),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: 'Edit',
+                              InkWell(
+                                onTap: () => _editReturn(doc.id, quantity),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.edit, color: Colors.orange, size: 12),
+                                ),
                               ),
                               const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                                onPressed: () => _confirmDelete(doc.id, antibioticName),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                tooltip: 'Delete',
+                              InkWell(
+                                onTap: () => _confirmDelete(doc.id, antibioticName),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.delete, color: Colors.red, size: 12),
+                                ),
                               ),
                             ],
                           ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                       decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
+                        color: categoryColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         category,
-                        style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 10),
+                        style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 9),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 6),
                     Wrap(
-                      spacing: 12,
-                      runSpacing: 6,
+                      spacing: 6,
+                      runSpacing: 3,
                       children: [
-                        _infoChip(Icons.medical_services, 'Dosage: $dosage'),
-                        _infoChip(Icons.inventory, 'Qty: $quantity'),
-                        _infoChip(Icons.place, wardName),
-                        _infoChip(Icons.menu_book, 'Book: $bookNumber'),
-                        _infoChip(Icons.pages, 'Page: $pageNumber'),
+                        _infoChipCompact(Icons.medical_services, 'Dosage: $dosage'),
+                        _infoChipCompact(Icons.inventory, 'Qty: $quantity'),
+                        _infoChipCompact(Icons.place, wardName),
+                        _infoChipCompact(Icons.menu_book, 'Book: $bookNumber'),
+                        _infoChipCompact(Icons.pages, 'Page: $pageNumber'),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    const Divider(height: 1, thickness: 0.5),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
+                    const Divider(height: 0.8, thickness: 0.5),
+                    const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                            const Icon(Icons.access_time, size: 9, color: Colors.grey),
+                            const SizedBox(width: 2),
+                            Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 8)),
                           ],
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.fingerprint, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                            const Icon(Icons.fingerprint, size: 9, color: Colors.grey),
+                            const SizedBox(width: 2),
+                            Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 8)),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     FutureBuilder<String>(
                       future: _getUserName(createdBy),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Row(
                             children: [
-                              Icon(Icons.person, size: 12, color: Colors.grey),
-                              SizedBox(width: 4),
-                              Text('Returned by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                              Icon(Icons.person, size: 9, color: Colors.grey),
+                              SizedBox(width: 2),
+                              Text('Returned by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 8)),
                             ],
                           );
                         }
                         return Row(
                           children: [
-                            const Icon(Icons.person, size: 12, color: Colors.grey),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.person, size: 9, color: Colors.grey),
+                            const SizedBox(width: 2),
                             Expanded(
                               child: Text(
                                 'Returned by: ${snapshot.data ?? 'Unknown'}',
-                                style: const TextStyle(color: Colors.grey, fontSize: 10),
+                                style: const TextStyle(color: Colors.grey, fontSize: 8),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -959,19 +1033,19 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     );
   }
 
-  Widget _infoChip(IconData icon, String label) {
+  Widget _infoChipCompact(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.chipBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppColors.primaryPurple),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.darkText)),
+          Icon(icon, size: 9, color: AppColors.primaryPurple),
+          const SizedBox(width: 2),
+          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.darkText)),
         ],
       ),
     );
@@ -979,29 +1053,25 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
 
   Color _getCategoryColor(String category) {
     switch (category) {
-      case 'Access':
-        return AppColors.primaryPurple;
-      case 'Watch':
-        return AppColors.successGreen;
-      case 'Reserve':
-        return AppColors.warningOrange;
-      default:
-        return Colors.grey;
+      case 'Access': return AppColors.primaryPurple;
+      case 'Watch': return AppColors.successGreen;
+      case 'Reserve': return AppColors.warningOrange;
+      default: return Colors.grey;
     }
   }
 
   Widget _buildCurrentMonthIndicator(int count) {
     final monthName = DateFormat('MMMM').format(_getSriLankaNow());
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primaryPurple.withOpacity(0.1), Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.primaryPurple.withOpacity(0.2)),
       ),
       child: Row(
@@ -1009,23 +1079,23 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
         children: [
           Row(
             children: [
-              Icon(Icons.calendar_today, size: 18, color: AppColors.primaryPurple),
-              const SizedBox(width: 8),
+              Icon(Icons.calendar_today, size: 14, color: AppColors.primaryPurple),
+              const SizedBox(width: 6),
               Text(
                 '$monthName Returns:',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
               ),
             ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: count > 0 ? AppColors.primaryPurple : Colors.red,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
               count.toString(),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
         ],
@@ -1037,7 +1107,7 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 16),
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -1060,32 +1130,27 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Single row: left icons, center user info, right profile picture
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Left side: back button + filter icon
               Row(
                 children: [
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.arrow_back,
-                        color: AppColors.headerTextDark, size: 24),
+                    icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.tune,
-                        color: AppColors.headerTextDark, size: 24),
+                    icon: const Icon(Icons.tune, color: AppColors.headerTextDark, size: 24),
                     onPressed: _showFilterPanel,
                   ),
                 ],
               ),
               const Spacer(),
-              // Center: user info
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1108,12 +1173,10 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                 ],
               ),
               const Spacer(),
-              // Right side: profile picture (80x80)
               _buildProfileAvatar(),
             ],
           ),
           const SizedBox(height: 16),
-          // Title
           const Text(
             'Return Antibiotics Details',
             style: TextStyle(
@@ -1127,7 +1190,6 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
     );
   }
 
-  // Helper for profile avatar (80x80, radius 40)
   Widget _buildProfileAvatar() {
     if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
       return CircleAvatar(
@@ -1166,20 +1228,20 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
               children: [
                 _buildHeader(context),
                 Container(
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 4),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'Search by antibiotic or ward...',
-                      prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.primaryPurple, size: 18),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ),
                 ),
@@ -1194,7 +1256,6 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       final docs = snapshot.data?.docs ?? [];
-                      // Compute current month count directly (no setState)
                       final currentMonthCount = _computeCurrentMonthCount(docs);
                       final categoryFilterRow = _buildCategoryFilterRow(docs);
                       final filteredDocs = docs.where((doc) {
@@ -1212,9 +1273,9 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-                                        const SizedBox(height: 16),
-                                        const Text('No return records found.', style: TextStyle(color: Colors.grey)),
+                                        Icon(Icons.inbox, size: 56, color: Colors.grey[300]),
+                                        const SizedBox(height: 12),
+                                        const Text('No return records found.', style: TextStyle(color: Colors.grey, fontSize: 14)),
                                         if (docs.isNotEmpty)
                                           TextButton(
                                             onPressed: () {
@@ -1227,17 +1288,15 @@ class _ReturnAntibioticsDetailsState extends State<ReturnAntibioticsDetails>
                                                 _endDate = null;
                                               });
                                             },
-                                            child: const Text('Clear Filters'),
+                                            child: const Text('Clear Filters', style: TextStyle(fontSize: 12)),
                                           ),
                                       ],
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                     itemCount: filteredDocs.length,
-                                    itemBuilder: (context, index) {
-                                      return _buildReturnCard(filteredDocs[index]);
-                                    },
+                                    itemBuilder: (context, index) => _buildReturnCard(filteredDocs[index]),
                                   ),
                           ),
                         ],
