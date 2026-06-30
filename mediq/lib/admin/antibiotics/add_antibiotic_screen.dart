@@ -29,7 +29,6 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
   final _nameController = TextEditingController();
   String? _selectedCategory;
 
-  // Unit options – ensure no duplicates
   final List<String> _unitOptions = [
     'mg - Milligram',
     'g - Gram',
@@ -65,12 +64,10 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     final lowerUnit = unit.toLowerCase().trim();
     for (final option in _unitOptions) {
       final optionLower = option.toLowerCase();
-      // Check if option contains the unit or vice versa
       if (optionLower.contains(lowerUnit) || lowerUnit.contains(optionLower)) {
         return option;
       }
     }
-    // Fallback: try to match by known abbreviations
     if (lowerUnit == 'mg') return 'mg - Milligram';
     if (lowerUnit == 'milligram') return 'mg - Milligram';
     if (lowerUnit == 'g') return 'g - Gram';
@@ -80,93 +77,181 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
     if (lowerUnit == 'cc') return 'cc - Cubic Centimeter';
     if (lowerUnit == 'u' || lowerUnit == 'unit') return 'U - Unit';
     if (lowerUnit == 'iu' || lowerUnit == 'international unit') return 'IU - International Unit';
-    // Default to first option
     return _unitOptions.first;
   }
 
-  // ---------- Improved dosage parser ----------
-  // Extracts the first numeric value and its unit from a string.
-  // Returns map with 'value' and 'unit'.
   Map<String, String> _parseDosage(String dosageStr) {
     if (dosageStr.isEmpty) return {'value': '', 'unit': ''};
-
-    // Regex: number (with optional decimal) followed by optional whitespace and a unit
     final regex = RegExp(r'(\d+(?:\.\d+)?)\s*([a-zA-Z/%]+)');
     final match = regex.firstMatch(dosageStr);
     if (match != null) {
       final value = match.group(1)!;
       final unit = match.group(2)!;
-      // Map the unit to a full option string
       final fullUnit = _mapUnitToOption(unit);
       return {'value': value, 'unit': fullUnit};
     }
-
-    // If regex fails, try splitting by last space (fallback)
     final lastSpace = dosageStr.lastIndexOf(' ');
     if (lastSpace != -1) {
       final value = dosageStr.substring(0, lastSpace).trim();
       final unit = dosageStr.substring(lastSpace + 1).trim();
       return {'value': value, 'unit': _mapUnitToOption(unit)};
     }
-
-    // No unit found
     return {'value': dosageStr, 'unit': _unitOptions.first};
   }
 
-  // ---------- Helper for consistent input decoration ----------
-  InputDecoration _inputDecoration({
+  // ---------- New: Text Field builder matching LoginPage style ----------
+  Widget _buildTextField({
     required String label,
-    IconData? prefixIcon,
-    String? hintText,
-    bool enabled = true,
-    Widget? suffixIcon,
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hintText,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      labelStyle: TextStyle(
-        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-      filled: true,
-      fillColor: enabled ? Colors.white : Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 2.0),
-      ),
-      prefixIcon: prefixIcon == null
-          ? null
-          : Container(
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.darkText,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              prefixIcon: Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(icon, color: AppColors.primaryPurple, size: 20),
+                ),
+              ),
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
               ),
             ),
-      suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            validator: validator,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------- New: Dropdown Field builder matching LoginPage style ----------
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.darkText,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<String>(
+            value: value,
+            decoration: InputDecoration(
+              hintText: 'Select $label',
+              hintStyle: TextStyle(color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
+              prefixIcon: Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(Icons.category, color: AppColors.primaryPurple, size: 20),
+                ),
+              ),
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+            ),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
+            style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            items: items.map((item) {
+              return DropdownMenuItem(value: item, child: Text(item));
+            }).toList(),
+            onChanged: onChanged,
+            validator: validator,
+          ),
+        ),
+      ],
     );
   }
 
@@ -322,53 +407,89 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 28),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ]),
-          const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(colors: [AppColors.primaryPurple, Color(0xFFB08FEB)])
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [BoxShadow(color: AppColors.primaryPurple.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 3))],
-                  image: _profileImageUrl != null ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover) : null,
-                ),
-                child: _profileImageUrl == null ? const Icon(Icons.person, size: 40, color: Colors.white) : null,
+              IconButton(
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.headerTextDark, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-              const SizedBox(width: 15),
+              const Spacer(),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_currentUserName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark)),
-                  const Text('Logged in as: Administrator', style: TextStyle(fontSize: 14, color: AppColors.headerTextDark)),
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
                 ],
               ),
+              const Spacer(),
+              _buildProfileAvatar(),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
           Text(
             widget.antibioticId != null ? 'Edit Antibiotic' : 'Add New Antibiotic',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   @override
@@ -389,64 +510,23 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Antibiotic Name
-                          TextFormField(
+                          // Antibiotic Name (New style)
+                          _buildTextField(
+                            label: 'Antibiotic Name',
+                            hint: 'eg: Amoxicillin',
+                            icon: Icons.medication,
                             controller: _nameController,
-                            decoration: _inputDecoration(
-                              label: 'Antibiotic Name',
-                              hintText: 'eg: Amoxicillin',
-                              prefixIcon: Icons.medication,
-                            ),
                             validator: (value) => value == null || value.isEmpty ? 'Name is required' : null,
                           ),
                           const SizedBox(height: 16),
 
-                          // Category Dropdown
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Category',
-                                style: TextStyle(
-                                  color: AppColors.darkText,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.inputBorder, width: 1.5),
-                                  color: Colors.white,
-                                ),
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                  ),
-                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
-                                  style: const TextStyle(color: AppColors.darkText, fontSize: 15, fontWeight: FontWeight.w500),
-                                  dropdownColor: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  items: ['Access', 'Watch', 'Reserve', 'Other'].map((category) {
-                                    return DropdownMenuItem(
-                                      value: category,
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.category, color: AppColors.primaryPurple, size: 18),
-                                          const SizedBox(width: 10),
-                                          Text(category),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) => setState(() => _selectedCategory = value),
-                                  validator: (value) => value == null ? 'Please select a category' : null,
-                                ),
-                              ),
-                            ],
+                          // Category Dropdown (New style)
+                          _buildDropdownField(
+                            label: 'Category',
+                            value: _selectedCategory,
+                            items: ['Access', 'Watch', 'Reserve', 'Other'],
+                            onChanged: (value) => setState(() => _selectedCategory = value),
+                            validator: (value) => value == null ? 'Please select a category' : null,
                           ),
                           const SizedBox(height: 16),
 
@@ -466,20 +546,20 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Row 1: Dosage (left) and SR Number (right)
+                                    // Row 1: Dosage and SR Number
                                     Row(
                                       children: [
                                         Expanded(
                                           flex: 2,
-                                          child: TextFormField(
+                                          child: _buildTextField(
+                                            label: 'Dosage',
+                                            hint: 'e.g., 10',
+                                            icon: Icons.numbers,
                                             controller: valueCtrl,
                                             keyboardType: TextInputType.number,
-                                            decoration: _inputDecoration(
-                                              label: 'Dosage',
-                                              hintText: 'e.g., 10',
-                                            ),
                                             validator: (value) {
-                                              if (index == 0 && (value == null || value.isEmpty)) return 'Dosage is required';
+                                              if (index == 0 && (value == null || value.isEmpty))
+                                                return 'Dosage is required';
                                               return null;
                                             },
                                           ),
@@ -487,14 +567,14 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           flex: 2,
-                                          child: TextFormField(
+                                          child: _buildTextField(
+                                            label: 'SR Number',
+                                            hint: 'e.g., 12345',
+                                            icon: Icons.qr_code,
                                             controller: srCtrl,
-                                            decoration: _inputDecoration(
-                                              label: 'SR Number',
-                                              hintText: 'e.g., 12345',
-                                            ),
                                             validator: (value) {
-                                              if (index == 0 && (value == null || value.isEmpty)) return 'SR Number is required';
+                                              if (index == 0 && (value == null || value.isEmpty))
+                                                return 'SR Number is required';
                                               return null;
                                             },
                                           ),
@@ -511,49 +591,19 @@ class _AddAntibioticScreenState extends State<AddAntibioticScreen> {
                                     ),
                                     const SizedBox(height: 12),
                                     // Row 2: Unit dropdown
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Unit',
-                                          style: TextStyle(
-                                            color: AppColors.darkText,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(color: AppColors.inputBorder, width: 1.5),
-                                            color: Colors.white,
-                                          ),
-                                          child: DropdownButtonFormField<String>(
-                                            value: row['unit'],
-                                            decoration: const InputDecoration(
-                                              border: InputBorder.none,
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                            ),
-                                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryPurple),
-                                            style: const TextStyle(color: AppColors.darkText, fontSize: 14),
-                                            dropdownColor: Colors.white,
-                                            borderRadius: BorderRadius.circular(12),
-                                            items: _unitOptions.map((unit) {
-                                              return DropdownMenuItem(value: unit, child: Text(unit));
-                                            }).toList(),
-                                            onChanged: (newUnit) {
-                                              setState(() {
-                                                row['unit'] = newUnit!;
-                                              });
-                                            },
-                                            validator: (value) {
-                                              if (index == 0 && value == null) return 'Unit is required';
-                                              return null;
-                                            },
-                                          ),
-                                        ),
-                                      ],
+                                    _buildDropdownField(
+                                      label: 'Unit',
+                                      value: row['unit'],
+                                      items: _unitOptions,
+                                      onChanged: (newUnit) {
+                                        setState(() {
+                                          row['unit'] = newUnit!;
+                                        });
+                                      },
+                                      validator: (value) {
+                                        if (index == 0 && value == null) return 'Unit is required';
+                                        return null;
+                                      },
                                     ),
                                   ],
                                 ),
