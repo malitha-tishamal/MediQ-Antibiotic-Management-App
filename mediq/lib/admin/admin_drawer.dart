@@ -157,7 +157,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -174,7 +174,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                     Text(
                       "Antibiotics Management",
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF666482),
                         letterSpacing: 0.3,
@@ -189,7 +189,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
 
           // Profile Section 
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: const EdgeInsets.symmetric(horizontal: 10),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -210,13 +210,13 @@ class _AdminDrawerState extends State<AdminDrawer> {
             child: Row(
               children: [
                 _buildProfileImage(),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$_firstName! 👋',
+                        '$_firstName👋',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -305,7 +305,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 _buildModernDrawerItem(
                     icon: Icons.local_hospital_rounded,
                     label: "Wards Management",
-                    description: "Hospital wards & departments",
+                    description: "Hospital wards",
                     onTap: () {
                       Navigator.of(context).pop(); // drawer close
                       Navigator.of(context).push(
@@ -344,7 +344,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.analytics_rounded,
                   label: "Usage Analytics",
-                  description: "Usage statistics & reports",
+                  description: "Usage Statistics & Reports",
                    onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
@@ -357,7 +357,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                 _buildModernDrawerItem(
                   icon: Icons.menu_book_rounded,
                   label: "Record Books",
-                  description: "Medical record books",
+                  description: "Record books",
                   onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
@@ -683,7 +683,7 @@ class _AdminDrawerState extends State<AdminDrawer> {
                           widget.onLogout();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color.fromARGB(255, 237, 16, 0),
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

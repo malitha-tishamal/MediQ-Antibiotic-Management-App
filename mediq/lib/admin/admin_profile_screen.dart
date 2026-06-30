@@ -1,3 +1,4 @@
+// lib/admin_profile_screen.dart
 import 'dart:io';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -17,13 +18,11 @@ class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
   static const Color lightBackground = Color(0xFFF3F0FF);
   static const Color darkText = Color(0xFF333333);
-  
-  // Header gradient colors
+
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
-  
-  // Added for consistent input styling
+
   static const Color inputBorder = Color(0xFFE0E0E0);
 }
 
@@ -34,7 +33,8 @@ class AdminProfileScreen extends StatefulWidget {
   State<AdminProfileScreen> createState() => _AdminProfileScreenState();
 }
 
-class _AdminProfileScreenState extends State<AdminProfileScreen> {
+class _AdminProfileScreenState extends State<AdminProfileScreen>
+    with WidgetsBindingObserver {
   // --- Firebase Instances ---
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
@@ -43,6 +43,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   // --- Cloudinary Configuration ---
   final String _cloudName = "dqeptzlsb";
   final String _uploadPreset = "flutter_mediq_upload";
+
+  // --- Default Profile Image (Admin) ---
+  static const String _defaultProfileImageUrl =
+      'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg';
 
   // --- Controllers for Form Fields ---
   final TextEditingController _fullNameController = TextEditingController();
@@ -57,7 +61,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   String? _profileImageUrl;
   DateTime? _createdAt;
   String _role = '';
-  
+
   // Auth state management
   User? _currentUser;
   late StreamSubscription<User?> _authStateSubscription;
@@ -70,72 +74,17 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   bool _hasUnsavedChanges = false;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ---------- Helper for consistent input decoration ----------
-  InputDecoration _inputDecoration({
-    required String label,
-    IconData? prefixIcon,
-    String? hintText,
-    bool enabled = true,
-    Widget? suffixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hintText,
-      floatingLabelBehavior: FloatingLabelBehavior.always,
-      labelStyle: TextStyle(
-        color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-      filled: true,
-      fillColor: enabled ? Colors.white : Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2.0),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: const BorderSide(color: Colors.red, width: 2.0),
-      ),
-      prefixIcon: prefixIcon == null
-          ? null
-          : Container(
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
-              ),
-            ),
-      suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-    );
-  }
-
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeAuthListener();
     _loadUserProfile();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authStateSubscription.cancel();
     _fullNameController.dispose();
     _emailController.dispose();
@@ -144,13 +93,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshProfile();
+    }
+  }
+
   // --- Initialization Methods ---
   void _initializeAuthListener() {
     _authStateSubscription = _auth.authStateChanges().listen((user) {
       if (user != null) {
         user.reload().then((_) {
           if (!mounted) return;
-          
           final reloadedUser = _auth.currentUser;
           _handleAuthStateChange(reloadedUser);
         });
@@ -159,27 +114,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   void _handleAuthStateChange(User? reloadedUser) {
-    final justVerified = reloadedUser != null && 
-                        reloadedUser.emailVerified && 
-                        _currentUser?.emailVerified == false;
-    
+    final justVerified = reloadedUser != null &&
+        reloadedUser.emailVerified &&
+        _currentUser?.emailVerified == false;
+
     setState(() {
       _currentUser = reloadedUser;
     });
 
     if (justVerified) {
-      setState(() {
-        _showVerificationSuccessPopup = true;
-      });
-      
+      setState(() => _showVerificationSuccessPopup = true);
       Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) {
-          setState(() {
-            _showVerificationSuccessPopup = false;
-          });
-        }
+        if (mounted) setState(() => _showVerificationSuccessPopup = false);
       });
-      
       _loadUserProfile();
     }
   }
@@ -198,8 +145,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     }
 
     try {
-      _currentUser = user;
-      
+      await user.reload();
+      _currentUser = _auth.currentUser;
+
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (!doc.exists) {
         _setError('User profile not found in Firestore.');
@@ -210,11 +158,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     } catch (e) {
       _setError('Failed to load profile: ${e.toString()}');
     } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -229,15 +173,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   Future<void> _updateLocalStateFromDocument(DocumentSnapshot doc) async {
     final data = doc.data()! as Map<String, dynamic>;
-    
+
     _fullNameController.text = (data['fullName'] ?? '') as String;
-    _emailController.text = (_currentUser?.email ?? data['email'] ?? '') as String;
+    _emailController.text =
+        (_currentUser?.email ?? data['email'] ?? '') as String;
     _nicController.text = (data['nic'] ?? '') as String;
     _mobileController.text = (data['mobileNumber'] ?? '') as String;
-    
-    // Load profile image URL from Cloudinary
-    _profileImageUrl = (data['profileImageUrl'] ?? '') as String?;
-    
+
+    // If no profile image in Firestore, use default
+    final imageUrl = (data['profileImageUrl'] ?? '') as String?;
+    _profileImageUrl = (imageUrl != null && imageUrl.isNotEmpty)
+        ? imageUrl
+        : _defaultProfileImageUrl;
+
     _role = (data['role'] ?? '') as String;
 
     final ts = data['createdAt'];
@@ -261,13 +209,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   void _onFieldChanged() {
     if (!_hasUnsavedChanges) {
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
+      setState(() => _hasUnsavedChanges = true);
     }
   }
 
-  // 🌟 NEW HEADER - Factory Owner Dashboard Style
+  Future<void> _refreshProfile() async {
+    await _loadUserProfile();
+  }
+
+  // 🌟 HEADER - Factory Owner Dashboard Style
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -291,87 +241,45 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
+                icon: const Icon(Icons.menu,
+                    color: AppColors.headerTextDark, size: 28),
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            ],
-          ),
-          
-          const SizedBox(height: 10),
-          
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [Color(0xFF2764E7), Color(0xFF457AED)], // Blue gradient
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2764E7).withOpacity(0.4), // Blue shadow
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // User Info
+              const Spacer(),
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // User Name
                   Text(
                     _displayName,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  // Role
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Logged in as: Administrator',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
                     ),
                   ),
                 ],
               ),
+              const Spacer(),
+              _buildDashboardProfileAvatar(),
             ],
           ),
-          
-          const SizedBox(height: 25),
-          
-          // Page Title
+          const SizedBox(height: 20),
           const Text(
             'Profile Management',
             style: TextStyle(
@@ -382,6 +290,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDashboardProfileAvatar() {
+    final imageUrl = _profileImageUrl ?? _defaultProfileImageUrl;
+    return CircleAvatar(
+      radius: 40,
+      backgroundImage: NetworkImage(imageUrl),
+      backgroundColor: Colors.grey.shade200,
+      onBackgroundImageError: (_, __) {
+        if (mounted) setState(() => _profileImageUrl = _defaultProfileImageUrl);
+      },
     );
   }
 
@@ -412,11 +332,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   isDestructive: true,
                   onTap: _confirmRemoveImage,
                 ),
-              _buildImageOptionTile(
-                icon: Icons.close,
-                title: 'Cancel',
-                onTap: () => Navigator.of(ctx).pop(),
-              ),
             ],
           ),
         );
@@ -431,8 +346,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     bool isDestructive = false,
   }) {
     return ListTile(
-      leading: Icon(icon, color: isDestructive ? Colors.red : AppColors.primaryPurple),
-      title: Text(title, style: TextStyle(color: isDestructive ? Colors.red : null)),
+      leading: Icon(icon,
+          color: isDestructive ? Colors.red : AppColors.primaryPurple),
+      title: Text(title,
+          style: TextStyle(color: isDestructive ? Colors.red : null)),
       onTap: () {
         Navigator.of(context).pop();
         onTap();
@@ -454,7 +371,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         _pickedImageFile = picked;
         _hasUnsavedChanges = true;
       });
-
     } catch (e) {
       debugPrint('Image pick error: $e');
       _showSnackBar('Failed to pick image: ${e.toString()}');
@@ -466,7 +382,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Profile Photo'),
-        content: const Text('Are you sure you want to remove your profile photo?'),
+        content:
+            const Text('Are you sure you want to remove your profile photo?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -490,27 +407,24 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    setState(() {
-      _uploadingImage = true;
-    });
+    setState(() => _uploadingImage = true);
 
     try {
+      // Set to default admin image instead of deleting
       await _firestore.collection('users').doc(user.uid).update({
-        'profileImageUrl': FieldValue.delete(),
+        'profileImageUrl': _defaultProfileImageUrl,
       });
 
       setState(() {
-        _profileImageUrl = null;
+        _profileImageUrl = _defaultProfileImageUrl;
         _pickedImageFile = null;
         _uploadingImage = false;
-        _hasUnsavedChanges = true;
+        _hasUnsavedChanges = true; // trigger save button appearance
       });
 
-      _showSnackBar('Profile photo removed');
+      _showSnackBar('Profile photo removed. Default photo set.');
     } catch (e) {
-      setState(() {
-        _uploadingImage = false;
-      });
+      setState(() => _uploadingImage = false);
       _showSnackBar('Failed to remove photo: ${e.toString()}');
     }
   }
@@ -518,20 +432,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   // --- Cloudinary Upload Method ---
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
     try {
-      debugPrint('🔄 Starting Cloudinary upload process...');
-      debugPrint('🌩️ Cloud Name: $_cloudName');
-      debugPrint('📝 Upload Preset: $_uploadPreset');
-
       final bytes = await imageFile.readAsBytes();
-      debugPrint('📊 Image size: ${bytes.length} bytes');
-
       if (bytes.length > 1000000) {
-        _showSnackBar('Image is too large. Please choose a smaller image (max 1MB).');
+        _showSnackBar('Image is too large. Max 1MB allowed.');
         return null;
       }
 
-      final url = Uri.parse("https://api.cloudinary.com/v1_1/dqeptzlsb/image/upload");
-      
+      final url =
+          Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
+
       final request = http.MultipartRequest('POST', url)
         ..fields['upload_preset'] = _uploadPreset
         ..files.add(http.MultipartFile.fromBytes(
@@ -540,39 +449,23 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ));
 
-      debugPrint('📤 Uploading to Cloudinary...');
-      
       final streamedResponse = await request.send().timeout(
         const Duration(seconds: 30),
-        onTimeout: () {
-          throw TimeoutException('Cloudinary upload timed out');
-        },
+        onTimeout: () => throw TimeoutException('Upload timed out'),
       );
 
       final response = await http.Response.fromStream(streamedResponse);
       final responseData = json.decode(response.body);
-      
+
       if (response.statusCode == 200) {
-        final imageUrl = responseData['secure_url'];
-        debugPrint('✅ Cloudinary upload successful! URL: $imageUrl');
-        return imageUrl;
+        return responseData['secure_url'];
       } else {
-        debugPrint('❌ Cloudinary upload failed: ${response.statusCode}');
-        String errorMessage = 'Unknown error';
-        if (responseData['error'] != null) {
-          errorMessage = responseData['error']['message'] ?? 'Unknown Cloudinary error';
-        }
-        _showSnackBar('Upload failed: $errorMessage');
+        final errorMsg = responseData['error']?['message'] ?? 'Upload failed';
+        _showSnackBar('Upload failed: $errorMsg');
         return null;
       }
-      
-    } on TimeoutException catch (e) {
-      debugPrint('⏰ Upload timeout: $e');
-      _showSnackBar('Upload timed out. Please try again.');
-      return null;
     } catch (e) {
-      debugPrint('❌ Upload error: $e');
-      _showSnackBar('Failed to upload image. Please try again.');
+      _showSnackBar('Upload failed. Please try again.');
       return null;
     }
   }
@@ -606,14 +499,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       bool imageUpdated = false;
 
       if (_pickedImageFile != null) {
-        debugPrint('🖼️ Starting image upload...');
         final cloudinaryUrl = await _uploadImageToCloudinary(_pickedImageFile!);
         if (cloudinaryUrl != null) {
           finalProfileImageUrl = cloudinaryUrl;
           imageUpdated = true;
-          debugPrint('✅ Image uploaded successfully');
         } else {
-          debugPrint('❌ Image upload failed');
           setState(() {
             _saving = false;
             _uploadingImage = false;
@@ -630,11 +520,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (finalProfileImageUrl != null && finalProfileImageUrl.isNotEmpty) {
-        updateData['profileImageUrl'] = finalProfileImageUrl;
-      } else if (_pickedImageFile == null && _profileImageUrl == null) {
-        updateData['profileImageUrl'] = FieldValue.delete();
-      }
+      // Always store a URL (either custom or default)
+      updateData['profileImageUrl'] =
+          finalProfileImageUrl ?? _defaultProfileImageUrl;
 
       await _firestore.collection('users').doc(user.uid).update(updateData);
 
@@ -642,9 +530,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         await _handleEmailChange(user, newEmail);
       } else {
         if (imageUpdated) {
-          _showSnackBar('Profile updated successfully with new photo!');
+          _showSnackBar('Profile updated with new photo!');
         } else if (_pickedImageFile == null && _profileImageUrl == null) {
-          _showSnackBar('Profile updated successfully - photo removed');
+          _showSnackBar('Profile updated - default photo set');
         } else {
           _showSnackBar('Profile updated successfully');
         }
@@ -653,11 +541,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       setState(() {
         _pickedImageFile = null;
         _hasUnsavedChanges = false;
-        _profileImageUrl = finalProfileImageUrl;
+        _profileImageUrl = finalProfileImageUrl ?? _defaultProfileImageUrl;
       });
-
     } catch (e) {
-      debugPrint('❌ Save profile error: $e');
       _setError('Failed to save profile: ${e.toString()}');
     } finally {
       if (mounted) {
@@ -672,25 +558,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Future<void> _handleEmailChange(User user, String newEmail) async {
     try {
       await user.verifyBeforeUpdateEmail(newEmail);
-      
-      setState(() {
-        _showEmailChangePopup = true;
-      });
-      
+      setState(() => _showEmailChangePopup = true);
       Future.delayed(const Duration(seconds: 6), () {
-        if (mounted) {
-          setState(() {
-            _showEmailChangePopup = false;
-          });
-        }
+        if (mounted) setState(() => _showEmailChangePopup = false);
       });
-
     } on FirebaseAuthException catch (e) {
-      debugPrint('Auth email update failed: $e');
-      _showSnackBar(
-        'Profile updated but email change failed: ${e.code}',
-        duration: const Duration(seconds: 4),
-      );
+      _showSnackBar('Email change failed: ${e.code}');
     }
   }
 
@@ -698,12 +571,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   Future<void> _resendVerificationEmail() async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     try {
       await user.sendEmailVerification();
       _showSnackBar('Verification email sent to ${user.email}');
     } catch (e) {
-      _showSnackBar('Failed to send verification email: ${e.toString()}');
+      _showSnackBar('Failed to send verification email');
     }
   }
 
@@ -721,7 +593,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.email_outlined, size: 50, color: AppColors.primaryPurple),
+              const Icon(Icons.email_outlined,
+                  size: 50, color: AppColors.primaryPurple),
               const SizedBox(height: 16),
               const Text(
                 'Email Change Initiated',
@@ -735,15 +608,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _showEmailChangePopup = false;
-                  });
-                },
+                onPressed: () => setState(() => _showEmailChangePopup = false),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryPurple,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                 ),
                 child: const Text('OK', style: TextStyle(color: Colors.white)),
               ),
@@ -771,7 +642,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               SizedBox(height: 16),
               Text(
                 'Email Verified Successfully!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green),
               ),
               SizedBox(height: 12),
               Text(
@@ -811,7 +685,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   children: [
                     Text(
                       'Action Disabled: Email Verification Pending',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.red),
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -845,23 +720,85 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  // Updated text field builder using modern input decoration
+  // ✅ Text field builder matching LoginPage style
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
+    required String hint,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
   }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      enabled: enabled,
-      style: TextStyle(color: enabled ? Colors.black : Colors.grey.shade600),
-      decoration: _inputDecoration(
-        label: label,
-        enabled: enabled,
-        // No prefix icon for profile fields
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.darkText,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            enabled: enabled,
+            style: TextStyle(
+                color: enabled ? Colors.black : Colors.grey.shade600),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                  color: AppColors.inputBorder.withOpacity(0.8), fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                  vertical: 16.0, horizontal: 20.0),
+              prefixIcon: Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  border: Border(
+                      right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Icon(icon, color: AppColors.primaryPurple, size: 20),
+                ),
+              ),
+              border: InputBorder.none,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                    color: AppColors.primaryPurple.withOpacity(0.1), width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide:
+                    const BorderSide(color: AppColors.primaryPurple, width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 2),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -871,8 +808,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          backgroundColor: isDisabled ? Colors.grey.shade400 : AppColors.primaryPurple,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+          backgroundColor:
+              isDisabled ? Colors.grey.shade400 : AppColors.primaryPurple,
           elevation: 4,
           shadowColor: AppColors.primaryPurple.withOpacity(0.3),
         ),
@@ -883,23 +822,22 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           child: Center(
             child: _saving
                 ? const SizedBox(
-                    height: 18, 
-                    width: 18, 
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  )
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (_hasUnsavedChanges) 
+                      if (_hasUnsavedChanges)
                         const Icon(Icons.save, size: 18, color: Colors.white),
                       if (_hasUnsavedChanges) const SizedBox(width: 6),
                       Text(
                         _hasUnsavedChanges ? 'Save' : 'Update',
                         style: const TextStyle(
-                          color: Colors.white, 
-                          fontSize: 16, 
-                          fontWeight: FontWeight.bold
-                        ),
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -918,15 +856,16 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isVerificationPending ? Colors.grey.shade300 : AppColors.inputBorder,
+            color: _isVerificationPending
+                ? Colors.grey.shade300
+                : AppColors.inputBorder,
             width: 1.5,
           ),
         ),
         child: Column(
           children: [
-            // Image preview (circular)
             Stack(
               alignment: Alignment.center,
               children: [
@@ -984,7 +923,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            // Status text
             Text(
               _uploadingImage
                   ? 'Uploading to Cloudinary...'
@@ -1012,7 +950,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   // --- Helper Methods ---
   ImageProvider? _getProfileImage() {
-    // Priority: New picked image > Cloudinary URL
     if (_pickedImageFile != null) {
       return FileImage(File(_pickedImageFile!.path));
     } else if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
@@ -1021,7 +958,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     return null;
   }
 
-  void _showSnackBar(String message, {Duration duration = const Duration(seconds: 3)}) {
+  void _showSnackBar(String message,
+      {Duration duration = const Duration(seconds: 3)}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -1041,9 +979,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        _showSnackBar('Logout failed: ${e.toString()}');
-      }
+      if (mounted) _showSnackBar('Logout failed: ${e.toString()}');
     }
   }
 
@@ -1053,11 +989,14 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
 
   // --- Computed Properties ---
-  bool get _isVerificationPending => _currentUser?.emailVerified == false && _currentUser != null;
-  bool get _hasExistingImage => _profileImageUrl != null && _profileImageUrl!.isNotEmpty || _pickedImageFile != null;
+  bool get _isVerificationPending =>
+      _currentUser?.emailVerified == false && _currentUser != null;
+  bool get _hasExistingImage =>
+      _profileImageUrl != null && _profileImageUrl!.isNotEmpty ||
+      _pickedImageFile != null;
   bool get _disableFieldsAndButton => _isVerificationPending || _saving;
-  String get _displayName => _fullNameController.text.isNotEmpty 
-      ? _fullNameController.text 
+  String get _displayName => _fullNameController.text.isNotEmpty
+      ? _fullNameController.text
       : (_currentUser?.displayName ?? 'Administrator');
 
   @override
@@ -1069,9 +1008,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         userName: _displayName,
         userRole: _role.isNotEmpty ? _role : 'Administrator',
         profileImageUrl: _profileImageUrl,
-        onNavTap: (title) {
-          _showSnackBar('$title tapped');
-        },
+        onNavTap: (title) => _showSnackBar('$title tapped'),
         onLogout: _handleLogout,
       ),
       body: Stack(
@@ -1080,119 +1017,107 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-                
-                // Main Content
                 Expanded(
-                  child: _loading
-                      ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 10),
-                              
-                              _buildVerificationStatusWidget(_isVerificationPending), 
-                              
-                              const Text(
-                                'Manage Profile Details', 
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)
-                              ),
-                              const SizedBox(height: 18),
-
-                              const Text(
-                                'Profile Picture', 
-                                style: TextStyle(
-                                  fontSize: 15, 
-                                  fontWeight: FontWeight.w600, 
-                                  color: AppColors.primaryPurple
+                  child: RefreshIndicator(
+                    onRefresh: _refreshProfile,
+                    color: AppColors.primaryPurple,
+                    child: _loading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: AppColors.primaryPurple))
+                        : SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 10),
+                                _buildVerificationStatusWidget(
+                                    _isVerificationPending),
+                                const Text(
+                                  'Manage Profile Details',
+                                  style: TextStyle(
+                                      fontSize: 15, fontWeight: FontWeight.w600),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-
-                              // Image preview
-                              _buildImagePreview(),
-
-                              const SizedBox(height: 18),
-
-                              // Full Name field with modern styling
-                              _buildTextField(
-                                controller: _fullNameController,
-                                label: 'Full Name',
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Email field
-                              _buildTextField(
-                                controller: _emailController,
-                                label: 'Email',
-                                keyboardType: TextInputType.emailAddress,
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // NIC field
-                              _buildTextField(
-                                controller: _nicController,
-                                label: 'NIC',
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 12),
-
-                              // Mobile Number field
-                              _buildTextField(
-                                controller: _mobileController,
-                                label: 'Mobile Number',
-                                keyboardType: TextInputType.phone,
-                                enabled: !_isVerificationPending,
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              Center(
-                                child: _buildSaveButton(_disableFieldsAndButton),
-                              ),
-
-                              const SizedBox(height: 18),
-
-                              Padding(
-                                padding: const EdgeInsets.only(left: 6.0),
-                                child: Text(
-                                  'Account Created: ${_formatCreatedAt()}',
-                                  style: const TextStyle(
-                                    fontSize: 13, 
-                                    fontWeight: FontWeight.w600, 
-                                    color: Colors.black
-                                  ),
+                                const SizedBox(height: 18),
+                                const Text(
+                                  'Profile Picture',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primaryPurple),
                                 ),
-                              ),
-
-                              const SizedBox(height: 30),
-
-                              if (_error != null)
+                                const SizedBox(height: 8),
+                                _buildImagePreview(),
+                                const SizedBox(height: 18),
+                                _buildTextField(
+                                  controller: _fullNameController,
+                                  label: 'Full Name',
+                                  hint: 'Enter your full name',
+                                  icon: Icons.person_outline,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _emailController,
+                                  label: 'Email',
+                                  hint: 'example@email.com',
+                                  icon: Icons.email_outlined,
+                                  keyboardType: TextInputType.emailAddress,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _nicController,
+                                  label: 'NIC',
+                                  hint: 'NIC number',
+                                  icon: Icons.badge_outlined,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildTextField(
+                                  controller: _mobileController,
+                                  label: 'Mobile Number',
+                                  hint: 'Mobile number',
+                                  icon: Icons.phone_outlined,
+                                  keyboardType: TextInputType.phone,
+                                  enabled: !_isVerificationPending,
+                                ),
+                                const SizedBox(height: 24),
+                                Center(
+                                    child: _buildSaveButton(
+                                        _disableFieldsAndButton)),
+                                const SizedBox(height: 18),
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  padding: const EdgeInsets.only(left: 6.0),
                                   child: Text(
-                                    'Error: $_error', 
-                                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+                                    'Account Created: ${_formatCreatedAt()}',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black),
                                   ),
                                 ),
-
-                              // 👇 Add bottom padding to avoid content hiding behind footer
-                              const SizedBox(height: 50),
-                            ],
+                                const SizedBox(height: 30),
+                                if (_error != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Text(
+                                      'Error: $_error',
+                                      style: const TextStyle(
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                const SizedBox(height: 50),
+                              ],
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ],
             ),
           ),
-
-          // 🔹 Static Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -1206,7 +1131,6 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
               ),
             ),
           ),
-
           if (_showEmailChangePopup) _buildEmailChangePopup(),
           if (_showVerificationSuccessPopup) _buildVerificationSuccessPopup(),
         ],

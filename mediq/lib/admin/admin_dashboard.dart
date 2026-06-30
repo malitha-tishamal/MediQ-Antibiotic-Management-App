@@ -429,7 +429,7 @@ Widget _buildDashboardProfileAvatar() {
 
   Widget _smallCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(08),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),

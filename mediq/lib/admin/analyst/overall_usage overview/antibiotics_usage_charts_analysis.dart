@@ -740,7 +740,7 @@ class _AntibioticsUsageChartsAnalysisScreenState
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Antibiotics Usage Analysis',
+          'Release Usage Analysis Charts',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

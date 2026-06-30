@@ -742,7 +742,7 @@ class _AntibioticsReturnsAnalysisScreenState
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Antibiotics Returns Analysis',
+          'Return Usage Analysis Charts',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

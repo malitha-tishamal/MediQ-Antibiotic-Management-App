@@ -287,7 +287,7 @@ Widget _buildProfileAvatar() {
           }
           return _buildAnalysisCard(
             title: 'Releases Overview Chats',
-            description: 'Graphical overview of Antibiotics releases and Category Wise.',
+            description: 'Graphical overview of releases and Category Wise.',
             imageAsset: 'assets/analyst/cards/antibiotics-overviews/releases.jpg',
             color: Colors.green,
             child: const SizedBox(),
@@ -315,7 +315,7 @@ Widget _buildProfileAvatar() {
           }
           return _buildAnalysisCard(
             title: 'Returns Overview Charts',
-            description: 'Graphical overview Antibiotics Returns and Category Wise.',
+            description: 'Graphical overview Returns and Category Wise.',
             imageAsset: 'assets/analyst/cards/antibiotics-overviews/returns.png',
             color: Colors.orange,
             child: const SizedBox(),
@@ -365,8 +365,8 @@ Widget _buildProfileAvatar() {
 
             return _buildAnalysisCard(
               title: 'Releases Details Analyst',
-              description: 'Full A–Z breakdown Antibiotics releases detailes.',
-              imageAsset: 'assets/analyst/cards//antibiotics-overviews/releases-all.jpg',
+              description: 'Full A–Z breakdown Releases Detailes.',
+              imageAsset: 'assets/analyst/cards/antibiotics-overviews/releases-all.jpg',
               color: Colors.blue,
               child: topEntries.isEmpty
                   ? const Text('No data', style: TextStyle(color: Colors.grey))
@@ -421,8 +421,8 @@ Widget _buildProfileAvatar() {
 
             return _buildAnalysisCard(
               title: 'Returns Details Analyst',
-              description: 'Full A–Z breakdown of Antibiotics returns detailes.',
-              imageAsset: 'assets/analyst/cards//antibiotics-overviews/returns-all.jpg',
+              description: 'Full A–Z breakdown of Returns Detailes.',
+              imageAsset: 'assets/analyst/cards/antibiotics-overviews/returns-all.jpg',
               color: Colors.purple,
               child: topEntries.isEmpty
                   ? const Text('No data', style: TextStyle(color: Colors.grey))
