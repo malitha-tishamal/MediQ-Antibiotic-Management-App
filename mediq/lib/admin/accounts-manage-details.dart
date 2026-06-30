@@ -17,10 +17,9 @@ class AppColors {
   static const Color disabledColor = Color(0xFFE53935);
   static const Color pendingColor = Color(0xFFFF9800);
   static const Color iconColor = Color(0xFF5A43A7);
-  
-  // Header gradient colors matching Factory Owner Dashboard
+
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
-  static const Color headerGradientEnd = Color(0xFFF7FAFF);  
+  static const Color headerGradientEnd = Color(0xFFF7FAFF);
   static const Color headerTextDark = Color(0xFF333333);
 }
 
@@ -107,7 +106,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     }
   }
 
-  // Header - Factory Owner Dashboard Style
   Widget _buildDashboardHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
@@ -131,85 +129,47 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Menu button (left)
               IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            ],
-          ),
-          
-          const SizedBox(height: 10),
-          
-          Row(
-            children: [
-              // Profile Picture
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null 
-                    ? const LinearGradient(
-                        colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null 
-                    ? DecorationImage(
-                        image: NetworkImage(_profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              
-              const SizedBox(width: 15),
-              
-              // User Info
+              const Spacer(),
+              // User info (centered)
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     _currentUserName,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.headerTextDark,
                     ),
                   ),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Logged in as: Administrator',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.headerTextDark.withOpacity(0.7),
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
                     ),
                   ),
                 ],
               ),
+              const Spacer(),
+              // Profile picture (right)
+              _buildDashboardProfileAvatar(),
             ],
           ),
-          
-          const SizedBox(height: 25),
-          
-          // Page Title
+          const SizedBox(height: 20),
           const Text(
             'Account Management Dashboard',
             style: TextStyle(
@@ -221,6 +181,25 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
         ],
       ),
     );
+  }
+
+  Widget _buildDashboardProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   @override
@@ -242,15 +221,13 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
         onNavTap: (title) => _handleNavTap(title, context),
         onLogout: () => _handleLogout(context),
       ),
-      appBar: const PreferredSize(preferredSize: Size.fromHeight(0), child: SizedBox.shrink()),
+      // ✅ No appBar – custom header handles everything without layout issues
       body: Stack(
         children: [
           SafeArea(
             child: Column(
               children: [
                 _buildDashboardHeader(context),
-                
-                // Main Content
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -258,7 +235,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 10),
-                        
                         _buildSectionTitle('Manage Admin Accounts', Icons.admin_panel_settings),
                         const SizedBox(height: 10),
                         _buildAccountCard(
@@ -267,18 +243,15 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                           imagePath: 'assets/accounts/admin-default.jpg',
                           borderColor: Colors.deepPurpleAccent,
                         ),
-                        
                         const SizedBox(height: 24),
-                        
                         _buildSectionTitle('Manage Pharmacist Accounts', Icons.medical_services),
                         const SizedBox(height: 10),
                         _buildAccountCard(
                           role: 'Pharmacist',
                           title: 'Manage Pharmacist Accounts',
                           imagePath: 'assets/accounts/pharmizist-default.jpg',
-                          borderColor: CupertinoColors.systemPurple, // or AppColors.approvedColor
+                          borderColor: CupertinoColors.systemPurple,
                         ),
-                        
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -287,8 +260,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
               ],
             ),
           ),
-          
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -310,7 +281,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  // Section Title Widget
   Widget _buildSectionTitle(String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4.0),
@@ -331,7 +301,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  /// නවීන account card එක – gradient background, left border, double shadows
   Widget _buildAccountCard({
     required String role,
     required String title,
@@ -425,7 +394,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      // Image container with modern styling
                       Container(
                         width: 80,
                         height: 80,
@@ -464,7 +432,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      // Stats
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +481,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  // Modern loading card (with gradient and shadow)
   Widget _buildModernLoadingCard(String title) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -557,7 +523,6 @@ class _AccountManageDetailsState extends State<AccountManageDetails> {
     );
   }
 
-  // Modern error card
   Widget _buildModernErrorCard(String title, String error) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

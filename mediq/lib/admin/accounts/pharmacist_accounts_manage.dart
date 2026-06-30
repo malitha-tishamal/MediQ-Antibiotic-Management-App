@@ -200,7 +200,7 @@ class _UserListScreenState extends State<UserListScreen> {
   // Header
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -223,10 +223,11 @@ class _UserListScreenState extends State<UserListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 5),
+          // Top row: back button (left), user info (center), profile picture (right)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Back button (left)
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -234,40 +235,67 @@ class _UserListScreenState extends State<UserListScreen> {
                     color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(
+              const Spacer(),
+              // User info (centered)
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Logged in as: Administrator',
-                  style: TextStyle(
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.headerTextDark),
-                ),
-              ],
-            ),
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Profile picture (right) - 80x80
+              _buildProfileAvatar(),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          // Title
           Text(
             'Manage ${widget.role} Accounts',
             style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // Profile avatar helper (80x80, radius 40)
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   // Search bar
@@ -276,7 +304,7 @@ class _UserListScreenState extends State<UserListScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -461,7 +489,7 @@ class _UserListScreenState extends State<UserListScreen> {
     );
   }
 
-  // ----- Updated User Card with larger avatar -----
+  // ----- Updated User Card with default image from assets -----
   Widget _buildModernUserCard(String userId, Map<String, dynamic> data) {
     final fullName = data['fullName'] ?? 'Malitha Tishamal';
     final email = data['email'] ?? 'malithatishamal@gmail.com';
@@ -533,21 +561,11 @@ class _UserListScreenState extends State<UserListScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Larger profile avatar (60x60)
+                    // Profile avatar (60x60) - shows default image if no URL
                     Container(
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        gradient: profileImageUrl == null 
-                            ? LinearGradient(
-                                colors: [
-                                  AppColors.primaryPurple.withOpacity(0.8),
-                                  AppColors.primaryPurple,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -556,19 +574,42 @@ class _UserListScreenState extends State<UserListScreen> {
                             offset: const Offset(0, 3),
                           ),
                         ],
-                        image: profileImageUrl != null 
+                        image: profileImageUrl != null && profileImageUrl!.isNotEmpty
                             ? DecorationImage(
-                                image: NetworkImage(profileImageUrl),
+                                image: NetworkImage(profileImageUrl!),
                                 fit: BoxFit.cover,
                               )
                             : null,
                       ),
-                      child: profileImageUrl == null 
-                          ? const Center(
-                              child: Icon(
-                                Icons.medical_services,
-                                color: Colors.white,
-                                size: 30,
+                      child: profileImageUrl == null || profileImageUrl!.isEmpty
+                          ? ClipOval(
+                              child: Image.asset(
+                                'assets/accounts/pharmizist-default.jpg',
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Fallback if asset missing: gradient with icon
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.primaryPurple.withOpacity(0.8),
+                                          AppColors.primaryPurple,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.medical_services,
+                                        color: Colors.white,
+                                        size: 30,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             )
                           : null,
@@ -681,7 +722,7 @@ class _UserListScreenState extends State<UserListScreen> {
                     Expanded(
                       child: _buildModernActionButton(
                         'Disable',
-                        AppColors.disabledColor,
+                        AppColors.warningOrange,
                         Icons.lock,
                         status == 'Disabled',
                         status == 'Disabled' ? null : () => _updateStatus(userId, 'Disabled'),
@@ -691,7 +732,7 @@ class _UserListScreenState extends State<UserListScreen> {
                     Expanded(
                       child: _buildModernActionButton(
                         'Delete',
-                        AppColors.warningOrange,
+                        AppColors.disabledColor,
                         Icons.delete_outline,
                         false,
                         () => _confirmDelete(userId, fullName),
@@ -948,7 +989,8 @@ class _UserListScreenState extends State<UserListScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.disabledColor,
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {

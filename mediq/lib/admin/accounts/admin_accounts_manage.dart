@@ -190,113 +190,106 @@ class _UserListScreenState extends State<UserListScreen> {
     }
   }
 
-// ---------- UPDATED HEADER with 80x80 profile picture and balanced user info ----------
-Widget _buildHeader(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(30),
-        bottomRight: Radius.circular(30),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Color(0x10000000),
-          blurRadius: 15,
-          offset: Offset(0, 5),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Main row: back button, user info (centered), profile picture
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Back button (left)
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.arrow_back,
-                  color: AppColors.headerTextDark, size: 24),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            const Spacer(),
-            // User info (centered, vertically aligned)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.headerTextDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Logged in as: Administrator',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.headerTextDark,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            // Profile picture (right side) - 80x80
-            _buildProfileAvatar(),
-          ],
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
-        const SizedBox(height: 16),
-        // Title (below the row)
-        Text(
-          'Manage ${widget.role} Accounts',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.headerTextDark,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Profile avatar with 80x80 size (radius 40)
-Widget _buildProfileAvatar() {
-  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-    return CircleAvatar(
-      radius: 40,
-      backgroundImage: NetworkImage(_profileImageUrl!),
-      backgroundColor: Colors.grey.shade200,
-      onBackgroundImageError: (_, __) {
-        if (mounted) setState(() => _profileImageUrl = null);
-      },
-    );
-  } else {
-    return CircleAvatar(
-      radius: 40,
-      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
-      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.arrow_back,
+                    color: AppColors.headerTextDark, size: 24),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Manage ${widget.role} Accounts',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
+
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
+  }
 
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -542,20 +535,11 @@ Widget _buildProfileAvatar() {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Avatar: show default admin image if no profile URL
                     Container(
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        gradient: profileImageUrl == null 
-                            ? LinearGradient(
-                                colors: [
-                                  AppColors.primaryPurple.withOpacity(0.8),
-                                  AppColors.primaryPurple,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
@@ -564,19 +548,42 @@ Widget _buildProfileAvatar() {
                             offset: const Offset(0, 3),
                           ),
                         ],
-                        image: profileImageUrl != null 
+                        image: (profileImageUrl != null && profileImageUrl!.isNotEmpty)
                             ? DecorationImage(
-                                image: NetworkImage(profileImageUrl),
+                                image: NetworkImage(profileImageUrl!),
                                 fit: BoxFit.cover,
                               )
                             : null,
                       ),
-                      child: profileImageUrl == null 
-                          ? const Center(
-                              child: Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 30,
+                      child: (profileImageUrl == null || profileImageUrl!.isEmpty)
+                          ? ClipOval(
+                              child: Image.asset(
+                                'assets/accounts/admin-default.jpg',
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Fallback gradient in case asset is missing
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.primaryPurple.withOpacity(0.8),
+                                          AppColors.primaryPurple,
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.admin_panel_settings,
+                                        color: Colors.white,
+                                        size: 30,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             )
                           : null,
@@ -686,7 +693,7 @@ Widget _buildProfileAvatar() {
                     Expanded(
                       child: _buildModernActionButton(
                         'Disable',
-                        isCurrentUser ? Colors.grey : AppColors.disabledColor,
+                        isCurrentUser ? Colors.grey : AppColors.warningOrange,
                         Icons.lock,
                         isCurrentUser || status == 'Disabled',
                         isCurrentUser ? null : () => _updateStatus(userId, 'Disabled'),
@@ -696,7 +703,7 @@ Widget _buildProfileAvatar() {
                     Expanded(
                       child: _buildModernActionButton(
                         'Delete',
-                        isCurrentUser ? Colors.grey : AppColors.warningOrange,
+                        isCurrentUser ? Colors.grey : AppColors.disabledColor,
                         Icons.delete_outline,
                         isCurrentUser,
                         isCurrentUser ? null : () => _confirmDelete(userId, fullName),
@@ -948,7 +955,7 @@ Widget _buildProfileAvatar() {
           children: [
             Icon(Icons.warning_amber_rounded, color: AppColors.warningOrange),
             SizedBox(width: 12),
-            Text('Delete Account'),
+            Text('Delete Admin'),
           ],
         ),
         content: Text('Are you sure you want to delete $fullName\'s account? This action cannot be undone.'),
@@ -962,7 +969,8 @@ Widget _buildProfileAvatar() {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.disabledColor,
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
