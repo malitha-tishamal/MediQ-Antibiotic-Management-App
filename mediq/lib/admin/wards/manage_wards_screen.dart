@@ -1,4 +1,4 @@
-// manage_wards_screen.dart
+// manage_wards_screen.dart (ultra‑compact card)
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -35,7 +35,6 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
   String _currentUserName = 'Loading...';
   String? _profileImageUrl;
 
-  // Filter state
   String _selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -81,7 +80,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -94,16 +93,18 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 5),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 padding: EdgeInsets.zero,
@@ -112,39 +113,63 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                     color: AppColors.headerTextDark, size: 24),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Logged in as: Administrator',
-                  style: TextStyle(
-                      fontSize: 12, color: AppColors.headerTextDark),
-                ),
-              ],
-            ),
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           const Text(
             'Manage Wards',
             style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   Future<void> _confirmDelete(String docId, String wardName) async {
@@ -221,7 +246,6 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
     );
   }
 
-  // Compact modern filter chip without dot
   Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
     final isSelected = _selectedFilter == filterValue;
     return GestureDetector(
@@ -231,10 +255,10 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? Colors.transparent : color.withOpacity(0.3),
           ),
@@ -242,7 +266,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
         child: Text(
           '$label $count',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             color: isSelected ? Colors.white : color,
           ),
@@ -287,20 +311,20 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Colors.white, Color(0xFFF0F4FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryPurple.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -310,12 +334,12 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
           const Text(
             'Wards Overview',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.darkText,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 4,
             runSpacing: 4,
@@ -354,24 +378,24 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
     }
   }
 
-  // Compact info chip
+  // Ultra‑compact info chip
   Widget _buildInfoChipCompact({required IconData icon, required String label, Color? color}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
         color: (color ?? Colors.grey).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: (color ?? Colors.grey).withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: (color ?? Colors.grey).withOpacity(0.2), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color ?? Colors.grey),
-          const SizedBox(width: 4),
+          Icon(icon, size: 9, color: color ?? Colors.grey),
+          const SizedBox(width: 2),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: FontWeight.w500,
               color: color ?? Colors.grey,
             ),
@@ -407,7 +431,6 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         
-                        // Apply category filter
                         if (_selectedFilter != 'All') {
                           final category = data['category'] ?? '';
                           if (_selectedFilter == 'Other') {
@@ -424,7 +447,6 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                           }
                         }
                         
-                        // Apply search filter
                         if (_searchQuery.isNotEmpty) {
                           final name = (data['wardName'] ?? '').toLowerCase();
                           if (!name.contains(_searchQuery)) return false;
@@ -441,8 +463,7 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                 ? _buildEmptyState()
                                 : ListView.builder(
                                     key: const PageStorageKey('wards_list'),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 20, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                                     itemCount: filteredDocs.length,
                                     itemBuilder: (context, index) {
                                       final doc = filteredDocs[index];
@@ -459,11 +480,11 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                         createdDate = DateFormat('dd MMM yyyy').format(createdAt.toDate());
                                       }
 
-                                      // ----- Modern Compact Card with edit/delete -----
+                                      // ---------- ULTRA COMPACT CARD ----------
                                       return Container(
-                                        margin: const EdgeInsets.only(bottom: 12),
+                                        margin: const EdgeInsets.only(bottom: 6),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(24),
+                                          borderRadius: BorderRadius.circular(16),
                                           gradient: const LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
@@ -471,15 +492,15 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: _getCategoryColor(category).withOpacity(0.15),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                              spreadRadius: -3,
+                                              color: _getCategoryColor(category).withOpacity(0.08),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 1),
+                                              spreadRadius: -1,
                                             ),
                                           ],
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(24),
+                                          borderRadius: BorderRadius.circular(16),
                                           child: Material(
                                             color: Colors.transparent,
                                             child: Container(
@@ -487,11 +508,11 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                                 border: Border(
                                                   left: BorderSide(
                                                     color: _getCategoryColor(category),
-                                                    width: 6,
+                                                    width: 3,
                                                   ),
                                                 ),
                                               ),
-                                              padding: const EdgeInsets.all(12),
+                                              padding: const EdgeInsets.all(8),
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
@@ -502,59 +523,54 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                                         child: Text(
                                                           wardName,
                                                           style: const TextStyle(
-                                                            fontSize: 18,
+                                                            fontSize: 14,
                                                             fontWeight: FontWeight.bold,
                                                             color: AppColors.darkText,
-                                                            letterSpacing: 0.3,
                                                           ),
                                                         ),
                                                       ),
+                                                      // Tiny edit/delete buttons
                                                       Row(
                                                         mainAxisSize: MainAxisSize.min,
                                                         children: [
-                                                          Container(
-                                                            decoration: BoxDecoration(
-                                                              color: Colors.orange.withOpacity(0.1),
-                                                              borderRadius: BorderRadius.circular(10),
-                                                            ),
-                                                            child: IconButton(
-                                                              icon: const Icon(Icons.edit,
-                                                                  color: Colors.orange, size: 18),
-                                                              onPressed: () {
-                                                                Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                    builder: (_) =>
-                                                                        AddWardScreen(wardId: doc.id),
-                                                                  ),
-                                                                );
-                                                              },
-                                                              padding: EdgeInsets.zero,
-                                                              constraints: const BoxConstraints(),
+                                                          InkWell(
+                                                            onTap: () {
+                                                              Navigator.push(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder: (_) => AddWardScreen(wardId: doc.id),
+                                                                ),
+                                                              );
+                                                            },
+                                                            child: Container(
+                                                              padding: const EdgeInsets.all(2),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.orange.withOpacity(0.1),
+                                                                borderRadius: BorderRadius.circular(4),
+                                                              ),
+                                                              child: const Icon(Icons.edit, color: Colors.orange, size: 12),
                                                             ),
                                                           ),
                                                           const SizedBox(width: 4),
-                                                          Container(
-                                                            decoration: BoxDecoration(
-                                                              color: Colors.red.withOpacity(0.1),
-                                                              borderRadius: BorderRadius.circular(10),
-                                                            ),
-                                                            child: IconButton(
-                                                              icon: const Icon(Icons.delete,
-                                                                  color: Colors.red, size: 18),
-                                                              onPressed: () => _confirmDelete(doc.id, wardName),
-                                                              padding: EdgeInsets.zero,
-                                                              constraints: const BoxConstraints(),
+                                                          InkWell(
+                                                            onTap: () => _confirmDelete(doc.id, wardName),
+                                                            child: Container(
+                                                              padding: const EdgeInsets.all(2),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.red.withOpacity(0.1),
+                                                                borderRadius: BorderRadius.circular(4),
+                                                              ),
+                                                              child: const Icon(Icons.delete, color: Colors.red, size: 12),
                                                             ),
                                                           ),
                                                         ],
                                                       ),
                                                     ],
                                                   ),
-                                                  const SizedBox(height: 8),
+                                                  const SizedBox(height: 4),
                                                   Wrap(
-                                                    spacing: 6,
-                                                    runSpacing: 6,
+                                                    spacing: 4,
+                                                    runSpacing: 4,
                                                     children: [
                                                       _buildInfoChipCompact(icon: Icons.group, label: team),
                                                       _buildInfoChipCompact(icon: Icons.person, label: managedBy),
@@ -565,24 +581,23 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                  const SizedBox(height: 8),
+                                                  const SizedBox(height: 6),
                                                   if (description.isNotEmpty)
                                                     Container(
-                                                      padding: const EdgeInsets.all(8),
+                                                      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
                                                       decoration: BoxDecoration(
                                                         color: AppColors.chipBackground,
-                                                        borderRadius: BorderRadius.circular(12),
+                                                        borderRadius: BorderRadius.circular(8),
                                                       ),
                                                       child: Row(
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
-                                                          const Icon(Icons.description,
-                                                              size: 14, color: Colors.grey),
-                                                          const SizedBox(width: 6),
+                                                          const Icon(Icons.description, size: 10, color: Colors.grey),
+                                                          const SizedBox(width: 4),
                                                           Expanded(
                                                             child: Text(
                                                               description,
-                                                              style: const TextStyle(fontSize: 12),
+                                                              style: const TextStyle(fontSize: 9),
                                                             ),
                                                           ),
                                                         ],
@@ -590,55 +605,45 @@ class _ManageWardsScreenState extends State<ManageWardsScreen> {
                                                     )
                                                   else
                                                     Container(
-                                                      padding: const EdgeInsets.all(8),
+                                                      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
                                                       decoration: BoxDecoration(
                                                         color: Colors.grey.shade50,
-                                                        borderRadius: BorderRadius.circular(12),
+                                                        borderRadius: BorderRadius.circular(8),
                                                       ),
                                                       child: const Row(
                                                         children: [
-                                                          Icon(Icons.info_outline,
-                                                              size: 14, color: Colors.grey),
-                                                          SizedBox(width: 6),
+                                                          Icon(Icons.info_outline, size: 10, color: Colors.grey),
+                                                          SizedBox(width: 4),
                                                           Text(
                                                             'No description',
-                                                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                                                            style: TextStyle(fontSize: 9, color: Colors.grey),
                                                           ),
                                                         ],
                                                       ),
                                                     ),
-                                                  const SizedBox(height: 10),
-                                                  const Divider(height: 1, thickness: 0.5),
-                                                  const SizedBox(height: 6),
+                                                  const SizedBox(height: 4),
+                                                  const Divider(height: 0.8, thickness: 0.5),
+                                                  const SizedBox(height: 2),
                                                   Row(
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                     children: [
                                                       Row(
                                                         children: [
-                                                          const Icon(Icons.fingerprint,
-                                                              size: 12, color: Colors.grey),
-                                                          const SizedBox(width: 4),
+                                                          const Icon(Icons.fingerprint, size: 8, color: Colors.grey),
+                                                          const SizedBox(width: 2),
                                                           Text(
                                                             'ID: ${doc.id.substring(0, 6)}...',
-                                                            style: const TextStyle(
-                                                              fontSize: 10,
-                                                              color: Colors.grey,
-                                                            ),
+                                                            style: const TextStyle(fontSize: 8, color: Colors.grey),
                                                           ),
                                                         ],
                                                       ),
                                                       Row(
                                                         children: [
-                                                          const Icon(Icons.calendar_today,
-                                                              size: 10, color: Colors.grey),
-                                                          const SizedBox(width: 4),
+                                                          const Icon(Icons.calendar_today, size: 7, color: Colors.grey),
+                                                          const SizedBox(width: 2),
                                                           Text(
                                                             createdDate,
-                                                            style: const TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors.grey,
-                                                              fontWeight: FontWeight.w400,
-                                                            ),
+                                                            style: const TextStyle(fontSize: 8, color: Colors.grey),
                                                           ),
                                                         ],
                                                       ),
