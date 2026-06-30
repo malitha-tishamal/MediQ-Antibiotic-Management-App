@@ -1,4 +1,4 @@
-// return_releases_screen.dart
+// return_releases_screen.dart (ultra‑compact card + auto‑close modals)
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -41,34 +41,26 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
   String? _profileImageUrl;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Search & category filter
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _selectedCategory = 'All'; // 'All', 'Access', 'Watch', 'Reserve', 'Other'
+  String _selectedCategory = 'All';
 
-  // Advanced filters (from bottom sheet)
   String? _selectedWardId;
   String? _selectedAntibioticId;
   DateTime? _startDate;
   DateTime? _endDate;
 
-  // Data for dropdowns
   List<Map<String, dynamic>> _wards = [];
   List<Map<String, dynamic>> _antibiotics = [];
-  Map<String, String> _antibioticCategoryMap = {}; // id -> category
-
-  // Cache for user names
+  Map<String, String> _antibioticCategoryMap = {};
   final Map<String, String> _userNameCache = {};
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize time zone for Sri Lanka (Colombo)
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
-    // Set default date range to current month (first day to today) using Sri Lanka time
     final nowSriLanka = tz.TZDateTime.now(tz.local);
     _startDate = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
     _endDate = nowSriLanka;
@@ -109,14 +101,12 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
 
   Future<void> _fetchFilterData() async {
     try {
-      // Fetch wards
       final wardsSnapshot = await _wardsCollection.get();
       _wards = wardsSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return {'id': doc.id, 'name': data['wardName'] ?? 'Unknown'};
       }).toList();
 
-      // Fetch antibiotics and build category map
       final antibioticsSnapshot = await _antibioticsCollection.get();
       _antibiotics = antibioticsSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -156,7 +146,6 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     }
   }
 
-  // ---------- Helper for consistent input decoration ----------
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -170,10 +159,10 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
       floatingLabelBehavior: FloatingLabelBehavior.always,
       labelStyle: TextStyle(
         color: enabled ? AppColors.primaryPurple : Colors.grey.shade600,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+      hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 12),
       filled: true,
       fillColor: enabled ? Colors.white : Colors.grey.shade100,
       border: OutlineInputBorder(
@@ -204,20 +193,22 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
                 border: Border(right: BorderSide(color: Colors.grey.shade300, width: 1.5)),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(prefixIcon, color: AppColors.primaryPurple, size: 18),
               ),
             ),
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
     );
   }
 
-  // Show advanced filter bottom sheet (updated to use Sri Lanka time for date pickers)
+  // Filter panel with auto‑close (isDismissible + enableDrag)
   void _showFilterPanel() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,      // ✅ close when tapping outside
+      enableDrag: true,         // ✅ close by dragging down
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -253,19 +244,12 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            // Ward dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedWardId,
-                              decoration: _inputDecoration(
-                                label: 'Ward',
-                                prefixIcon: Icons.place,
-                              ),
+                              decoration: _inputDecoration(label: 'Ward', prefixIcon: Icons.place),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Wards')),
-                                ..._wards.map((w) => DropdownMenuItem(
-                                      value: w['id'],
-                                      child: Text(w['name']),
-                                    )),
+                                ..._wards.map((w) => DropdownMenuItem(value: w['id'], child: Text(w['name']))),
                               ],
                               onChanged: (value) {
                                 setState(() => _selectedWardId = value);
@@ -273,20 +257,12 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
-
-                            // Antibiotic dropdown
                             DropdownButtonFormField<String>(
                               value: _selectedAntibioticId,
-                              decoration: _inputDecoration(
-                                label: 'Antibiotic',
-                                prefixIcon: Icons.medication,
-                              ),
+                              decoration: _inputDecoration(label: 'Antibiotic', prefixIcon: Icons.medication),
                               items: [
                                 const DropdownMenuItem(value: null, child: Text('All Antibiotics')),
-                                ..._antibiotics.map((a) => DropdownMenuItem(
-                                      value: a['id'],
-                                      child: Text(a['name']),
-                                    )),
+                                ..._antibiotics.map((a) => DropdownMenuItem(value: a['id'], child: Text(a['name']))),
                               ],
                               onChanged: (value) {
                                 setState(() => _selectedAntibioticId = value);
@@ -294,8 +270,6 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
-
-                            // Date range (use Sri Lanka time for initial dates)
                             const Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(height: 8),
                             Row(
@@ -350,8 +324,6 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
                               ],
                             ),
                             const SizedBox(height: 24),
-
-                            // Action buttons
                             Row(
                               children: [
                                 Expanded(
@@ -403,23 +375,22 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     );
   }
 
-  // ---- Category Filter Chips ----
   Widget _buildFilterChip(String label, int count, Color color, String filterValue) {
     final isSelected = _selectedCategory == filterValue;
     return GestureDetector(
       onTap: () => setState(() => _selectedCategory = filterValue),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        margin: const EdgeInsets.only(right: 4),
         decoration: BoxDecoration(
           color: isSelected ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: isSelected ? Colors.transparent : color.withOpacity(0.3)),
         ),
         child: Text(
           '$label $count',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             color: isSelected ? Colors.white : color,
           ),
@@ -442,15 +413,15 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
+            color: Colors.grey.withOpacity(0.08),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -470,18 +441,12 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     );
   }
 
-  // Filter function (combines all filters)
   bool _filterReturn(Map<String, dynamic> data) {
-    // Search
     if (_searchQuery.isNotEmpty) {
       final antibiotic = (data['antibioticName'] ?? '').toLowerCase();
       final ward = (data['wardName'] ?? '').toLowerCase();
-      if (!antibiotic.contains(_searchQuery) && !ward.contains(_searchQuery)) {
-        return false;
-      }
+      if (!antibiotic.contains(_searchQuery) && !ward.contains(_searchQuery)) return false;
     }
-
-    // Category filter
     if (_selectedCategory != 'All') {
       final antibioticId = data['antibioticId'] ?? '';
       final category = _antibioticCategoryMap[antibioticId] ?? 'Other';
@@ -491,33 +456,19 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
         if (category != _selectedCategory) return false;
       }
     }
-
-    // Ward filter
-    if (_selectedWardId != null && data['wardId'] != _selectedWardId) {
-      return false;
-    }
-
-    // Antibiotic filter
-    if (_selectedAntibioticId != null && data['antibioticId'] != _selectedAntibioticId) {
-      return false;
-    }
-
-    // Date range
+    if (_selectedWardId != null && data['wardId'] != _selectedWardId) return false;
+    if (_selectedAntibioticId != null && data['antibioticId'] != _selectedAntibioticId) return false;
     if (_startDate != null || _endDate != null) {
       final returnDate = (data['returnDateTime'] as Timestamp?)?.toDate();
       if (returnDate == null) return false;
       if (_startDate != null && returnDate.isBefore(_startDate!)) return false;
       if (_endDate != null && returnDate.isAfter(_endDate!.add(const Duration(days: 1)))) return false;
     }
-
     return true;
   }
 
-  // Fetch user name by ID with caching
   Future<String> _getUserName(String userId) async {
-    if (_userNameCache.containsKey(userId)) {
-      return _userNameCache[userId]!;
-    }
+    if (_userNameCache.containsKey(userId)) return _userNameCache[userId]!;
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
@@ -535,7 +486,6 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     }
   }
 
-  // ---- Edit Quantity Dialog ----
   Future<void> _editReturn(String docId, int currentQuantity) async {
     final TextEditingController qtyController = TextEditingController(text: currentQuantity.toString());
     final result = await showDialog<bool>(
@@ -578,7 +528,6 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     }
   }
 
-  // ---- Delete Confirmation ----
   Future<void> _confirmDelete(String docId, String name) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -605,7 +554,7 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     }
   }
 
-  // ---- Show Details Modal ----
+  // ========== DETAILS MODAL with auto‑close (isDismissible + enableDrag) ==========
   void _showDetailsModal(Map<String, dynamic> data, String docId) {
     final antibioticName = data['antibioticName'] ?? 'Unknown';
     final dosage = data['dosage'] ?? '';
@@ -621,116 +570,221 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
     final formattedCreated = createdAt != null ? DateFormat('dd MMM yyyy, hh:mm a').format(createdAt) : 'N/A';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Colors.white, Color(0xFFF9F7FF)],
-            ),
-            borderRadius: BorderRadius.circular(20),
+      isScrollControlled: true,
+      isDismissible: true,      // ✅ auto-close when tapping outside
+      enableDrag: true,         // ✅ also close by dragging down
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, -2))],
           ),
-          child: FutureBuilder<String>(
-            future: _getUserName(createdBy),
-            builder: (context, snapshot) {
-              final returnedByName = snapshot.data ?? 'Loading...';
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        antibioticName,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkText),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Text(
-                          'Return Store',
-                          style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: FutureBuilder<String>(
+                    future: _getUserName(createdBy),
+                    builder: (context, snapshot) {
+                      final returnedByName = snapshot.data ?? 'Loading...';
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  antibioticName,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.darkText,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.orange.shade200),
+                                ),
+                                child: const Text(
+                                  'Return Store',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [AppColors.primaryPurple, Color(0xFFB794F4)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryPurple.withOpacity(0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Returned Quantity',
+                                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '$quantity',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _modernDetailRow(Icons.medical_services, 'Dosage', dosage),
+                          _modernDetailRow(Icons.place, 'Ward', wardName),
+                          _modernDetailRow(Icons.menu_book, 'Book Number', bookNumber),
+                          _modernDetailRow(Icons.pages, 'Page Number', pageNumber),
+                          _modernDetailRow(Icons.access_time, 'Return Time', formattedDate),
+                          _modernDetailRow(Icons.person, 'Returned by', returnedByName),
+                          _modernDetailRow(Icons.calendar_today, 'Created At', formattedCreated),
+                          _modernDetailRow(Icons.fingerprint, 'Document ID', docId),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  label: const Text('Close'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey.shade700,
+                                    side: BorderSide(color: Colors.grey.shade300),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    _editReturn(docId, quantity);
+                                  },
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  label: const Text('Edit'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    _confirmDelete(docId, antibioticName);
+                                  },
+                                  icon: const Icon(Icons.delete, size: 18),
+                                  label: const Text('Delete'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 16),
-                  _detailRow(Icons.medical_services, 'Dosage', dosage),
-                  _detailRow(Icons.inventory, 'Quantity', quantity.toString()),
-                  _detailRow(Icons.place, 'Ward', wardName),
-                  _detailRow(Icons.menu_book, 'Book Number', bookNumber),
-                  _detailRow(Icons.pages, 'Page Number', pageNumber),
-                  _detailRow(Icons.access_time, 'Return Time', formattedDate),
-                  _detailRow(Icons.person, 'Returned by', returnedByName),
-                  _detailRow(Icons.calendar_today, 'Created At', formattedCreated),
-                  _detailRow(Icons.fingerprint, 'Document ID', docId),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Close'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _editReturn(docId, quantity);
-                        },
-                        icon: const Icon(Icons.edit, size: 18),
-                        label: const Text('Edit'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _confirmDelete(docId, antibioticName);
-                        },
-                        icon: const Icon(Icons.delete, size: 18),
-                        label: const Text('Delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
+  Widget _modernDetailRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.primaryPurple),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 100,
-            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkText)),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: AppColors.primaryPurple),
           ),
-          Expanded(child: Text(value, style: const TextStyle(color: AppColors.darkText))),
+          const SizedBox(width: 14),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
@@ -741,19 +795,64 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
       SnackBar(
         content: Row(
           children: [
-            Icon(isSuccess ? Icons.check_circle : Icons.error, color: Colors.white, size: 20),
+            Icon(isSuccess ? Icons.check_circle : Icons.error, color: Colors.white, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text(msg)),
+            Expanded(child: Text(msg, style: const TextStyle(fontSize: 13))),
           ],
         ),
         backgroundColor: isSuccess ? AppColors.successGreen : AppColors.disabledColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  // ---- Modern Compact Return Card (with edit/delete buttons) ----
+  Widget _infoChipCompact(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 10, color: AppColors.primaryPurple),
+        const SizedBox(width: 2),
+        Text(label, style: const TextStyle(fontSize: 9)),
+      ],
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Access': return AppColors.primaryPurple;
+      case 'Watch': return AppColors.successGreen;
+      case 'Reserve': return AppColors.warningOrange;
+      default: return Colors.grey;
+    }
+  }
+
+  Widget _buildCurrentMonthIndicator(List<DocumentSnapshot> allDocs) {
+    final nowSriLanka = tz.TZDateTime.now(tz.local);
+    final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
+    final endOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month + 1, 1);
+    final returnsThisMonth = allDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final returnDate = (data['returnDateTime'] as Timestamp?)?.toDate();
+      if (returnDate == null) return false;
+      return returnDate.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
+          returnDate.isBefore(endOfMonth);
+    }).length;
+
+    if (returnsThisMonth == 0) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Text(
+          'Not found this month',
+          style: TextStyle(color: Colors.grey, fontSize: 11, fontStyle: FontStyle.italic),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  // ---------- ULTRA COMPACT RETURN CARD ----------
   Widget _buildReturnCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final antibioticName = data['antibioticName'] ?? 'Unknown';
@@ -774,9 +873,9 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     return GestureDetector(
       onTap: () => _showDetailsModal(data, doc.id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -784,174 +883,161 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: categoryColor.withOpacity(0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-              spreadRadius: -2,
+              color: categoryColor.withOpacity(0.1),
+              blurRadius: 6,
+              offset: const Offset(0, 1),
+              spreadRadius: -1,
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           child: Material(
             color: Colors.transparent,
             child: Container(
               decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: categoryColor, width: 5),
-                ),
+                border: Border(left: BorderSide(color: categoryColor, width: 3)),
               ),
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header: name + stock type + edit/delete
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           antibioticName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkText,
-                            letterSpacing: 0.3,
-                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.darkText),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
                         decoration: BoxDecoration(
                           color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Text(
                           'Return',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.orange),
                         ),
                       ),
                       Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.orange, size: 16),
-                              onPressed: () => _editReturn(doc.id, quantity),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                          InkWell(
+                            onTap: () => _editReturn(doc.id, quantity),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.edit, color: Colors.orange, size: 12),
                             ),
                           ),
-                          const SizedBox(width: 2),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 16),
-                              onPressed: () => _confirmDelete(doc.id, antibioticName),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: () => _confirmDelete(doc.id, antibioticName),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.delete, color: Colors.red, size: 12),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Category chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: categoryColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: categoryColor.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      category,
-                      style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 10),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Info row: dosage, quantity, ward
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 4,
-                    children: [
-                      _infoChipCompact(Icons.medical_services, 'Dosage: $dosage'),
-                      _infoChipCompact(Icons.inventory, 'Qty: $quantity'),
-                      _infoChipCompact(Icons.place, wardName),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  // Book and page
-                  Wrap(
-                    spacing: 10,
-                    children: [
-                      _infoChipCompact(Icons.menu_book, 'Book: $bookNumber'),
-                      _infoChipCompact(Icons.pages, 'Page: $pageNumber'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1, thickness: 0.5),
-                  const SizedBox(height: 6),
-                  // Footer: date, ID, and returned by
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          const Icon(Icons.fingerprint, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 10)),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  // Returned by
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: categoryColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: categoryColor.withOpacity(0.2), width: 0.5),
+                    ),
+                    child: Text(
+                      category,
+                      style: TextStyle(color: categoryColor, fontWeight: FontWeight.w600, fontSize: 9),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
+                    children: [
+                      _infoChipCompact(Icons.medical_services, 'Dosage: $dosage'),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryPurple.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.inventory, size: 10, color: AppColors.primaryPurple),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Qty: $quantity',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryPurple),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _infoChipCompact(Icons.place, wardName),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    children: [
+                      _infoChipCompact(Icons.menu_book, 'Book: $bookNumber'),
+                      _infoChipCompact(Icons.pages, 'Page: $pageNumber'),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Divider(height: 0.8, thickness: 0.5),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.access_time, size: 9, color: Colors.grey),
+                        const SizedBox(width: 2),
+                        Text(formattedDate, style: const TextStyle(color: Colors.grey, fontSize: 8)),
+                      ]),
+                      Row(children: [
+                        const Icon(Icons.fingerprint, size: 9, color: Colors.grey),
+                        const SizedBox(width: 2),
+                        Text('ID: ${doc.id.substring(0, 4)}...', style: const TextStyle(color: Colors.grey, fontSize: 8)),
+                      ]),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
                   FutureBuilder<String>(
                     future: _getUserName(createdBy),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Row(
-                          children: [
-                            Icon(Icons.person, size: 12, color: Colors.grey),
-                            SizedBox(width: 2),
-                            Text('Returned by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                          ],
-                        );
+                        return const Row(children: [
+                          Icon(Icons.person, size: 9, color: Colors.grey),
+                          SizedBox(width: 2),
+                          Text('Returned by: Loading...', style: TextStyle(color: Colors.grey, fontSize: 8)),
+                        ]);
                       }
-                      return Row(
-                        children: [
-                          const Icon(Icons.person, size: 12, color: Colors.grey),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              'Returned by: ${snapshot.data ?? 'Unknown'}',
-                              style: const TextStyle(color: Colors.grey, fontSize: 10),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      );
+                      return Row(children: [
+                        const Icon(Icons.person, size: 9, color: Colors.grey),
+                        const SizedBox(width: 2),
+                        Expanded(child: Text(
+                          'Returned by: ${snapshot.data ?? 'Unknown'}',
+                          style: const TextStyle(color: Colors.grey, fontSize: 8),
+                          overflow: TextOverflow.ellipsis,
+                        )),
+                      ]);
                     },
                   ),
                 ],
@@ -963,168 +1049,87 @@ class _ReturnReleasesScreenState extends State<ReturnReleasesScreen> {
     );
   }
 
-  // Compact info chip helper
-  Widget _infoChipCompact(IconData icon, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: AppColors.primaryPurple),
-        const SizedBox(width: 2),
-        Text(label, style: const TextStyle(fontSize: 10)),
-      ],
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.arrow_back, color: AppColors.headerTextDark, size: 24),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.tune, color: AppColors.headerTextDark, size: 24),
+                    onPressed: _showFilterPanel,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentUserName,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Administrator',
+                    style: TextStyle(fontSize: 12, color: AppColors.headerTextDark),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Return Usage Details',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
+          ),
+        ],
+      ),
     );
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'Access':
-        return AppColors.primaryPurple;
-      case 'Watch':
-        return AppColors.successGreen;
-      case 'Reserve':
-        return AppColors.warningOrange;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // Add a small widget to show returns this month count
-  Widget _buildCurrentMonthIndicator(List<DocumentSnapshot> allDocs) {
-    final nowSriLanka = tz.TZDateTime.now(tz.local);
-    final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
-    final endOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month + 1, 1);
-    final returnsThisMonth = allDocs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final returnDate = (data['returnDateTime'] as Timestamp?)?.toDate();
-      if (returnDate == null) return false;
-      return returnDate.isAfter(startOfMonth.subtract(const Duration(days: 1))) &&
-          returnDate.isBefore(endOfMonth);
-    }).length;
-
-    if (returnsThisMonth == 0) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Text(
-          'Not found this month',
-          style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
-          textAlign: TextAlign.center,
-        ),
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) => setState(() => _profileImageUrl = null),
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
       );
     }
-    return const SizedBox.shrink(); // Optionally show count, but not required
   }
-
-  Widget _buildHeader(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      borderRadius: BorderRadius.only(
-        bottomLeft: Radius.circular(30),
-        bottomRight: Radius.circular(30),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Color(0x10000000),
-          blurRadius: 15,
-          offset: Offset(0, 5),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Single row: left icons, center user info, right profile picture
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Left side: back button + filter icon
-            Row(
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.arrow_back,
-                      color: AppColors.headerTextDark, size: 24),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.tune,
-                      color: AppColors.headerTextDark, size: 24),
-                  onPressed: _showFilterPanel,
-                ),
-              ],
-            ),
-            const Spacer(),
-            // Center: user info
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _currentUserName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.headerTextDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Logged in as: Administrator',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.headerTextDark,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            // Right side: profile picture (80x80)
-            _buildProfileAvatar(),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Title
-        const Text(
-          'Return Store Releases',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.headerTextDark,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Helper for profile avatar (80x80, radius 40)
-Widget _buildProfileAvatar() {
-  if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
-    return CircleAvatar(
-      radius: 40,
-      backgroundImage: NetworkImage(_profileImageUrl!),
-      backgroundColor: Colors.grey.shade200,
-      onBackgroundImageError: (_, __) {
-        if (mounted) setState(() => _profileImageUrl = null);
-      },
-    );
-  } else {
-    return CircleAvatar(
-      radius: 40,
-      backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
-      child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
-    );
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -1144,17 +1149,16 @@ Widget _buildProfileAvatar() {
             child: Column(
               children: [
                 _buildHeader(context),
-                // Persistent search bar
                 Container(
-                  margin: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 4),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -1164,7 +1168,7 @@ Widget _buildProfileAvatar() {
                       hintText: 'Search by antibiotic or ward...',
                       prefixIcon: Icon(Icons.search, color: AppColors.primaryPurple),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 15),
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
@@ -1179,10 +1183,7 @@ Widget _buildProfileAvatar() {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
                       final docs = snapshot.data?.docs ?? [];
-
-                      // Category filter row (requires docs to compute counts)
                       final categoryFilterRow = _buildCategoryFilterRow(docs);
-
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return _filterReturn(data);
@@ -1191,7 +1192,6 @@ Widget _buildProfileAvatar() {
                       return Column(
                         children: [
                           categoryFilterRow,
-                          // Show current month indicator
                           _buildCurrentMonthIndicator(docs),
                           Expanded(
                             child: filteredDocs.isEmpty
@@ -1199,9 +1199,9 @@ Widget _buildProfileAvatar() {
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.inbox, size: 64, color: Colors.grey[300]),
-                                        const SizedBox(height: 16),
-                                        const Text('No return records found.', style: TextStyle(color: Colors.grey)),
+                                        Icon(Icons.inbox, size: 56, color: Colors.grey[300]),
+                                        const SizedBox(height: 12),
+                                        const Text('No return records found.', style: TextStyle(color: Colors.grey, fontSize: 14)),
                                         if (docs.isNotEmpty)
                                           TextButton(
                                             onPressed: () {
@@ -1214,18 +1214,16 @@ Widget _buildProfileAvatar() {
                                                 _endDate = null;
                                               });
                                             },
-                                            child: const Text('Clear Filters'),
+                                            child: const Text('Clear Filters', style: TextStyle(fontSize: 12)),
                                           ),
                                       ],
                                     ),
                                   )
                                 : ListView.builder(
                                     key: const PageStorageKey('return_list'),
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                     itemCount: filteredDocs.length,
-                                    itemBuilder: (context, index) {
-                                      return _buildReturnCard(filteredDocs[index]);
-                                    },
+                                    itemBuilder: (context, index) => _buildReturnCard(filteredDocs[index]),
                                   ),
                           ),
                         ],
@@ -1236,7 +1234,6 @@ Widget _buildProfileAvatar() {
               ],
             ),
           ),
-          // Footer
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
