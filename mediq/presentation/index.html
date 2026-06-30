@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQ - Cross-Platform Hospital Antibiotics Management System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            500: '#9F7AEA', /* App Primary Purple */
+                            600: '#805ad5',
+                            700: '#6b46c1',
+                            900: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(159, 122, 234, 0.4);
+            transform: translateY(-4px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f0c1b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4c1d95;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9F7AEA;
+        }
+        /* Neon text pulse */
+        @keyframes neonPulse {
+            0%, 100% { text-shadow: 0 0 10px rgba(159, 122, 234, 0.6), 0 0 20px rgba(159, 122, 234, 0.4); }
+            50% { text-shadow: 0 0 20px rgba(159, 122, 234, 0.8), 0 0 30px rgba(159, 122, 234, 0.6); }
+        }
+        .neon-pulse {
+            animation: neonPulse 3s infinite;
+        }
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-[#0b0813] text-gray-200 font-sans min-h-screen overflow-x-hidden bg-grid">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <img src="../assets/logo/logo2.png" alt="MediQ Logo" class="h-10 w-10 object-contain rounded-lg border border-brand-500/20" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/pharmizist-default_weoaaq.jpg'">
+            <div>
+                <span class="font-outfit font-bold text-xl bg-gradient-to-r from-brand-200 to-brand-500 bg-clip-text text-transparent">MediQ</span>
+                <span class="block text-[10px] text-gray-400 font-medium tracking-widest uppercase">Antibiotic usage analysis</span>
+            </div>
+        </div>
+        <nav class="hidden md:flex gap-8 text-sm font-medium">
+            <a href="#about" class="hover:text-brand-500 transition-colors">About Project</a>
+            <a href="#features" class="hover:text-brand-500 transition-colors">Core Features</a>
+            <a href="#diagrams" class="hover:text-brand-500 transition-colors">Architecture Diagrams</a>
+            <a href="#ui" class="hover:text-brand-500 transition-colors">UI Showcase</a>
+            <a href="#tech" class="hover:text-brand-500 transition-colors">Tech Stack</a>
+        </nav>
+        <div>
+            <a href="#ui" class="bg-gradient-to-r from-brand-600 to-brand-500 text-white font-medium text-sm py-2.5 px-5 rounded-full hover:shadow-lg hover:shadow-brand-500/20 transition-all duration-300 transform hover:-translate-y-0.5">
+                Launch Showcase
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-12 lg:px-24 overflow-hidden py-16">
+        <!-- Background Blur Spheres -->
+        <div class="absolute top-1/4 -left-32 w-96 h-96 bg-brand-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div class="absolute bottom-10 right-0 w-[40rem] h-[40rem] bg-brand-700/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+            <div class="lg:col-span-7 space-y-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-500 text-xs font-semibold tracking-wider uppercase">
+                    <i class="fa-solid fa-circle-check text-[9px] animate-pulse"></i> Collaboration with Karapitiya National Hospital
+                </div>
+                <h1 class="font-outfit font-extrabold text-5xl md:text-6xl lg:text-7xl leading-tight text-white">
+                    Next-Gen Hospital <br>
+                    <span class="bg-gradient-to-r from-brand-200 via-brand-500 to-purple-400 bg-clip-text text-transparent neon-pulse">Antibiotics System</span>
+                </h1>
+                <p class="text-gray-400 text-lg max-w-xl">
+                    MediQ digitalizes traditional hospital logbooks, providing real-time stock classification, role-based transaction tracking, and interactive AWaRe usage analytics to fight Antimicrobial Resistance (AMR).
+                </p>
+                <div class="flex flex-wrap gap-4 pt-4">
+                    <a href="#features" class="bg-gradient-to-r from-brand-600 to-brand-500 text-white font-semibold py-3.5 px-8 rounded-xl hover:shadow-xl hover:shadow-brand-500/30 transition-all duration-300 transform hover:-translate-y-1">
+                        Explore Features
+                    </a>
+                    <a href="#diagrams" class="bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold py-3.5 px-8 rounded-xl transition-all duration-300">
+                        View System Models
+                    </a>
+                </div>
+            </div>
+            <!-- Interactive Device Mockup -->
+            <div class="lg:col-span-5 flex justify-center">
+                <div class="relative w-[280px] h-[580px] bg-black rounded-[40px] p-3 shadow-2xl border-[4px] border-gray-800 shadow-brand-500/10">
+                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 h-4 w-32 bg-gray-800 rounded-b-xl z-20"></div>
+                    <div class="w-full h-full overflow-hidden rounded-[30px] bg-[#0b0813] relative">
+                        <img src="../assets/logo/logo.png" alt="MediQ Screen" class="w-full h-full object-cover" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/pharmizist-default_weoaaq.jpg'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0b0813] via-transparent to-transparent flex flex-col justify-end p-6">
+                            <span class="text-[10px] text-brand-500 font-bold uppercase tracking-wider">Mobile UI Preview</span>
+                            <h3 class="font-outfit text-white font-bold text-lg">Secure & Responsive</h3>
+                            <p class="text-xs text-gray-400 mt-1">Cross-platform access across Android, iOS, Web, and Desktop environments.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 px-6 md:px-12 lg:px-24 bg-white/[0.01] border-y border-white/5 relative">
+        <div class="max-w-3xl mx-auto text-center space-y-6">
+            <h2 class="font-outfit font-bold text-3xl md:text-4xl text-white">Why MediQ?</h2>
+            <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+            <p class="text-gray-400 text-lg leading-relaxed">
+                In Sri Lankan government hospitals, pharmacists manually manage antibiotic releases and returns in logbooks. This is time-consuming, prone to calculation errors, and vulnerable to data loss. With the rising global threat of Antimicrobial Resistance (AMR), tracking antibiotic consumption categories (AWaRe) is critical for medical stewardship.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-6xl mx-auto">
+            <div class="glass-card p-8 rounded-2xl text-center space-y-4">
+                <div class="h-14 w-14 bg-red-500/10 text-red-400 rounded-xl flex items-center justify-center text-2xl mx-auto border border-red-500/20">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 class="font-outfit text-white font-semibold text-xl">The Problem</h3>
+                <p class="text-gray-400 text-sm">
+                    Manual registers offer zero real-time inventory oversight, leading to sudden out-of-stock crises or drug expiration.
+                </p>
+            </div>
+            <div class="glass-card p-8 rounded-2xl text-center space-y-4">
+                <div class="h-14 w-14 bg-brand-500/10 text-brand-400 rounded-xl flex items-center justify-center text-2xl mx-auto border border-brand-500/20">
+                    <i class="fa-solid fa-lightbulb"></i>
+                </div>
+                <h3 class="font-outfit text-white font-semibold text-xl">The Solution</h3>
+                <p class="text-gray-400 text-sm">
+                    An automated, cloud-synced platform that logs transaction histories, generates charts instantly, and keeps record logs in sync.
+                </p>
+            </div>
+            <div class="glass-card p-8 rounded-2xl text-center space-y-4">
+                <div class="h-14 w-14 bg-green-500/10 text-green-400 rounded-xl flex items-center justify-center text-2xl mx-auto border border-green-500/20">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h3 class="font-outfit text-white font-semibold text-xl">Parallel Stewardship</h3>
+                <p class="text-gray-400 text-sm">
+                    Keeps book and page number fields mandatory, allowing pharmacies to operate digitally while keeping physical registers as backups.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section id="features" class="py-20 px-6 md:px-12 lg:px-24">
+        <div class="text-center space-y-4 mb-16">
+            <span class="text-brand-500 text-xs font-bold tracking-widest uppercase">System Capabilities</span>
+            <h2 class="font-outfit font-bold text-3xl md:text-4xl text-white">Full-Suite Features</h2>
+            <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <!-- Feature 1 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-users-gear"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">Role-Based Access</h3>
+                <p class="text-gray-400 text-sm">Distinct dashboards and workflows for Administrators (Inventory management, User approvals) and Pharmacists (Releases, Returns).</p>
+            </div>
+            <!-- Feature 2 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">Failed Login Lockout</h3>
+                <p class="text-gray-400 text-sm">Increments failed login attempts and triggers progressive lockout timers, locking account permanently after 8 unsuccessful tries.</p>
+            </div>
+            <!-- Feature 3 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-chart-pie"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">Interactive Analytics</h3>
+                <p class="text-gray-400 text-sm">Rich graphical pie & bar charts using Flutter's FL Chart package mapping antibiotic consumption across categories and wards.</p>
+            </div>
+            <!-- Feature 4 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-file-pdf"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">PDF Certificate & Exports</h3>
+                <p class="text-gray-400 text-sm">Export all transactions to CSV for auditing or compile visual main store state summaries into structured PDF certificates.</p>
+            </div>
+            <!-- Feature 5 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-cubes"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">Atomic Transactions</h3>
+                <p class="text-gray-400 text-sm">Utilizes Cloud Firestore transactional rules to ensure stock count decrements synchronously upon pharmacist releases.</p>
+            </div>
+            <!-- Feature 6 -->
+            <div class="glass-card p-8 rounded-2xl space-y-4">
+                <div class="text-brand-500 text-3xl"><i class="fa-solid fa-image"></i></div>
+                <h3 class="font-outfit text-white font-semibold text-lg">Cloudinary Compression</h3>
+                <p class="text-gray-400 text-sm">Processes and compresses profile images locally prior to uploading and saving remote URL links to Firestore.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Diagrams / System Models Section -->
+    <section id="diagrams" class="py-20 px-6 md:px-12 lg:px-24 bg-white/[0.01] border-y border-white/5">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center space-y-4 mb-12">
+                <span class="text-brand-500 text-xs font-bold tracking-widest uppercase">Visual Blueprint</span>
+                <h2 class="font-outfit font-bold text-3xl md:text-4xl text-white">System Architecture & Flows</h2>
+                <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+            </div>
+
+            <!-- Tabbed Diagrams Wrapper -->
+            <div class="glass-panel p-6 md:p-8 rounded-3xl space-y-8">
+                <!-- Navigation Tabs -->
+                <div class="flex flex-wrap gap-2 md:gap-4 justify-center border-b border-white/5 pb-6">
+                    <button onclick="switchTab('usecase')" id="tab-usecase" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-semibold transition-all bg-brand-500 text-white">Use Case Diagram</button>
+                    <button onclick="switchTab('er')" id="tab-er" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-400 hover:text-white hover:bg-white/5">ER Diagram</button>
+                    <button onclick="switchTab('dfd0')" id="tab-dfd0" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-400 hover:text-white hover:bg-white/5">DFD Level 0</button>
+                    <button onclick="switchTab('dfd1')" id="tab-dfd1" class="tab-btn px-5 py-2.5 rounded-xl text-sm font-semibold transition-all text-gray-400 hover:text-white hover:bg-white/5">DFD Level 1</button>
+                </div>
+
+                <!-- Diagrams Showcase -->
+                <div class="flex justify-center items-center p-4 bg-black/40 rounded-2xl min-h-[400px] border border-white/5">
+                    <!-- Use Case -->
+                    <div id="diagram-usecase" class="diagram-content w-full flex flex-col items-center">
+                        <img src="use_case_diagram.png" alt="Use Case Diagram" class="max-h-[600px] object-contain rounded-lg shadow-lg border border-white/5" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'">
+                        <p class="text-xs text-gray-400 mt-4"><i class="fa-solid fa-circle-info mr-1"></i> Use Case mapping: Separates Admin and Pharmacist tasks clearly.</p>
+                    </div>
+                    <!-- ER -->
+                    <div id="diagram-er" class="diagram-content hidden w-full flex flex-col items-center">
+                        <img src="er_diagram.png" alt="ER Diagram" class="max-h-[600px] object-contain rounded-lg shadow-lg border border-white/5" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'">
+                        <p class="text-xs text-gray-400 mt-4"><i class="fa-solid fa-circle-info mr-1"></i> Entity relationships describing NoSQL Firebase schema structures.</p>
+                    </div>
+                    <!-- DFD 0 -->
+                    <div id="diagram-dfd0" class="diagram-content hidden w-full flex flex-col items-center">
+                        <img src="dfd_level_0.png" alt="DFD Level 0" class="max-h-[600px] object-contain rounded-lg shadow-lg border border-white/5" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'">
+                        <p class="text-xs text-gray-400 mt-4"><i class="fa-solid fa-circle-info mr-1"></i> Context Level DFD defining system entities, DB inputs, and external assets.</p>
+                    </div>
+                    <!-- DFD 1 -->
+                    <div id="diagram-dfd1" class="diagram-content hidden w-full flex flex-col items-center">
+                        <img src="dfd_level_1.png" alt="DFD Level 1" class="max-h-[600px] object-contain rounded-lg shadow-lg border border-white/5" onerror="this.src='https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'">
+                        <p class="text-xs text-gray-400 mt-4"><i class="fa-solid fa-circle-info mr-1"></i> Detailed functional diagram of transaction submissions & updates.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI Walkthrough Section -->
+    <section id="ui" class="py-20 px-6 md:px-12 lg:px-24">
+        <div class="text-center space-y-4 mb-16">
+            <span class="text-brand-500 text-xs font-bold tracking-widest uppercase">Interactive Tour</span>
+            <h2 class="font-outfit font-bold text-3xl md:text-4xl text-white">Application Interface Gallery</h2>
+            <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+        </div>
+
+        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <!-- Screen Selectors -->
+            <div class="lg:col-span-4 flex flex-col gap-3">
+                <button onclick="showScreen(1)" id="scr-btn-1" class="scr-btn p-4 rounded-xl flex items-center gap-4 border text-left bg-brand-500/10 border-brand-500 text-white transition-all">
+                    <span class="h-8 w-8 rounded-lg bg-brand-500/20 text-brand-500 flex items-center justify-center font-bold">1</span>
+                    <div>
+                        <h4 class="font-outfit font-semibold text-sm">Dashboard Overview</h4>
+                        <span class="text-[10px] text-gray-400">Main administrator interface</span>
+                    </div>
+                </button>
+                <button onclick="showScreen(2)" id="scr-btn-2" class="scr-btn p-4 rounded-xl flex items-center gap-4 border border-white/5 bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+                    <span class="h-8 w-8 rounded-lg bg-white/10 text-gray-300 flex items-center justify-center font-bold">2</span>
+                    <div>
+                        <h4 class="font-outfit font-semibold text-sm">Stock Management</h4>
+                        <span class="text-[10px] text-gray-400">Stores tracking view</span>
+                    </div>
+                </button>
+                <button onclick="showScreen(3)" id="scr-btn-3" class="scr-btn p-4 rounded-xl flex items-center gap-4 border border-white/5 bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+                    <span class="h-8 w-8 rounded-lg bg-white/10 text-gray-300 flex items-center justify-center font-bold">3</span>
+                    <div>
+                        <h4 class="font-outfit font-semibold text-sm">Antibiotic Release</h4>
+                        <span class="text-[10px] text-gray-400">Pharmacist transaction logs</span>
+                    </div>
+                </button>
+                <button onclick="showScreen(4)" id="scr-btn-4" class="scr-btn p-4 rounded-xl flex items-center gap-4 border border-white/5 bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+                    <span class="h-8 w-8 rounded-lg bg-white/10 text-gray-300 flex items-center justify-center font-bold">4</span>
+                    <div>
+                        <h4 class="font-outfit font-semibold text-sm">Usage Analytics</h4>
+                        <span class="text-[10px] text-gray-400">Interactive FL Charts</span>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- Screen Display -->
+            <div class="lg:col-span-8 flex justify-center">
+                <div class="glass-panel p-4 rounded-3xl w-full max-w-2xl border border-white/10">
+                    <div class="aspect-video w-full rounded-2xl overflow-hidden bg-black/60 relative">
+                        <!-- Dashboard -->
+                        <img id="scr-img-1" src="../assets/analyst/all-usage.jpg" alt="Dashboard" class="scr-img w-full h-full object-cover">
+                        <!-- Stocks -->
+                        <img id="scr-img-2" src="../assets/stores/main_store.jpg" alt="Stock View" class="scr-img hidden w-full h-full object-cover">
+                        <!-- Release -->
+                        <img id="scr-img-3" src="../assets/usages/release_details.png" alt="Release View" class="scr-img hidden w-full h-full object-cover">
+                        <!-- Charts -->
+                        <img id="scr-img-4" src="../assets/analyst/ward-usage.jpg" alt="Analytics View" class="scr-img hidden w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack Section -->
+    <section id="tech" class="py-20 px-6 md:px-12 lg:px-24 bg-white/[0.01] border-t border-white/5">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center space-y-4 mb-16">
+                <span class="text-brand-500 text-xs font-bold tracking-widest uppercase">Built With</span>
+                <h2 class="font-outfit font-bold text-3xl md:text-4xl text-white">System Technologies</h2>
+                <div class="h-1 w-20 bg-brand-500 mx-auto rounded-full"></div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="glass-card p-6 rounded-2xl text-center space-y-3">
+                    <div class="text-brand-500 text-4xl"><i class="fa-brands fa-flutter"></i></div>
+                    <h4 class="font-outfit text-white font-bold">Flutter</h4>
+                    <p class="text-gray-400 text-xs">Primary cross-platform framework</p>
+                </div>
+                <div class="glass-card p-6 rounded-2xl text-center space-y-3">
+                    <div class="text-brand-500 text-4xl"><i class="fa-solid fa-fire"></i></div>
+                    <h4 class="font-outfit text-white font-bold">Firebase</h4>
+                    <p class="text-gray-400 text-xs">Auth, Firestore & App Check</p>
+                </div>
+                <div class="glass-card p-6 rounded-2xl text-center space-y-3">
+                    <div class="text-brand-500 text-4xl"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <h4 class="font-outfit text-white font-bold">Cloudinary</h4>
+                    <p class="text-gray-400 text-xs">Optimized CDN image hosting</p>
+                </div>
+                <div class="glass-card p-6 rounded-2xl text-center space-y-3">
+                    <div class="text-brand-500 text-4xl"><i class="fa-solid fa-chart-line"></i></div>
+                    <h4 class="font-outfit text-white font-bold">FL Chart</h4>
+                    <p class="text-gray-400 text-xs">Real-time analytical graphs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-white/5 text-center text-gray-500 text-sm px-6 bg-black/40">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-3">
+                <img src="../assets/logo/logo2.png" alt="MediQ Logo" class="h-8 w-8 object-contain" onerror="this.style.display='none'">
+                <span class="font-outfit font-bold text-white text-base">MediQ System</span>
+            </div>
+            <p>&copy; 2026 MediQ Project. Designed for Sri Lanka Institute of Advanced Technological Education - Galle.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Tab switching logic for diagrams
+        function switchTab(tabId) {
+            // Hide all diagram contents
+            const contents = document.querySelectorAll('.diagram-content');
+            contents.forEach(content => content.classList.add('hidden'));
+
+            // Show active diagram
+            document.getElementById('diagram-' + tabId).classList.remove('hidden');
+
+            // Reset tab button states
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-brand-500', 'text-white');
+                btn.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+            });
+
+            // Set active tab button style
+            const activeBtn = document.getElementById('tab-' + tabId);
+            activeBtn.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+            activeBtn.classList.add('bg-brand-500', 'text-white');
+        }
+
+        // UI Gallery switcher
+        function showScreen(idx) {
+            // Hide all images
+            const images = document.querySelectorAll('.scr-img');
+            images.forEach(img => img.classList.add('hidden'));
+
+            // Show current image
+            document.getElementById('scr-img-' + idx).classList.remove('hidden');
+
+            // Reset buttons
+            const buttons = document.querySelectorAll('.scr-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-brand-500/10', 'border-brand-500', 'text-white');
+                btn.classList.add('border-white/5', 'bg-white/5', 'text-gray-400');
+            });
+
+            // Set active button
+            const activeBtn = document.getElementById('scr-btn-' + idx);
+            activeBtn.classList.remove('border-white/5', 'bg-white/5', 'text-gray-400');
+            activeBtn.classList.add('bg-brand-500/10', 'border-brand-500', 'text-white');
+        }
+    </script>
+</body>
+</html>
