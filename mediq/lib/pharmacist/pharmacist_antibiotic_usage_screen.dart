@@ -11,6 +11,8 @@ import '../auth/login_page.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
+  static const Color darkPurple = Color(0xFF7C3AED);
+  static const Color lightPurple = Color(0xFFB794F4);
   static const Color lightBackground = Color(0xFFF3F0FF);
   static const Color darkText = Color(0xFF333333);
   static const Color headerGradientStart = Color.fromARGB(255, 235, 151, 225);
@@ -22,12 +24,15 @@ class PharmacistAntibioticUsageScreen extends StatefulWidget {
   const PharmacistAntibioticUsageScreen({super.key});
 
   @override
-  State<PharmacistAntibioticUsageScreen> createState() => _PharmacistAntibioticUsageScreenState();
+  State<PharmacistAntibioticUsageScreen> createState() =>
+      _PharmacistAntibioticUsageScreenState();
 }
 
-class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUsageScreen> {
+class _PharmacistAntibioticUsageScreenState
+    extends State<PharmacistAntibioticUsageScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final CollectionReference _userCollection = FirebaseFirestore.instance.collection('users');
+  final CollectionReference _userCollection =
+      FirebaseFirestore.instance.collection('users');
 
   String _currentUserName = 'Loading...';
   String _currentUserRole = 'Pharmacist';
@@ -66,7 +71,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
         if (doc.exists) {
           final data = doc.data() as Map<String, dynamic>;
           setState(() {
-            _currentUserName = data['fullName'] ?? user.email?.split('@').first ?? 'User';
+            _currentUserName =
+                data['fullName'] ?? user.email?.split('@').first ?? 'User';
             _currentUserRole = data['role'] ?? 'Pharmacist';
             _profileImageUrl = data['profileImageUrl'];
           });
@@ -109,7 +115,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
+      padding:
+          const EdgeInsets.only(top: 10, left: 20, right: 20, bottom: 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -120,77 +127,94 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
         ),
-        boxShadow: [BoxShadow(color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))],
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Single row: menu (left), user info (center), profile picture (right)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Menu button (left)
               IconButton(
-                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 28),
+                icon: const Icon(Icons.menu,
+                    color: AppColors.headerTextDark, size: 28),
                 onPressed: () {
                   _scaffoldKey.currentState?.openDrawer();
                 },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _profileImageUrl == null
-                      ? const LinearGradient(
-                          colors: [AppColors.primaryPurple, Color(0xFFB08FEB)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  border: Border.all(color: Colors.white, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                  image: _profileImageUrl != null
-                      ? DecorationImage(image: NetworkImage(_profileImageUrl!), fit: BoxFit.cover)
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? const Icon(Icons.person, size: 40, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 15),
+              const Spacer(),
+              // User info (centered)
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     _currentUserName,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headerTextDark),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.headerTextDark,
+                    ),
                   ),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Logged in as: Pharmacist',
-                    style: TextStyle(fontSize: 14, color: AppColors.headerTextDark.withOpacity(0.7)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.headerTextDark,
+                    ),
                   ),
                 ],
               ),
+              const Spacer(),
+              // Profile picture (right) - 80x80 (radius 40)
+              _buildProfileAvatar(),
             ],
           ),
-          const SizedBox(height: 25),
+          const SizedBox(height: 20),
+          // Title
           const Text(
             'Antibiotics Usage Details',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.headerTextDark),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  // Helper for profile avatar (80x80, radius 40)
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person,
+            color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   /// Modern count chip with two‑digit padding
@@ -213,7 +237,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
     );
   }
 
-  /// Modern card for Release Usage with live monthly count
+  /// Modern card for Release Usage with live monthly count - Purple themed
   Widget _buildReleaseButton() {
     final now = DateTime.now();
     final currentMonth = Months[now.month - 1];
@@ -259,7 +283,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: const Color.fromARGB(255, 0, 92, 252),
+                    color: AppColors.darkPurple, // Purple left border
                     width: 8,
                   ),
                 ),
@@ -273,13 +297,17 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                     height: 80,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.arrow_forward, size: 60, color: Color.fromARGB(255, 76, 92, 175));
+                      return const Icon(Icons.arrow_forward,
+                          size: 60, color: AppColors.darkPurple);
                     },
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'Release Antibiotics',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -291,7 +319,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('releases')
-                        .where('createdAt', isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
                         .where('createdAt', isLessThan: firstDayNextMonth)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -299,7 +328,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _buildModernCountChip(currentMonth, count, Color.fromARGB(255, 0, 92, 252));
+                      return _buildModernCountChip(
+                          currentMonth, count, AppColors.darkPurple);
                     },
                   ),
                 ],
@@ -311,7 +341,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
     );
   }
 
-  /// Modern card for Return Usage with live monthly count
+  /// Modern card for Return Usage with live monthly count - Purple themed
   Widget _buildReturnButton() {
     final now = DateTime.now();
     final currentMonth = Months[now.month - 1];
@@ -357,7 +387,7 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: Colors.lightBlue,
+                    color: AppColors.lightPurple, // Light purple left border
                     width: 8,
                   ),
                 ),
@@ -371,13 +401,17 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                     height: 80,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.arrow_back, size: 60, color: Color.fromARGB(255, 0, 4, 255));
+                      return const Icon(Icons.arrow_back,
+                          size: 60, color: AppColors.lightPurple);
                     },
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'Return Antibiotics',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkText),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -389,7 +423,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('returns')
-                        .where('createdAt', isGreaterThanOrEqualTo: firstDayOfMonth)
+                        .where('createdAt',
+                            isGreaterThanOrEqualTo: firstDayOfMonth)
                         .where('createdAt', isLessThan: firstDayNextMonth)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -397,7 +432,8 @@ class _PharmacistAntibioticUsageScreenState extends State<PharmacistAntibioticUs
                       if (snapshot.hasData) {
                         count = snapshot.data!.docs.length;
                       }
-                      return _buildModernCountChip(currentMonth, count, Colors.lightBlue);
+                      return _buildModernCountChip(
+                          currentMonth, count, AppColors.lightPurple);
                     },
                   ),
                 ],
