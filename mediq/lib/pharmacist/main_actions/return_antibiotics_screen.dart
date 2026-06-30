@@ -43,36 +43,50 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
   bool _isLoading = true;
 
   // Form fields
-  String? _selectedAntibioticKey; // key like "antibioticId|dosageIndex"
+  String? _selectedAntibioticKey;
   String _selectedAntibioticId = '';
   int? _selectedDosageIndex;
   String _dosage = '';
-  String? _selectedWardId; // ward ID
+  String? _selectedWardId;
   final _pageNumberController = TextEditingController();
   final _itemCountController = TextEditingController();
 
-  // Controllers for TypeAhead fields
+  // Controllers for TypeAhead fields and dosage
   final TextEditingController _antibioticController = TextEditingController();
   final TextEditingController _wardController = TextEditingController();
+  final TextEditingController _dosageController = TextEditingController();
+
+  // Suggestions controllers to programmatically close dropdowns
+  final SuggestionsController<String> _antibioticSuggestionsController =
+      SuggestionsController<String>();
+  final SuggestionsController<String> _wardSuggestionsController =
+      SuggestionsController<String>();
+
+  // Lock flags to prevent dropdown from reopening after clear/selection
+  bool _preventAntibioticDropdown = false;
+  bool _preventWardDropdown = false;
+
+  // Focus nodes
+  FocusNode? _antibioticFocusNode;
+  FocusNode? _wardFocusNode;
 
   // Radio options
   String _datetimeOption = 'current';
   DateTime? _manualDateTime;
-  String _stockType = 'msd'; // optional
+  String _stockType = 'msd';
 
   // Book numbers list (active only)
   List<Map<String, dynamic>> _activeBooks = [];
   String? _selectedBookNumber;
 
-  // Antibiotic search data
+  // Antibiotic search data (only antibiotics with dosages)
   final List<Map<String, String>> _antibioticSearchList = [];
   final Map<String, Map<String, String>> _antibioticMap = {};
 
   // Ward search data
   final List<Map<String, String>> _wardSearchList = [];
-  final Map<String, String> _wardMap = {}; // id -> name
+  final Map<String, String> _wardMap = {};
 
-  // Helper for consistent input decoration
   InputDecoration _inputDecoration({
     required String label,
     IconData? prefixIcon,
@@ -132,7 +146,6 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize time zone for Sri Lanka (Colombo)
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Colombo'));
 
@@ -148,6 +161,9 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
     _itemCountController.dispose();
     _antibioticController.dispose();
     _wardController.dispose();
+    _dosageController.dispose();
+    _antibioticSuggestionsController.dispose();
+    _wardSuggestionsController.dispose();
     super.dispose();
   }
 
@@ -225,30 +241,20 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
         final name = data['name'] ?? 'Unknown';
         final dosages = data['dosages'] as List<dynamic>? ?? [];
 
-        if (dosages.isEmpty) {
-          final key = '${doc.id}|';
+        if (dosages.isEmpty) continue;
+
+        for (int i = 0; i < dosages.length; i++) {
+          final dosageData = dosages[i] as Map<String, dynamic>;
+          final dosage = dosageData['dosage'] ?? '';
+          final key = '${doc.id}|$i';
           tempList.add({
             'key': key,
             'antibioticId': doc.id,
             'antibioticName': name,
-            'display': name,
-            'dosage': '',
-            'dosageIndex': -1,
+            'display': '$name – $dosage',
+            'dosage': dosage,
+            'dosageIndex': i,
           });
-        } else {
-          for (int i = 0; i < dosages.length; i++) {
-            final dosageData = dosages[i] as Map<String, dynamic>;
-            final dosage = dosageData['dosage'] ?? '';
-            final key = '${doc.id}|$i';
-            tempList.add({
-              'key': key,
-              'antibioticId': doc.id,
-              'antibioticName': name,
-              'display': '$name – $dosage',
-              'dosage': dosage,
-              'dosageIndex': i,
-            });
-          }
         }
       }
 
@@ -269,6 +275,7 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
         _antibioticSearchList.add({
           'key': key,
           'display': entry['display'],
+          'antibioticName': entry['antibioticName'],
         });
       }
 
@@ -321,8 +328,6 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
     );
   }
 
-  /// Returns a stream of returns for the given antibiotic in the current month
-  /// (using Sri Lanka time zone).
   Stream<QuerySnapshot> _getReturnsForCurrentMonth(String antibioticId) {
     final nowSriLanka = tz.TZDateTime.now(tz.local);
     final startOfMonth = DateTime(nowSriLanka.year, nowSriLanka.month, 1);
@@ -339,7 +344,6 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate antibiotic selection
     if (_selectedAntibioticKey == null) {
       _showSnackBar('Please select an antibiotic', false);
       return;
@@ -362,14 +366,12 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
       return;
     }
 
-    // Validate ward selection
     if (_selectedWardId == null) {
       _showSnackBar('Please select a ward', false);
       return;
     }
     final wardName = _wardMap[_selectedWardId] ?? 'Unknown';
 
-    // Determine date/time using Sri Lanka time for 'current'
     DateTime returnDateTime;
     if (_datetimeOption == 'current') {
       returnDateTime = tz.TZDateTime.now(tz.local);
@@ -381,14 +383,12 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
       returnDateTime = _manualDateTime!;
     }
 
-    // Validate item count
     final itemCount = int.tryParse(_itemCountController.text);
     if (itemCount == null || itemCount <= 0) {
       _showSnackBar('Item count must be a positive number', false);
       return;
     }
 
-    // Query return_stock for this antibiotic and dosage
     final stockQuery = await _firestore
         .collection('return_stock')
         .where('antibioticId', isEqualTo: antibioticId)
@@ -399,7 +399,6 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
     try {
       await _firestore.runTransaction((transaction) async {
         if (stockQuery.docs.isNotEmpty) {
-          // Update existing return stock entry
           final stockDoc = stockQuery.docs.first;
           final stockRef = stockDoc.reference;
           final stockData = stockDoc.data() as Map<String, dynamic>;
@@ -410,12 +409,11 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
             'lastUpdated': FieldValue.serverTimestamp(),
           });
         } else {
-          // Create new return stock entry
           final newStockRef = _firestore.collection('return_stock').doc();
           transaction.set(newStockRef, {
             'antibioticId': antibioticId,
             'dosageIndex': dosageIndex,
-            'srNumber': '', // You may want to fetch SR number from antibiotic data
+            'srNumber': '',
             'drugName': antibioticName,
             'dosage': _dosage,
             'quantity': itemCount,
@@ -423,7 +421,6 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
           });
         }
 
-        // Add return record to 'returns' collection
         final returnRef = _firestore.collection('returns').doc();
         transaction.set(returnRef, {
           'antibioticId': antibioticId,
@@ -454,6 +451,7 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
       _selectedAntibioticId = '';
       _selectedDosageIndex = null;
       _dosage = '';
+      _dosageController.clear();
       _selectedWardId = null;
       _pageNumberController.clear();
       _itemCountController.clear();
@@ -463,6 +461,24 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
       _manualDateTime = null;
       _stockType = 'msd';
       _selectedBookNumber = null;
+    });
+
+    // Lock dropdowns to prevent reopening after clear
+    _preventAntibioticDropdown = true;
+    _preventWardDropdown = true;
+
+    _antibioticSuggestionsController.close();
+    _wardSuggestionsController.close();
+    FocusScope.of(context).unfocus();
+    _antibioticFocusNode?.unfocus();
+    _wardFocusNode?.unfocus();
+
+    // Unlock after UI settles – with setState to trigger rebuild
+    Future.delayed(const Duration(milliseconds: 300), () {
+      setState(() {
+        _preventAntibioticDropdown = false;
+        _preventWardDropdown = false;
+      });
     });
   }
 
@@ -486,7 +502,7 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 4, left: 20, right: 20, bottom: 8),
+      padding: const EdgeInsets.only(top: 8, left: 20, right: 20, bottom: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.headerGradientStart, AppColors.headerGradientEnd],
@@ -499,58 +515,82 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
         ),
         boxShadow: [
           BoxShadow(
-              color: Color(0x10000000), blurRadius: 15, offset: Offset(0, 5))
+            color: Color(0x10000000),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 5),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.menu,
-                    color: AppColors.headerTextDark, size: 24),
+                icon: const Icon(Icons.menu, color: AppColors.headerTextDark, size: 24),
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  _userName,
-                  style: const TextStyle(
+              const Spacer(),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _userName,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.headerTextDark),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Logged in as: Pharmacist',
-                  style: TextStyle(
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Logged in as: Pharmacist',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.headerTextDark),
-                ),
-              ],
-            ),
+                      color: AppColors.headerTextDark,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              _buildProfileAvatar(),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           const Text(
             'Return Antibiotics to Stock',
             style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.headerTextDark),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.headerTextDark,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildProfileAvatar() {
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundImage: NetworkImage(_profileImageUrl!),
+        backgroundColor: Colors.grey.shade200,
+        onBackgroundImageError: (_, __) {
+          if (mounted) setState(() => _profileImageUrl = null);
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: AppColors.primaryPurple.withOpacity(0.2),
+        child: const Icon(Icons.person, color: AppColors.primaryPurple, size: 48),
+      );
+    }
   }
 
   void _handleNavTap(String title) {
@@ -598,9 +638,23 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                     style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
-                                // TypeAhead for antibiotic (v5)
                                 TypeAheadField<String>(
+                                  suggestionsController: _antibioticSuggestionsController,
+                                  hideOnEmpty: true,
+                                  hideOnLoading: true,
+                                  hideOnUnfocus: true,
+                                  controller: _antibioticController,
+                                  suggestionsCallback: (pattern) {
+                                    if (_preventAntibioticDropdown) return [];
+                                    return _antibioticSearchList
+                                        .where((item) => item['display']!
+                                            .toLowerCase()
+                                            .contains(pattern.toLowerCase()))
+                                        .map((item) => item['display']!)
+                                        .toList();
+                                  },
                                   builder: (context, controller, focusNode) {
+                                    _antibioticFocusNode = focusNode;
                                     return TextField(
                                       controller: controller,
                                       focusNode: focusNode,
@@ -611,20 +665,10 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                       ),
                                     );
                                   },
-                                  suggestionsCallback: (pattern) {
-                                    return _antibioticSearchList
-                                        .where((item) => item['display']!
-                                            .toLowerCase()
-                                            .contains(pattern.toLowerCase()))
-                                        .map((item) => item['display']!)
-                                        .toList();
-                                  },
                                   itemBuilder: (context, suggestion) {
-                                    return ListTile(
-                                      title: Text(suggestion),
-                                    );
+                                    return ListTile(title: Text(suggestion));
                                   },
-                                  onSelected: (suggestion) {
+                                  onSelected: (suggestion) async {
                                     final selectedItem = _antibioticSearchList.firstWhere(
                                         (item) => item['display'] == suggestion);
                                     setState(() {
@@ -632,12 +676,22 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                       final data = _antibioticMap[selectedItem['key']]!;
                                       _selectedAntibioticId = data['antibioticId']!;
                                       _dosage = data['dosage']!;
-                                      _antibioticController.text = suggestion;
+                                      _dosageController.text = _dosage;
+                                      _antibioticController.text = selectedItem['antibioticName']!;
+                                    });
+
+                                    _preventAntibioticDropdown = true;
+                                    _antibioticSuggestionsController.close();
+                                    FocusScope.of(context).unfocus();
+                                    _antibioticFocusNode?.unfocus();
+
+                                    await Future.delayed(const Duration(milliseconds: 300));
+                                    setState(() {
+                                      _preventAntibioticDropdown = false;
                                     });
                                   },
                                 ),
 
-                                // Show return count for current month (or "Not found this month")
                                 if (_selectedAntibioticId.isNotEmpty) ...[
                                   const SizedBox(height: 8),
                                   StreamBuilder<QuerySnapshot>(
@@ -647,8 +701,7 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                         return const SizedBox.shrink();
                                       }
                                       if (snapshot.hasError) {
-                                        return Text('Error: ${snapshot.error}',
-                                            style: const TextStyle(color: Colors.red));
+                                        return const SizedBox.shrink();
                                       }
                                       final count = snapshot.data?.docs.length ?? 0;
                                       if (count == 0) {
@@ -667,11 +720,10 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                 ],
 
                                 const SizedBox(height: 12),
-
                                 const Text('Dosage', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
                                 TextFormField(
-                                  controller: TextEditingController(text: _dosage),
+                                  controller: _dosageController,
                                   readOnly: true,
                                   decoration: _inputDecoration(
                                     label: 'Dosage',
@@ -683,9 +735,23 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                 const Text('Return from Ward', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 6),
 
-                                // TypeAhead for ward (v5)
                                 TypeAheadField<String>(
+                                  suggestionsController: _wardSuggestionsController,
+                                  hideOnEmpty: true,
+                                  hideOnLoading: true,
+                                  hideOnUnfocus: true,
+                                  controller: _wardController,
+                                  suggestionsCallback: (pattern) {
+                                    if (_preventWardDropdown) return [];
+                                    return _wardSearchList
+                                        .where((item) => item['display']!
+                                            .toLowerCase()
+                                            .contains(pattern.toLowerCase()))
+                                        .map((item) => item['display']!)
+                                        .toList();
+                                  },
                                   builder: (context, controller, focusNode) {
+                                    _wardFocusNode = focusNode;
                                     return TextField(
                                       controller: controller,
                                       focusNode: focusNode,
@@ -696,34 +762,32 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
                                       ),
                                     );
                                   },
-                                  suggestionsCallback: (pattern) {
-                                    return _wardSearchList
-                                        .where((item) => item['display']!
-                                            .toLowerCase()
-                                            .contains(pattern.toLowerCase()))
-                                        .map((item) => item['display']!)
-                                        .toList();
-                                  },
                                   itemBuilder: (context, suggestion) {
-                                    return ListTile(
-                                      title: Text(suggestion),
-                                    );
+                                    return ListTile(title: Text(suggestion));
                                   },
-                                  onSelected: (suggestion) {
+                                  onSelected: (suggestion) async {
                                     final selectedItem = _wardSearchList.firstWhere(
                                         (item) => item['display'] == suggestion);
                                     setState(() {
                                       _selectedWardId = selectedItem['id'];
                                       _wardController.text = suggestion;
                                     });
+
+                                    _preventWardDropdown = true;
+                                    _wardSuggestionsController.close();
+                                    FocusScope.of(context).unfocus();
+                                    _wardFocusNode?.unfocus();
+
+                                    await Future.delayed(const Duration(milliseconds: 300));
+                                    setState(() {
+                                      _preventWardDropdown = false;
+                                    });
                                   },
                                 ),
 
                                 const SizedBox(height: 10),
-
                                 const Text('Select Date & Time', style: TextStyle(fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 4),
-
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
