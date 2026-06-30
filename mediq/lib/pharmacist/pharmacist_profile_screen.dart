@@ -365,7 +365,7 @@ class _PharmacistProfileScreenState extends State<PharmacistProfileScreen> {
                   isDestructive: true,
                   onTap: _confirmRemoveImage,
                 ),
-             
+            
             ],
           ),
         );
