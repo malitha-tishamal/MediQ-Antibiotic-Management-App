@@ -7,7 +7,7 @@ import 'admin_drawer.dart';
 import '../auth/login_page.dart';
 import 'analyst/antibiotics_analysis_screen.dart';
 import 'analyst/ward_wise_usage_screen.dart';
-import 'analyst/overall_summery.dart'; 
+import 'analyst/overall_usage_summery/overall_summery.dart'; 
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -296,7 +296,7 @@ Widget _buildProfileAvatar() {
   Widget _buildWardWiseUsageButton() {
     return _buildCard(
       imageAsset: 'assets/analyst/ward-usage.jpg',
-      title: 'Ward-wise Usage',
+      title: 'Ward wise Usage',
       description:
           'Analyze Antibiotic Release & Returns by each ward.',
       borderColor: const Color.fromARGB(255, 1, 107, 228),
