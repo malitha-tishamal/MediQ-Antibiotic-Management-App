@@ -1,59 +1,78 @@
 flowchart LR
-    %% Actors
     Pharmacist((Pharmacist))
     Admin((Admin))
 
-    subgraph MediQ_System ["MediQ Antibiotic Management App"]
+    subgraph MediQ ["MediQ Antibiotic Management App"]
         direction TB
-        
-        %% Common Use Cases
-        Login([Login])
-        Signup([Sign Up])
-        ResetPass([Reset Password])
-        ManageProfile([Manage Profile])
-        ViewDashboard([View Dashboard])
 
-        %% Pharmacist Specific
-        ReleaseAnti([Release Antibiotics to Wards])
-        ReturnAnti([Return Antibiotics from Wards])
-        ViewWards([View Ward Details])
-        ViewAntiList([View Antibiotic List])
-        ViewRecords([View Usage Records])
-        ViewBooks([View Book Numbers])
+        subgraph AuthGroup ["Authentication"]
+            Login([Login])
+            Signup([Sign Up])
+            ResetPass([Reset Password])
+        end
 
-        %% Admin Specific
-        ManagePharmacists([Manage Pharmacist Accounts])
-        ManageAntibiotics([Manage Antibiotic Inventory])
-        ManageWards([Manage Ward List])
-        ManageStocks([Manage Main & Return Stocks])
-        UsageAnalysis([Analyze Usage Data])
-        ViewAllHistory([View All Release/Return History])
+        subgraph CommonGroup ["Common Features"]
+            ManageProfile([Manage Profile])
+            ViewDashboard([View Dashboard])
+            AboutDev([View Developer Info])
+        end
+
+        subgraph PharmGroup ["Pharmacist Features"]
+            ReleaseAnti([Release Antibiotics to Ward])
+            ReturnAnti([Return Antibiotics from Ward])
+            ViewWards([View Ward Details])
+            ViewAntiList([View Antibiotic List])
+            ViewReleaseHistory([View Release History])
+            ViewReturnHistory([View Return History])
+            ViewBooks([View Book Numbers])
+        end
+
+        subgraph AdminGroup ["Admin Features"]
+            ManagePharmAccounts([Manage Pharmacist Accounts])
+            ManageAdminAccounts([Manage Admin Accounts])
+            ManageAntibiotics([Manage Antibiotic Inventory])
+            ManageWards([Manage Ward List])
+            ManageBookNumbers([Manage Book Numbers])
+            ManageMainStock([Manage Main Store Stock])
+            ManageReturnStock([Manage Return Store Stock])
+            UsageAnalysis([Analyze Antibiotic Usage])
+            WardWiseAnalysis([Ward-wise Usage Analysis])
+            ViewAllHistory([View All Release and Return History])
+            ExportCSV([Export Data as CSV])
+            GeneratePDF([Generate Stock PDF Certificate])
+        end
     end
 
-    %% Connections for Pharmacist
     Pharmacist --- Login
     Pharmacist --- Signup
     Pharmacist --- ResetPass
     Pharmacist --- ManageProfile
     Pharmacist --- ViewDashboard
+    Pharmacist --- AboutDev
     Pharmacist --- ReleaseAnti
     Pharmacist --- ReturnAnti
     Pharmacist --- ViewWards
     Pharmacist --- ViewAntiList
-    Pharmacist --- ViewRecords
+    Pharmacist --- ViewReleaseHistory
+    Pharmacist --- ViewReturnHistory
     Pharmacist --- ViewBooks
 
-    %% Connections for Admin
     Admin --- Login
     Admin --- ResetPass
     Admin --- ManageProfile
     Admin --- ViewDashboard
-    Admin --- ManagePharmacists
+    Admin --- AboutDev
+    Admin --- ManagePharmAccounts
+    Admin --- ManageAdminAccounts
     Admin --- ManageAntibiotics
     Admin --- ManageWards
-    Admin --- ManageStocks
+    Admin --- ManageBookNumbers
+    Admin --- ManageMainStock
+    Admin --- ManageReturnStock
     Admin --- UsageAnalysis
+    Admin --- WardWiseAnalysis
     Admin --- ViewAllHistory
+    Admin --- ExportCSV
+    Admin --- GeneratePDF
 
-    %% Relationships
-    ManagePharmacists -.-> |Approve/Disable| Signup
+    ManagePharmAccounts -.->|Approve or Disable| Signup

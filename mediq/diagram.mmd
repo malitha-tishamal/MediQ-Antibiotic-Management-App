@@ -1,0 +1,73 @@
+flowchart LR
+    %% Actors
+    Pharmacist((Pharmacist))
+    Admin((Admin))
+
+    subgraph MediQ_System ["MediQ Antibiotic Management App"]
+        direction TB
+        
+        %% Common Use Cases
+        Login([Login])
+        Signup([Sign Up])
+        ResetPass([Reset Password])
+        ManageProfile([Manage Profile])
+        ViewDashboard([View Dashboard])
+        AboutInfo([View Developer Info])
+
+        %% Pharmacist Specific
+        ReleaseAnti([Release Antibiotics to Wards])
+        ReturnAnti([Return Antibiotics from Wards])
+        ViewWards([View Ward Details])
+        ViewAntiList([View Antibiotic List])
+        ViewRecords([View Usage Records])
+        ViewBooks([View Book Numbers])
+
+        %% Admin Specific
+        ManagePharmacists([Manage Pharmacist Accounts])
+        ManageAdmins([Manage Admin Accounts])
+        ManageAntibiotics([Manage Antibiotic Inventory])
+        ManageWards([Manage Ward List])
+        ManageStocks([Manage Main & Return Stocks])
+        UsageAnalysis([Analyze Usage Data])
+        ViewAllHistory([View All Release/Return History])
+    end
+
+    %% Connections for Pharmacist
+    Pharmacist --- Login
+    Pharmacist --- Signup
+    Pharmacist --- ResetPass
+    Pharmacist --- ManageProfile
+    Pharmacist --- ViewDashboard
+    Pharmacist --- ReleaseAnti
+    Pharmacist --- ReturnAnti
+    Pharmacist --- ViewWards
+    Pharmacist --- ViewAntiList
+    Pharmacist --- ViewRecords
+    Pharmacist --- ViewBooks
+    Pharmacist --- AboutInfo
+
+    %% Connections for Admin
+    Admin --- Login
+    Admin --- ResetPass
+    Admin --- ManageProfile
+    Admin --- ViewDashboard
+    Admin --- ManagePharmacists
+    Admin --- ManageAdmins
+    Admin --- ManageAntibiotics
+    Admin --- ManageWards
+    Admin --- ManageStocks
+    Admin --- UsageAnalysis
+    Admin --- ViewAllHistory
+    Admin --- AboutInfo
+
+    %% Relationships
+    ManagePharmacists -.-> |Approve/Disable| Signup
+
+    %% Styling
+    style MediQ_System fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Login fill:#e1f5fe,stroke:#01579b
+    style Signup fill:#e1f5fe,stroke:#01579b
+    style ReleaseAnti fill:#fff9c4,stroke:#fbc02d
+    style ReturnAnti fill:#fff9c4,stroke:#fbc02d
+    style ManagePharmacists fill:#f8bbd0,stroke:#c2185b
+    style UsageAnalysis fill:#c8e6c9,stroke:#2e7d32

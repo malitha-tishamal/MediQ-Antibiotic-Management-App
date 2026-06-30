@@ -1,56 +1,111 @@
 erDiagram
-    ADMIN ||--o{ PHARMACIST : "Approves Accounts"
-    PHARMACIST ||--o{ TRANSACTION : "Executes"
-    WARD ||--o{ TRANSACTION : "Receives/Returns"
-    ANTIBIOTIC ||--o{ TRANSACTION : "Involved in"
-    ANTIBIOTIC ||--|| STOCK : "Tracked via"
-    
-    PHARMACIST {
+    USER {
         string uid PK
-        string name
+        string fullName
         string email
-        string role "Pharmacist"
-        boolean isApproved
+        string role "Admin or Pharmacist"
+        string nic
+        string mobileNumber
+        string status "Pending, Approved, Disabled, Locked"
+        string profileImageUrl
+        int failedLoginAttempts
+        timestamp lockoutUntil
+        timestamp createdAt
+        timestamp updatedAt
     }
-    
-    ADMIN {
-        string uid PK
-        string name
-        string email
-        string role "Admin"
-    }
-    
+
     ANTIBIOTIC {
         string antibioticId PK
         string name
-        string srNumber
-        string awareCategory "Access, Watch, Reserve"
-        string dosage
+        string category "Access, Watch or Reserve"
+        list dosages "array of dosage+srNumber pairs"
+        timestamp createdAt
+        timestamp updatedAt
     }
-    
+
+    DOSAGE {
+        string dosage "e.g. 500 mg"
+        string srNumber
+    }
+
     WARD {
         string wardId PK
-        string name
+        string wardName
         string team
         string category
+        string managedBy
+        string description
+        timestamp createdAt
+        timestamp updatedAt
     }
-    
-    TRANSACTION {
-        string transactionId PK
-        string type "Release / Return"
-        datetime timestamp
-        int quantity
-        string logbookBookNo
-        string logbookPageNo
-        string pharmacistId FK
-        string wardId FK
+
+    BOOK_NUMBER {
+        string bookId PK
+        string bookNumber
+        string status "Active or Inactive"
+        timestamp createdAt
+    }
+
+    RELEASE {
+        string releaseId PK
         string antibioticId FK
+        string antibioticName
+        string dosage
+        string wardId FK
+        string wardName
+        int itemCount
+        string stockType "msd or rsd"
+        string bookNumber
+        string pageNumber
+        timestamp releaseDateTime
+        string createdBy FK
+        timestamp createdAt
     }
-    
-    STOCK {
+
+    RETURN {
+        string returnId PK
+        string antibioticId FK
+        string antibioticName
+        string dosage
+        string wardId FK
+        string wardName
+        int itemCount
+        string stockType
+        string bookNumber
+        string pageNumber
+        timestamp returnDateTime
+        string createdBy FK
+        timestamp createdAt
+    }
+
+    MAIN_STOCK {
         string stockId PK
         string antibioticId FK
-        int mainStoreQuantity
-        int returnStoreQuantity
-        string status
+        int dosageIndex
+        string drugName
+        int quantity
+        string status "In Stock, Low Stock, Out of Stock"
+        timestamp lastUpdated
     }
+
+    RETURN_STOCK {
+        string stockId PK
+        string antibioticId FK
+        int dosageIndex
+        string drugName
+        int quantity
+        string status "In Stock, Low Stock, Out of Stock"
+        timestamp lastUpdated
+    }
+
+    USER ||--o{ RELEASE : "createdBy"
+    USER ||--o{ RETURN : "createdBy"
+    ANTIBIOTIC ||--o{ DOSAGE : "has"
+    ANTIBIOTIC ||--o{ RELEASE : "referenced in"
+    ANTIBIOTIC ||--o{ RETURN : "referenced in"
+    ANTIBIOTIC ||--o{ MAIN_STOCK : "tracked in"
+    ANTIBIOTIC ||--o{ RETURN_STOCK : "tracked in"
+    WARD ||--o{ RELEASE : "receives"
+    WARD ||--o{ RETURN : "returns from"
+    BOOK_NUMBER ||--o{ RELEASE : "referenced in"
+    BOOK_NUMBER ||--o{ RETURN : "referenced in"

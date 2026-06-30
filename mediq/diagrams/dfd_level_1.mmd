@@ -1,0 +1,88 @@
+flowchart TD
+    Pharmacist((Pharmacist))
+    Admin((Admin))
+
+    subgraph P1["Process 1.0: Authentication"]
+        direction LR
+        P1a["1.1 Register\n(Write users doc,\nstatus=Pending)"]
+        P1b["1.2 Login Validation\n(Check status, lockout,\nfailed attempts)"]
+        P1c["1.3 Account Approval\n(Admin sets status\n=Approved/Disabled)"]
+    end
+
+    subgraph P2["Process 2.0: Release Transaction"]
+        direction LR
+        P2a["2.1 Validate Form\n(Antibiotic, Ward,\nQty, BookNo, PageNo)"]
+        P2b["2.2 Check Stock\n(Read main_stock)"]
+        P2c["2.3 Atomic Write\n(Write releases doc\n+ Deduct main_stock qty)"]
+    end
+
+    subgraph P3["Process 3.0: Return Transaction"]
+        direction LR
+        P3a["3.1 Validate Form\n(Antibiotic, Ward,\nQty, BookNo, PageNo)"]
+        P3b["3.2 Check Return Stock\n(Read return_stock)"]
+        P3c["3.3 Atomic Write\n(Write returns doc\n+ Deduct return_stock qty)"]
+    end
+
+    subgraph P4["Process 4.0: Stock Management (Admin)"]
+        direction LR
+        P4a["4.1 Set Quantity\n(Override stock value)"]
+        P4b["4.2 Add Quantity\n(Increment stock value)"]
+    end
+
+    subgraph P5["Process 5.0: Analytics & Reports"]
+        direction LR
+        P5a["5.1 Read releases/returns\ncollections with date filter"]
+        P5b["5.2 Aggregate Data\n(Ward-wise / Category-wise)"]
+        P5c["5.3 Render Charts\n(fl_chart: Pie & Bar)"]
+        P5d["5.4 Export CSV"]
+    end
+
+    DB_Users[(Firestore\nusers)]
+    DB_Releases[(Firestore\nreleases)]
+    DB_Returns[(Firestore\nreturns)]
+    DB_MainStock[(Firestore\nmain_stock)]
+    DB_ReturnStock[(Firestore\nreturn_stock)]
+    DB_Antibiotics[(Firestore\nantibiotics)]
+    DB_Wards[(Firestore\nwards)]
+
+    Pharmacist -->|Register| P1a
+    Pharmacist -->|Login| P1b
+    P1a -->|Write doc| DB_Users
+    P1b -->|Read doc| DB_Users
+
+    Admin -->|Approve account| P1c
+    P1c -->|Update status| DB_Users
+
+    Pharmacist -->|Release Form Data| P2a
+    P2a --> P2b
+    P2b -->|Read quantity| DB_MainStock
+    P2b --> P2c
+    P2c -->|Write| DB_Releases
+    P2c -->|Decrement qty| DB_MainStock
+
+    Pharmacist -->|Return Form Data| P3a
+    P3a --> P3b
+    P3b -->|Read quantity| DB_ReturnStock
+    P3b --> P3c
+    P3c -->|Write| DB_Returns
+    P3c -->|Decrement qty| DB_ReturnStock
+
+    Admin -->|Manage Stock| P4a
+    Admin -->|Manage Stock| P4b
+    P4a -->|Update| DB_MainStock
+    P4a -->|Update| DB_ReturnStock
+    P4b -->|Increment| DB_MainStock
+    P4b -->|Increment| DB_ReturnStock
+
+    Admin -->|Request Report| P5a
+    DB_Releases -->|Stream| P5a
+    DB_Returns -->|Stream| P5a
+    P5a --> P5b --> P5c
+    P5b --> P5d
+    P5c -->|Charts| Admin
+    P5d -->|CSV File| Admin
+
+    DB_Antibiotics -->|Auto-suggest lookup| P2a
+    DB_Antibiotics -->|Auto-suggest lookup| P3a
+    DB_Wards -->|Auto-suggest lookup| P2a
+    DB_Wards -->|Auto-suggest lookup| P3a

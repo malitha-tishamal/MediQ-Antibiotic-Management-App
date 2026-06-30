@@ -1,0 +1,55 @@
+flowchart LR
+    Pharmacist((Pharmacist))
+    Admin((Admin))
+
+    subgraph FirebaseAuth["Firebase Authentication"]
+        SignUp["Sign Up - status: Pending"]
+        Login["Login with lockout check"]
+        ForgotPwd["Forgot Password"]
+    end
+
+    subgraph Firestore["Firestore Database"]
+        UsersCol[("users")]
+        ReleasesCol[("releases")]
+        ReturnsCol[("returns")]
+        MainStockCol[("main_stock")]
+        ReturnStockCol[("return_stock")]
+        AntibioticsCol[("antibiotics")]
+        WardsCol[("wards")]
+        BooksCol[("book_numbers")]
+    end
+
+    Cloudinary["Cloudinary - Profile Images"]
+
+    Pharmacist -->|Register| SignUp
+    Pharmacist -->|Credentials| Login
+    Pharmacist -->|Password Reset| ForgotPwd
+
+    Admin -->|Credentials| Login
+    Admin -->|Password Reset| ForgotPwd
+
+    SignUp -->|Write user doc| UsersCol
+    Login -->|Read and verify status| UsersCol
+
+    Admin -->|Approve or Disable account| UsersCol
+    Admin -->|CRUD Antibiotics| AntibioticsCol
+    Admin -->|CRUD Wards| WardsCol
+    Admin -->|Manage Book Numbers| BooksCol
+    Admin -->|Set or Add Stock| MainStockCol
+    Admin -->|Set or Add Stock| ReturnStockCol
+
+    Pharmacist -->|Release Form - Antibiotic, Ward, Qty, BookNo| ReleasesCol
+    ReleasesCol -->|Atomic deduct qty| MainStockCol
+
+    Pharmacist -->|Return Form - Antibiotic, Ward, Qty, BookNo| ReturnsCol
+    ReturnsCol -->|Atomic deduct qty| ReturnStockCol
+
+    UsersCol -->|Profile image URL| Cloudinary
+    Cloudinary -->|Compressed image URL| UsersCol
+
+    MainStockCol -->|Real-time stream to dashboard| Admin
+    ReturnStockCol -->|Real-time stream to dashboard| Admin
+    ReleasesCol -->|Transaction history stream| Admin
+    ReleasesCol -->|Transaction history stream| Pharmacist
+    ReturnsCol -->|Transaction history stream| Admin
+    ReturnsCol -->|Transaction history stream| Pharmacist
