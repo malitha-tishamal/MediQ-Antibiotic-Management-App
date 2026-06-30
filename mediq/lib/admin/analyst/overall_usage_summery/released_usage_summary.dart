@@ -661,7 +661,7 @@ class _ReleasedUsageSummaryScreenState
         const SizedBox(height: 16),
         // Title (fixed typo: "Summery" -> "Summary" but keeping original text)
         const Text(
-          ' Released Overall Summery Usage',
+          ' Release Overall Summery Usage',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

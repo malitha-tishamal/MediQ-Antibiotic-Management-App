@@ -751,7 +751,7 @@ class _ReturnUsageSummaryScreenState extends State<ReturnUsageSummaryScreen>
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Returned Usage Summary',
+          'Return Usage Summary',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

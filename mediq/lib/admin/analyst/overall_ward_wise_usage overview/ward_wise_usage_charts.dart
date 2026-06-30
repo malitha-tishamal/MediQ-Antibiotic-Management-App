@@ -748,7 +748,7 @@ class _WardWiseUsageChartsScreenState extends State<WardWiseUsageChartsScreen>
         const SizedBox(height: 16),
         // Title
         const Text(
-          'Ward-wise Usage Analysis',
+          'Ward wise Release Analysis Charts',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
