@@ -21,20 +21,23 @@ class _SignUpPageState extends State<SignUpPage> {
   final _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
   
+  // Persistent controllers for all fields
+  final _nicController = TextEditingController();
+  final _fullNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String _email = '';
-  String _password = '';
-  String _confirmPassword = '';
-  String _nic = '';
-  String _fullName = '';
-  String _mobileNumber = '';
   UserRole _selectedRole = UserRole.Pharmacist;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   String? _errorMessage;
+
+  // Real-time password match feedback
+  String _passwordMatchMessage = '';
+  Color _passwordMatchColor = Colors.transparent;
 
   @override
   void initState() {
@@ -45,35 +48,48 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   void dispose() {
+    _nicController.dispose();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _mobileController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<String?> _getDefaultProfilePicture() async {
-    try {
-      String assetPath = _selectedRole == UserRole.Admin
-          ? 'assets/admin-default.jpg'
-          : 'assets/pharmacist-default.jpg';
-      final ByteData data = await rootBundle.load(assetPath);
-      final Uint8List bytes = data.buffer.asUint8List();
-      return base64Encode(bytes);
-    } catch (e) {
-      return '';
-    }
+  // Returns the asset path directly (no encoding)
+  String _getDefaultProfilePicture() {
+    return _selectedRole == UserRole.Admin
+        ? 'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'
+        : 'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/pharmizist-default_weoaaq.jpg';
   }
 
   void _validatePasswordMatch() {
-    if (_confirmPasswordController.text.isNotEmpty &&
-        _passwordController.text != _confirmPasswordController.text) {
-      _formKey.currentState?.validate();
+    final String password = _passwordController.text;
+    final String confirm = _confirmPasswordController.text;
+    
+    if (confirm.isEmpty) {
+      setState(() {
+        _passwordMatchMessage = '';
+        _passwordMatchColor = Colors.transparent;
+      });
+    } else if (password == confirm) {
+      setState(() {
+        _passwordMatchMessage = '✓ Passwords match';
+        _passwordMatchColor = Colors.green;
+      });
+    } else {
+      setState(() {
+        _passwordMatchMessage = '✗ Passwords do not match';
+        _passwordMatchColor = Colors.red;
+      });
     }
+    _formKey.currentState?.validate();
   }
 
   Future<void> _handleSignUp() async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!_formKey.currentState!.validate()) return;
-    _formKey.currentState!.save();
 
     setState(() {
       _isLoading = true;
@@ -81,20 +97,20 @@ class _SignUpPageState extends State<SignUpPage> {
     });
 
     try {
-      final String? defaultProfileImage = await _getDefaultProfilePicture();
+      final String defaultProfileImage = _getDefaultProfilePicture();
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _email.trim(),
-        password: _password,
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
       final userData = {
-        'email': _email.trim(),
+        'email': _emailController.text.trim(),
         'role': _selectedRole.name,
-        'fullName': _fullName.trim(),
-        'nic': _nic.trim().toUpperCase(),
-        'mobileNumber': _mobileNumber.trim(),
+        'fullName': _fullNameController.text.trim(),
+        'nic': _nicController.text.trim().toUpperCase(),
+        'mobileNumber': _mobileController.text.trim(),
         'status': 'Pending',
-        'profileImageUrl': defaultProfileImage ?? '',
+        'profileImageUrl': defaultProfileImage, // store asset path, not base64
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
@@ -145,7 +161,13 @@ class _SignUpPageState extends State<SignUpPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
             ),
             padding: const EdgeInsets.all(30),
             child: Column(
@@ -155,12 +177,18 @@ class _SignUpPageState extends State<SignUpPage> {
                   duration: const Duration(milliseconds: 500),
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: _selectedRole == UserRole.Admin ? Colors.purple.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+                    color: _selectedRole == UserRole.Admin
+                        ? Colors.purple.withOpacity(0.1)
+                        : Colors.blue.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    _selectedRole == UserRole.Admin ? Icons.admin_panel_settings : Icons.medical_services,
-                    color: _selectedRole == UserRole.Admin ? Colors.purple : Colors.blue,
+                    _selectedRole == UserRole.Admin
+                        ? Icons.admin_panel_settings
+                        : Icons.medical_services,
+                    color: _selectedRole == UserRole.Admin
+                        ? Colors.purple
+                        : Colors.blue,
                     size: 60,
                   ),
                 ),
@@ -168,13 +196,23 @@ class _SignUpPageState extends State<SignUpPage> {
                 Text(
                   '${_selectedRole.name} Account Created\nSuccessfully!',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.darkText, height: 1.3),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkText,
+                    height: 1.3,
+                  ),
                 ),
                 const SizedBox(height: 15),
                 Text(
-                  _selectedRole == UserRole.Admin ? 'Your admin account is pending approval.' : 'Your pharmacist account is pending approval.',
+                  _selectedRole == UserRole.Admin
+                      ? 'Your admin account is pending approval.'
+                      : 'Your pharmacist account is pending approval.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 25),
                 SizedBox(
@@ -183,13 +221,28 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false);
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginPage(),
+                        ),
+                        (route) => false,
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryPurple,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text('Continue to Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text(
+                      'Continue to Login',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -200,10 +253,11 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // --- Validators ---
+  // --- Validators (use controller.text directly) ---
   String? _validateNIC(String? value) {
-    if (value == null || value.isEmpty) return 'NIC number is required';
-    final nic = value.trim().toUpperCase();
+    final text = _nicController.text;
+    if (text.isEmpty) return 'NIC number is required';
+    final nic = text.trim().toUpperCase();
     final nicRegex = RegExp(r'^(\d{9}[VX]|\d{12})$');
     if (!nicRegex.hasMatch(nic)) return 'Enter valid NIC (901234567V or 12 digits)';
     if (nic.length == 10) {
@@ -213,15 +267,40 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
+  String? _validateFullName(String? value) {
+    final text = _fullNameController.text;
+    if (text.trim().isEmpty) return 'Full name is required';
+    if (text.trim().length < 2) return 'Name must be at least 2 characters';
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final text = _emailController.text;
+    if (text.trim().isEmpty) return 'Email is required';
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(text.trim())) {
+      return 'Enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validateMobile(String? value) {
+    final text = _mobileController.text;
+    if (text.isEmpty) return 'Mobile number is required';
+    if (text.length != 10) return 'Must be exactly 10 digits';
+    if (!text.startsWith('07')) return 'Must start with 07';
+    return null;
+  }
+
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Password is required';
-    if (value.length < 6) return 'Password must be at least 6 characters';
+    final text = _passwordController.text;
+    if (text.isEmpty) return 'Password is required';
+    if (text.length < 6) return 'Password must be at least 6 characters';
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) return 'Please confirm your password';
-    if (value != _passwordController.text) return 'Passwords do not match';
+    if (_confirmPasswordController.text.isEmpty) return 'Please confirm your password';
+    if (_confirmPasswordController.text != _passwordController.text) return 'Passwords do not match';
     return null;
   }
 
@@ -289,7 +368,6 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
             ),
             validator: validator,
-            onSaved: (value) {},
           ),
         ),
       ],
@@ -413,7 +491,6 @@ class _SignUpPageState extends State<SignUpPage> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               children: [
-                // Minimal header (back button only)
                 SizedBox(
                   height: 48,
                   child: Row(
@@ -425,7 +502,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         constraints: const BoxConstraints(),
                       ),
                       const Spacer(),
-                      const SizedBox(width: 40), // balance the back button
+                      const SizedBox(width: 40),
                     ],
                   ),
                 ),
@@ -436,13 +513,11 @@ class _SignUpPageState extends State<SignUpPage> {
                       key: _formKey,
                       child: Column(
                         children: [
-                          // Logo
                           Hero(
                             tag: 'app-logo',
                             child: Image.asset('assets/logo/logo.png', height: 120, fit: BoxFit.contain),
                           ),
                           const SizedBox(height: 12),
-                          // Heading label (new)
                           const Text(
                             'Create Your Account',
                             style: TextStyle(
@@ -458,7 +533,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             label: 'NIC Number',
                             hint: '901234567V / 12 digits',
                             icon: Icons.badge_outlined,
-                            controller: TextEditingController(text: _nic),
+                            controller: _nicController,
                             validator: _validateNIC,
                             enabled: !_isLoading,
                           ),
@@ -467,12 +542,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             label: 'Full Name',
                             hint: 'Your full name',
                             icon: Icons.person_outline_rounded,
-                            controller: TextEditingController(text: _fullName),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) return 'Full name is required';
-                              if (value.trim().length < 2) return 'Name must be at least 2 characters';
-                              return null;
-                            },
+                            controller: _fullNameController,
+                            validator: _validateFullName,
                             enabled: !_isLoading,
                           ),
                           const SizedBox(height: 8),
@@ -480,15 +551,9 @@ class _SignUpPageState extends State<SignUpPage> {
                             label: 'Email Address',
                             hint: 'example@email.com',
                             icon: Icons.email_outlined,
-                            controller: TextEditingController(text: _email),
+                            controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) return 'Email is required';
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
-                                return 'Enter a valid email address';
-                              }
-                              return null;
-                            },
+                            validator: _validateEmail,
                             enabled: !_isLoading,
                           ),
                           const SizedBox(height: 8),
@@ -496,15 +561,10 @@ class _SignUpPageState extends State<SignUpPage> {
                             label: 'Mobile Number',
                             hint: '07X XXX XXXX',
                             icon: Icons.phone_android_outlined,
-                            controller: TextEditingController(text: _mobileNumber),
+                            controller: _mobileController,
                             keyboardType: TextInputType.phone,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Mobile number is required';
-                              if (value.length != 10) return 'Must be exactly 10 digits';
-                              if (!value.startsWith('07')) return 'Must start with 07';
-                              return null;
-                            },
+                            validator: _validateMobile,
                             enabled: !_isLoading,
                           ),
                           const SizedBox(height: 8),
@@ -543,6 +603,28 @@ class _SignUpPageState extends State<SignUpPage> {
                               onPressed: _isLoading ? null : () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
                             ),
                           ),
+                          if (_passwordMatchMessage.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4, left: 12),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _passwordMatchMessage.contains('✓') ? Icons.check_circle : Icons.error_outline,
+                                    color: _passwordMatchColor,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _passwordMatchMessage,
+                                    style: TextStyle(
+                                      color: _passwordMatchColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 8),
                             Container(
@@ -577,7 +659,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 onTap: _isLoading ? null : () => Navigator.pop(context),
                                 child: const Text(
                                   'Sign In',
-                                  style: TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                                  style: TextStyle(fontSize: 12, color: AppColors.primaryPurple, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
