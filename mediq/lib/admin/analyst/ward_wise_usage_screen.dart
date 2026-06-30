@@ -279,7 +279,7 @@ class _WardWiseUsageScreenState extends State<WardWiseUsageScreen> {
         const SizedBox(height: 20),
         // Page title
         const Text(
-          'Ward-wise Usage Analysis',
+          'Ward wise Usage Analysis',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -395,7 +395,7 @@ Widget _buildProfileAvatar() {
   Widget _buildWardReleasesCard() {
     return _buildAnalysisCard(
       title: 'Wards Releases Overview Chats',
-      description: 'Graphical Overview of Antibiotics release Each Ward.',
+      description: 'Graphical Overview of Release Each Ward.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/releases.jpg',
       color: Colors.green,
       onTap: () {
@@ -412,7 +412,7 @@ Widget _buildProfileAvatar() {
   Widget _buildWardReturnsCard() {
     return _buildAnalysisCard(
       title: 'Wards Returns Overview Chats',
-      description: 'Graphical Overview of Antibiotics Returns Each Ward.',
+      description: 'Graphical Overview of Returns Each Ward.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/returns.jpg',
       color: Colors.orange,
       onTap: () {
@@ -429,7 +429,7 @@ Widget _buildProfileAvatar() {
   Widget _buildNetUsageCard() {
     return _buildAnalysisCard(
       title: 'Releases Details Analyst',
-      description: 'Full A–Z breakdown Antibiotics releases Each Ward Detailes.',
+      description: 'Full A–Z breakdown Releases Each Ward Detailes.',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/releases-all.jpg',
       color: AppColors.primaryPurple,
        onTap: () {
@@ -447,7 +447,7 @@ Widget _buildProfileAvatar() {
   Widget _buildWardOverviewCard() {
     return _buildAnalysisCard(
       title: 'Returns Details Analyst',
-      description: 'Full A–Z breakdown Antibiotics Returns Each Ward Detailes',
+      description: 'Full A–Z breakdown Returns Each Ward Detailes',
       imageAsset: 'assets/analyst/cards/ward-wise-overviews/returns-all.jpg',
       color: Colors.blue,
       onTap: () {
