@@ -9,7 +9,8 @@ import 'core/firebase_options.dart';
 // Import screens
 import 'auth/firebase_load_check_screen.dart';
 import 'auth/login_page.dart';
-import 'auth/simple_preload_screen.dart';   // 👈 new 1‑second loading screen
+import 'auth/simple_preload_screen.dart';
+import 'auth/start_page.dart';   // 👈 ADD THIS
 import 'core/dashboard_wrapper.dart';
 
 // ------------------- App Colors -------------------
@@ -75,18 +76,19 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show initial loading while checking Firebase auth
+
+        // Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const FirebaseLoadCheckScreen();
         }
 
-        // User is signed in → show 1‑second loading animation, then dashboard
+        // User logged in
         if (snapshot.hasData && snapshot.data != null) {
-          return const SimplePreloadScreen();  // 👈 1‑second animation
+          return const SimplePreloadScreen();
         }
 
-        // No user → login page
-        return const LoginPage();
+        // No user → Start Page
+        return const StartPage();
       },
     );
   }
