@@ -1,88 +1,85 @@
 flowchart TD
-    Pharmacist((Pharmacist))
-    Admin((Admin))
+    %% External Entities
+    Pharmacist((🧑‍⚕️ Pharmacist))
+    Admin((👤 Admin))
 
-    subgraph P1["Process 1.0: Authentication"]
+    %% Unified Firestore Database Data Store
+    DB_Firestore[(💾 D1: Firebase Firestore Database)]
+
+    subgraph P1["Process 1.0: User Authentication & Registration"]
         direction LR
-        P1a["1.1 Register\n(Write users doc,\nstatus=Pending)"]
-        P1b["1.2 Login Validation\n(Check status, lockout,\nfailed attempts)"]
-        P1c["1.3 Account Approval\n(Admin sets status\n=Approved/Disabled)"]
+        P1a["1.1 Register Account\n(Request Status: Pending)"]
+        P1b["1.2 Validate Login\n(Check role, status, lockout)"]
+        P1c["1.3 Account Approval\n(Approve/Disable account)"]
     end
 
     subgraph P2["Process 2.0: Release Transaction"]
         direction LR
-        P2a["2.1 Validate Form\n(Antibiotic, Ward,\nQty, BookNo, PageNo)"]
-        P2b["2.2 Check Stock\n(Read main_stock)"]
-        P2c["2.3 Atomic Write\n(Write releases doc\n+ Deduct main_stock qty)"]
+        P2a["2.1 Validate Release Form\n(Drug, Ward, Qty)"]
+        P2b["2.2 Check Stock Level\n(Verify availability)"]
+        P2c["2.3 Record Release\n(Atomic Write & Qty Deduct)"]
     end
 
     subgraph P3["Process 3.0: Return Transaction"]
         direction LR
-        P3a["3.1 Validate Form\n(Antibiotic, Ward,\nQty, BookNo, PageNo)"]
-        P3b["3.2 Check Return Stock\n(Read return_stock)"]
-        P3c["3.3 Atomic Write\n(Write returns doc\n+ Deduct return_stock qty)"]
+        P3a["3.1 Validate Return Form\n(Drug, Ward, Qty)"]
+        P3b["3.2 Check Return Stock\n(Verify returned items)"]
+        P3c["3.3 Record Return\n(Atomic Write & Qty Add)"]
     end
 
-    subgraph P4["Process 4.0: Stock Management (Admin)"]
+    subgraph P4["Process 4.0: Inventory & Master Settings"]
         direction LR
-        P4a["4.1 Set Quantity\n(Override stock value)"]
-        P4b["4.2 Add Quantity\n(Increment stock value)"]
+        P4a["4.1 Set Stock Level\n(Admin Override Qty)"]
+        P4b["4.2 Add Stock Level\n(Admin Increment Qty)"]
+        P4c["4.3 Manage Book Numbers\n& Ward Registers"]
     end
 
     subgraph P5["Process 5.0: Analytics & Reports"]
         direction LR
-        P5a["5.1 Read releases/returns\ncollections with date filter"]
-        P5b["5.2 Aggregate Data\n(Ward-wise / Category-wise)"]
-        P5c["5.3 Render Charts\n(fl_chart: Pie & Bar)"]
+        P5a["5.1 Retrieve Logs\n(releases/returns streams)"]
+        P5b["5.2 Aggregate Data\n(By Ward or Category)"]
+        P5c["5.3 Render Charts\n(Pie/Bar Charts)"]
         P5d["5.4 Export CSV"]
     end
 
-    DB_Users[(Firestore\nusers)]
-    DB_Releases[(Firestore\nreleases)]
-    DB_Returns[(Firestore\nreturns)]
-    DB_MainStock[(Firestore\nmain_stock)]
-    DB_ReturnStock[(Firestore\nreturn_stock)]
-    DB_Antibiotics[(Firestore\nantibiotics)]
-    DB_Wards[(Firestore\nwards)]
+    %% Process 1.0 Connections
+    Pharmacist -->|Register request| P1a
+    Pharmacist -->|Login credentials| P1b
+    P1a -->|Save pending profile| DB_Firestore
+    P1b -->|Fetch profile & check status| DB_Firestore
+    
+    Admin -->|Approve/Disable request| P1c
+    P1c -->|Update user status| DB_Firestore
 
-    Pharmacist -->|Register| P1a
-    Pharmacist -->|Login| P1b
-    P1a -->|Write doc| DB_Users
-    P1b -->|Read doc| DB_Users
-
-    Admin -->|Approve account| P1c
-    P1c -->|Update status| DB_Users
-
-    Pharmacist -->|Release Form Data| P2a
+    %% Process 2.0 Connections
+    Pharmacist -->|Release details| P2a
     P2a --> P2b
-    P2b -->|Read quantity| DB_MainStock
+    DB_Firestore -->|Check antibiotic & ward metadata| P2a
+    DB_Firestore -->|Fetch current main stock qty| P2b
     P2b --> P2c
-    P2c -->|Write| DB_Releases
-    P2c -->|Decrement qty| DB_MainStock
+    P2c -->|Create release doc & decrement main stock| DB_Firestore
 
-    Pharmacist -->|Return Form Data| P3a
+    %% Process 3.0 Connections
+    Pharmacist -->|Return details| P3a
     P3a --> P3b
-    P3b -->|Read quantity| DB_ReturnStock
+    DB_Firestore -->|Check antibiotic & ward metadata| P3a
+    DB_Firestore -->|Fetch current return stock qty| P3b
     P3b --> P3c
-    P3c -->|Write| DB_Returns
-    P3c -->|Decrement qty| DB_ReturnStock
+    P3c -->|Create return doc & increment return stock| DB_Firestore
 
-    Admin -->|Manage Stock| P4a
-    Admin -->|Manage Stock| P4b
-    P4a -->|Update| DB_MainStock
-    P4a -->|Update| DB_ReturnStock
-    P4b -->|Increment| DB_MainStock
-    P4b -->|Increment| DB_ReturnStock
+    %% Process 4.0 Connections
+    Admin -->|Manage main/return stock qty| P4a
+    Admin -->|Increment main/return stock qty| P4b
+    Admin -->|Add book numbers / wards| P4c
+    
+    P4a -->|Override stock quantities| DB_Firestore
+    P4b -->|Increment stock quantities| DB_Firestore
+    P4c -->|Write book numbers / wards| DB_Firestore
 
-    Admin -->|Request Report| P5a
-    DB_Releases -->|Stream| P5a
-    DB_Returns -->|Stream| P5a
+    %% Process 5.0 Connections
+    Admin -->|Request analytics/audit reports| P5a
+    DB_Firestore -->|Stream releases & returns logs| P5a
     P5a --> P5b --> P5c
     P5b --> P5d
-    P5c -->|Charts| Admin
-    P5d -->|CSV File| Admin
-
-    DB_Antibiotics -->|Auto-suggest lookup| P2a
-    DB_Antibiotics -->|Auto-suggest lookup| P3a
-    DB_Wards -->|Auto-suggest lookup| P2a
-    DB_Wards -->|Auto-suggest lookup| P3a
+    P5c -->|Interactive charts| Admin
+    P5d -->|CSV reports| Admin

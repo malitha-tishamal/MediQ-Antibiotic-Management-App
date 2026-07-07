@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediQ System DFD Report - Context & Level 1 Diagrams</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #865AD9;
+            --primary-dark: #673AB7;
+            --primary-light: #F3E5F5;
+            --accent: #9C27B0;
+            --text-dark: #1C1B1F;
+            --text-muted: #5A6A85;
+            --bg-light: #F3F3FA;
+            --bg-white: #FFFFFF;
+            --shadow: 0 10px 30px rgba(134, 90, 217, 0.08);
+            --border-radius: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background-color: var(--bg-white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 50px 60px;
+            border: 1px solid rgba(134, 90, 217, 0.05);
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+        }
+
+        .course-code {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary-dark);
+            margin-bottom: 10px;
+            display: inline-block;
+            background-color: var(--primary-light);
+            padding: 6px 16px;
+            border-radius: 50px;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.3rem;
+            color: var(--primary-dark);
+            font-weight: 800;
+            margin-bottom: 15px;
+            line-height: 1.2;
+        }
+
+        .meta-info {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-top: 15px;
+        }
+
+        .meta-info span {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem;
+            color: var(--primary-dark);
+            margin-top: 45px;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            color: var(--primary-dark);
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            margin-bottom: 20px;
+            font-size: 1.05rem;
+            color: #3C4257;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-bottom: 25px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+            color: #3C4257;
+        }
+
+        /* DFD Design visual representations */
+        .dfd-container {
+            background-color: #FAF9FE;
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: inset 0 2px 10px rgba(134, 90, 217, 0.02);
+        }
+
+        .dfd-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+
+        .dfd-table th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            text-align: left;
+            padding: 14px 18px;
+        }
+
+        .dfd-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #E2E8F0;
+            background-color: #F8FAFC;
+        }
+
+        .dfd-table tr:hover td {
+            background-color: var(--primary-light);
+        }
+
+        .symbol-ref {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .symbol-proc { background-color: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .symbol-ent { background-color: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+        .symbol-store { background-color: #E3F2FD; color: #0D47A1; border: 1px solid #BBDEFB; }
+        .symbol-flow { background-color: #F3E5F5; color: #4A148C; border: 1px solid #E1BEE7; }
+
+        .no-print {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 40px;
+            border-top: 2px solid var(--primary-light);
+            padding-top: 30px;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 10px rgba(134, 90, 217, 0.2);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: #64748B;
+            box-shadow: 0 4px 10px rgba(100, 116, 139, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background-color: #475569;
+        }
+
+        /* SVG Vector representation of DFD elements to make it beautiful */
+        .vector-diagram {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 15px 10px; }
+            .container { padding: 30px 20px; }
+            h1 { font-size: 1.8rem; }
+        }
+
+        @media print {
+            body { background-color: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; border: none; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <span class="course-code">MediQ System Design</span>
+        <h1>Data Flow Diagrams (DFD) Analysis Report</h1>
+        <p class="meta-info">
+            Project: <span>MediQ Antibiotic Management App</span> | 
+            DFD Standards: <span>Yourdon-DeMarco &amp; Gane-Sarson System</span>
+        </p>
+    </header>
+
+    <h2>1. Data Flow Diagram Reference Guide</h2>
+    <p>This report covers the logical DFD for the MediQ Antibiotic Management System, decomposing it into processes, entities, data stores, and data flows mapped directly to the actual Firestore database structure.</p>
+    
+    <table class="dfd-table">
+        <thead>
+            <tr>
+                <th>Symbol Type</th>
+                <th>Standard Representation</th>
+                <th>Application in MediQ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="symbol-ref symbol-proc">Process</span></td>
+                <td>Rounded Rectangle / Bubble</td>
+                <td>Transforms data inputs (e.g., login checking, recording usages, compiling usage stats).</td>
+            </tr>
+            <tr>
+                <td><span class="symbol-ref symbol-ent">External Entity</span></td>
+                <td>Flat Rectangle</td>
+                <td>Source or destination of data outside system boundary (e.g., Admin, Pharmacist, Cloudinary, Firebase Auth).</td>
+            </tr>
+            <tr>
+                <td><span class="symbol-ref symbol-store">Data Store</span></td>
+                <td>Open Rectangle (Double/Single open end)</td>
+                <td>Represents Firestore Database Collections (e.g., users, wards, antibiotics, book_numbers, main_stock, releases, return_stock, returns).</td>
+            </tr>
+            <tr>
+                <td><span class="symbol-ref symbol-flow">Data Flow</span></td>
+                <td>Arrow Line</td>
+                <td>Directs paths for data movement with descriptive label noun-phrase.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. DFD Level 0 - Context Diagram</h2>
+    <p>The Context Diagram shows the system as a single process block with its immediate environmental interactions. External entities interact with the system without exposing interior databases.</p>
+
+    <div class="dfd-container">
+        <h3>DFD Level 0 Vector Illustration</h3>
+        
+        <!-- SVG Vector of Context Diagram -->
+        <svg class="vector-diagram" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="800" height="400" fill="#FAF9FE" rx="10" />
+
+            <!-- Process 0.0 -->
+            <rect x="300" y="140" width="200" height="120" rx="20" fill="#865AD9" stroke="#673AB7" stroke-width="3" />
+            <text x="400" y="195" font-family="'Outfit', sans-serif" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">0.0 MediQ System</text>
+            <text x="400" y="215" font-family="'Inter', sans-serif" font-size="11" fill="#E2E7F3" text-anchor="middle">Antibiotic Management</text>
+
+            <!-- Entity: Admin -->
+            <rect x="30" y="40" width="160" height="60" rx="4" fill="#E2E7F3" stroke="#90A4AE" stroke-width="2" />
+            <text x="110" y="75" font-family="'Outfit', sans-serif" font-size="13" font-weight="bold" fill="#1C1B1F" text-anchor="middle">👤 Administrator</text>
+
+            <!-- Entity: Pharmacist -->
+            <rect x="30" y="300" width="160" height="60" rx="4" fill="#E2E7F3" stroke="#90A4AE" stroke-width="2" />
+            <text x="110" y="335" font-family="'Outfit', sans-serif" font-size="13" font-weight="bold" fill="#1C1B1F" text-anchor="middle">🧑‍⚕️ Pharmacist</text>
+
+            <!-- Entity: Firebase Auth -->
+            <rect x="610" y="40" width="160" height="60" rx="4" fill="#EDF2F7" stroke="#CBD5E0" stroke-width="2" />
+            <text x="690" y="75" font-family="'Outfit', sans-serif" font-size="13" font-weight="bold" fill="#2D3748" text-anchor="middle">🔐 Firebase Auth</text>
+
+            <!-- Entity: Cloudinary CDN -->
+            <rect x="610" y="300" width="160" height="60" rx="4" fill="#EDF2F7" stroke="#CBD5E0" stroke-width="2" />
+            <text x="690" y="335" font-family="'Outfit', sans-serif" font-size="13" font-weight="bold" fill="#2D3748" text-anchor="middle">☁️ Cloudinary API</text>
+
+            <!-- Connections with Arrows: Admin to Process -->
+            <path d="M 190 70 L 350 140" fill="none" stroke="#865AD9" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="245" y="95" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Creds &amp; Metadata</text>
+
+            <path d="M 330 160 L 170 100" fill="none" stroke="#865AD9" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="220" y="145" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">System Logs &amp; Stats</text>
+
+            <!-- Connections: Pharmacist to Process -->
+            <path d="M 190 330 L 350 260" fill="none" stroke="#865AD9" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="245" y="310" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Releases &amp; Return Info</text>
+
+            <path d="M 330 240 L 170 300" fill="none" stroke="#865AD9" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="210" y="260" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Success Confirmations</text>
+
+            <!-- Connections: Process to Firebase -->
+            <path d="M 470 140 L 610 85" fill="none" stroke="#673AB7" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="500" y="110" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Verify Credentials</text>
+
+            <path d="M 610 95 L 490 150" fill="none" stroke="#673AB7" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="510" y="140" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Validation Token</text>
+
+            <!-- Connections: Process to Cloudinary -->
+            <path d="M 480 250 L 620 305" fill="none" stroke="#673AB7" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="510" y="270" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">Upload Raw Photo</text>
+
+            <path d="M 610 320 L 490 260" fill="none" stroke="#673AB7" stroke-width="2" marker-end="url(#arrow)" />
+            <text x="520" y="300" font-family="'Inter', sans-serif" font-size="10" fill="#5A6A85" font-weight="500">CDN Image URL</text>
+
+            <!-- Arrow Definition -->
+            <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#673AB7" />
+                </marker>
+            </defs>
+        </svg>
+    </div>
+
+    <h2>3. DFD Level 1 - Detailed Functional Processes</h2>
+    <p>Level 1 expands the system's boundary into 8 key processes and maps them directly to the Firestore collection-based data stores.</p>
+    
+    <ul>
+        <li><strong>1.0 Authenticate &amp; Route User:</strong> Validates user details against <code>Firebase Auth</code>, checks user profiles from <code>D1: users</code>, and routes them to the proper Dashboard.</li>
+        <li><strong>2.0 Manage User Profiles:</strong> Admin utility to add, edit, or remove user data from <code>D1: users</code>.</li>
+        <li><strong>3.0 Manage Wards &amp; Antibiotics:</strong> Admin configuration panel which reads/writes information in <code>D2: wards</code> and <code>D3: antibiotics</code>.</li>
+        <li><strong>4.0 Manage Book Registers:</strong> Logs registered book range updates to <code>D4: book_numbers</code>.</li>
+        <li><strong>5.0 Manage Stock Inventory:</strong> Tracks main stock updates in <code>D5: main_stock</code>.</li>
+        <li><strong>6.0 Record Releases &amp; Returns:</strong> Logs pharmacist actions to <code>D6: releases</code>, <code>D7: return_stock</code>, and <code>D8: returns</code>.</li>
+        <li><strong>7.0 Compile Usage Statistics:</strong> Extracts logs from <code>D6: releases</code> and <code>D8: returns</code> to compile charts.</li>
+        <li><strong>8.0 Edit Profile Settings:</strong> Posts image updates to <code>Cloudinary</code> and stores data in <code>D1: users</code>.</li>
+    </ul>
+
+    <div class="dfd-container">
+        <h3>DFD Level 1 Decomposition Vector Illustration</h3>
+        <svg class="vector-diagram" viewBox="0 0 850 500" xmlns="http://www.w3.org/2000/svg">
+            <rect width="850" height="500" fill="#FAF9FE" rx="10" />
+
+            <!-- Entities -->
+            <rect x="20" y="220" width="110" height="40" rx="4" fill="#E2E7F3" stroke="#90A4AE" stroke-width="1.5" />
+            <text x="75" y="245" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold" fill="#1C1B1F" text-anchor="middle">👤 Admin / User</text>
+
+            <!-- Processes -->
+            <!-- P1.0 -->
+            <rect x="180" y="30" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="53" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">1.0 Authenticate &amp; Route</text>
+            
+            <!-- P2.0 -->
+            <rect x="180" y="90" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="113" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">2.0 Manage User Profiles</text>
+
+            <!-- P3.0 -->
+            <rect x="180" y="150" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="173" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">3.0 Manage Wards &amp; Drugs</text>
+
+            <!-- P4.0 -->
+            <rect x="180" y="210" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="233" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">4.0 Manage Book Registers</text>
+
+            <!-- P5.0 -->
+            <rect x="180" y="270" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="293" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">5.0 Manage Stock Inventory</text>
+
+            <!-- P6.0 -->
+            <rect x="180" y="330" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="353" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">6.0 Record Releases/Returns</text>
+
+            <!-- P7.0 -->
+            <rect x="180" y="390" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="413" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">7.0 Compile Usage Stats</text>
+
+            <!-- P8.0 -->
+            <rect x="180" y="450" width="170" height="40" rx="8" fill="#865AD9" stroke="#673AB7" stroke-width="2" />
+            <text x="265" y="473" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold" fill="#FFFFFF" text-anchor="middle">8.0 Edit Profile Settings</text>
+
+            <!-- Data Stores -->
+            <!-- D1 -->
+            <path d="M 480 30 L 610 30 M 480 55 L 610 55" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="30" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="46" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D1: users</text>
+
+            <!-- D2 -->
+            <path d="M 480 90 L 610 90 M 480 115 L 610 115" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="90" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="106" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D2: wards</text>
+
+            <!-- D3 -->
+            <path d="M 480 150 L 610 150 M 480 175 L 610 175" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="150" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="166" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D3: antibiotics</text>
+
+            <!-- D4 -->
+            <path d="M 480 210 L 610 210 M 480 235 L 610 235" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="210" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="226" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D4: book_numbers</text>
+
+            <!-- D5 -->
+            <path d="M 480 270 L 610 270 M 480 295 L 610 295" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="270" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="286" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D5: main_stock</text>
+
+            <!-- D6 -->
+            <path d="M 480 330 L 610 330 M 480 355 L 610 355" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="330" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="346" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D6: releases</text>
+
+            <!-- D7 -->
+            <path d="M 480 390 L 610 390 M 480 415 L 610 415" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="390" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="406" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D7: return_stock</text>
+
+            <!-- D8 -->
+            <path d="M 480 450 L 610 450 M 480 475 L 610 475" stroke="#0D47A1" stroke-width="2" />
+            <rect x="480" y="450" width="130" height="25" fill="#E3F2FD" opacity="0.9" />
+            <text x="545" y="466" font-family="'Outfit', sans-serif" font-size="9" font-weight="bold" fill="#0D47A1" text-anchor="middle">D8: returns</text>
+
+            <defs>
+                <marker id="arrow-sub" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#673AB7" />
+                </marker>
+            </defs>
+        </svg>
+    </div>
+
+    <div class="no-print">
+        <button class="btn" onclick="window.print()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print DFD Report / Save PDF
+        </button>
+        <button class="btn btn-secondary" onclick="exportToWord()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Save for Microsoft Word
+        </button>
+    </div>
+</div>
+
+<script>
+    function exportToWord() {
+        var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
+            "xmlns:w='urn:schemas-microsoft-com:office:word' "+
+            "xmlns='http://www.w3.org/TR/REC-html40'>"+
+            "<head><title>Export DFD report to Word</title><style>body {font-family: Arial;}</style></head><body>";
+        var footer = "</body></html>";
+        var sourceHTML = header+document.querySelector('.container').innerHTML+footer;
+        
+        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        var fileDownload = document.createElement("a");
+        document.body.appendChild(fileDownload);
+        fileDownload.href = source;
+        fileDownload.download = 'MediQ_DFD_Report.doc';
+        fileDownload.click();
+        document.body.removeChild(fileDownload);
+    }
+</script>
+
+</body>
+</html>

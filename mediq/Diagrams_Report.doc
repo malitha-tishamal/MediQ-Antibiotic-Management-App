@@ -1,0 +1,236 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<title>MediQ System DFD Report</title>
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        line-height: 1.6;
+        color: #333333;
+    }
+    h1 {
+        font-size: 24pt;
+        color: #673AB7;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    .subtitle {
+        font-size: 13pt;
+        color: #666666;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    h2 {
+        font-size: 18pt;
+        color: #673AB7;
+        border-bottom: 2px solid #F3E5F5;
+        padding-bottom: 5px;
+        margin-top: 30px;
+    }
+    h3 {
+        font-size: 14pt;
+        color: #865AD9;
+        margin-top: 20px;
+    }
+    p, li {
+        font-size: 11pt;
+        text-align: justify;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    th {
+        background-color: #865AD9;
+        color: #FFFFFF;
+        font-weight: bold;
+        text-align: left;
+        padding: 10px;
+        border: 1px solid #865AD9;
+    }
+    td {
+        padding: 10px;
+        border: 1px solid #CCCCCC;
+        background-color: #FAFAFA;
+    }
+    .highlight-box {
+        background-color: #F3E5F5;
+        border-left: 5px solid #865AD9;
+        padding: 15px;
+        margin: 20px 0;
+    }
+</style>
+</head>
+<body>
+
+<div style="padding: 20px;">
+    <p style="text-align: center; font-weight: bold; color: #865AD9; letter-spacing: 2px;">MEDIQ SYSTEM DESIGN</p>
+    <h1>Data Flow Diagrams (DFD) Analysis Report</h1>
+    <p class="subtitle">Project: MediQ Antibiotic Management App | DFD Standards: Yourdon-DeMarco &amp; Gane-Sarson</p>
+
+    <div class="highlight-box">
+        <p><strong>Note:</strong> This document is formatted for Microsoft Word. Double-click this file to open it in MS Word, and you can edit or save it as a standard .docx file immediately.</p>
+    </div>
+
+    <h2>1. Data Flow Diagram Reference Guide</h2>
+    <p>This report covers the logical DFD for the MediQ Antibiotic Management System, decomposing it into processes, entities, data stores, and data flows mapped directly to the actual Firestore database structure.</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Symbol Type</th>
+                <th>Standard Representation</th>
+                <th>Application in MediQ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Process</strong></td>
+                <td>Rounded Rectangle / Bubble</td>
+                <td>Transforms data inputs (e.g., login checking, recording usages, compiling usage stats).</td>
+            </tr>
+            <tr>
+                <td><strong>External Entity</strong></td>
+                <td>Flat Rectangle</td>
+                <td>Source or destination of data outside system boundary (e.g., Admin, Pharmacist, Cloudinary, Firebase Auth).</td>
+            </tr>
+            <tr>
+                <td><strong>Data Store</strong></td>
+                <td>Open Rectangle</td>
+                <td>Represents Firestore Database Collections (e.g., users, wards, antibiotics, book_numbers, main_stock, releases, return_stock, returns).</td>
+            </tr>
+            <tr>
+                <td><strong>Data Flow</strong></td>
+                <td>Arrow Line</td>
+                <td>Directs paths for data movement with descriptive labels.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. DFD Level 0 - Context Diagram</h2>
+    <p>The Context Diagram shows the system as a single process block (0.0) with its immediate environmental interactions. External entities interact with the system without exposing interior databases.</p>
+
+    <h3>Data Flow Mapping Table (Context Level):</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Source Entity</th>
+                <th>Target Process</th>
+                <th>Data Flow Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Admin</td>
+                <td>0.0 MediQ System</td>
+                <td>Login credentials, Account registration details, Wards/Antibiotics listings, Main stock updates.</td>
+            </tr>
+            <tr>
+                <td>0.0 MediQ System</td>
+                <td>Admin</td>
+                <td>System statistics, logs, audit notifications, login confirmation.</td>
+            </tr>
+            <tr>
+                <td>Pharmacist</td>
+                <td>0.0 MediQ System</td>
+                <td>Releases inputs, return entries, book logs, updated profile photos.</td>
+            </tr>
+            <tr>
+                <td>0.0 MediQ System</td>
+                <td>Pharmacist</td>
+                <td>Pharmacist session status, receipts, profile updates validation status.</td>
+            </tr>
+            <tr>
+                <td>0.0 MediQ System</td>
+                <td>Firebase Auth</td>
+                <td>Verify email and password tokens request.</td>
+            </tr>
+            <tr>
+                <td>Firebase Auth</td>
+                <td>0.0 MediQ System</td>
+                <td>Returned status token and user authentication state.</td>
+            </tr>
+            <tr>
+                <td>0.0 MediQ System</td>
+                <td>Cloudinary API</td>
+                <td>HTTP Multipart post containing binary image.</td>
+            </tr>
+            <tr>
+                <td>Cloudinary API</td>
+                <td>0.0 MediQ System</td>
+                <td>Secure image URL returned from CDN storage.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. DFD Level 1 - Detailed Functional Processes</h2>
+    <p>Level 1 expands the system's boundary into 8 key processes and identifies how the database tables (Firestore NoSQL collections) act as data stores.</p>
+    
+    <ul>
+        <li><strong>1.0 Authenticate &amp; Route User:</strong> Validates user details against <code>Firebase Auth</code>, checks user profiles from <code>D1: users</code>, and routes them to the proper Dashboard.</li>
+        <li><strong>2.0 Manage User Profiles:</strong> Admin utility to add, edit, or remove user data from <code>D1: users</code>.</li>
+        <li><strong>3.0 Manage Wards &amp; Antibiotics:</strong> Admin configuration panel which reads/writes information in <code>D2: wards</code> and <code>D3: antibiotics</code>.</li>
+        <li><strong>4.0 Manage Book Registers:</strong> Logs book range configurations to <code>D4: book_numbers</code>.</li>
+        <li><strong>5.0 Manage Stock Inventory:</strong> Tracks main stock updates in <code>D5: main_stock</code>.</li>
+        <li><strong>6.0 Record Releases &amp; Returns:</strong> Logs pharmacist actions to <code>D6: releases</code>, <code>D7: return_stock</code>, and <code>D8: returns</code>.</li>
+        <li><strong>7.0 Compile Usage Statistics:</strong> Extracts logs from <code>D6: releases</code> and <code>D8: returns</code> to compile charts.</li>
+        <li><strong>8.0 Edit Profile Settings:</strong> Posts image updates to <code>Cloudinary</code> and stores data in <code>D1: users</code>.</li>
+    </ul>
+
+    <h3>Data Store Mapping Table (Level 1):</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Data Store Reference</th>
+                <th>Firestore Collection Path</th>
+                <th>System Utilization</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>D1: users</td>
+                <td><code>/users/{uid}</code></td>
+                <td>Stores authentication profiles, names, NIC, telephone numbers, and roles.</td>
+            </tr>
+            <tr>
+                <td>D2: wards</td>
+                <td><code>/wards/{id}</code></td>
+                <td>Stores list of hospital wards configured by the Admin.</td>
+            </tr>
+            <tr>
+                <td>D3: antibiotics</td>
+                <td><code>/antibiotics/{id}</code></td>
+                <td>Stores the inventory of available antibiotics and their enabled status.</td>
+            </tr>
+            <tr>
+                <td>D4: book_numbers</td>
+                <td><code>/book_numbers/{id}</code></td>
+                <td>Tracks the registered book numbers and serial entries.</td>
+            </tr>
+            <tr>
+                <td>D5: main_stock</td>
+                <td><code>/main_stock/{id}</code></td>
+                <td>Keeps registered main stock levels and inventory records.</td>
+            </tr>
+            <tr>
+                <td>D6: releases</td>
+                <td><code>/releases/{id}</code></td>
+                <td>Logs recorded antibiotic dosages, ward IDs, patient details, and book logs.</td>
+            </tr>
+            <tr>
+                <td>D7: return_stock</td>
+                <td><code>/return_stock/{id}</code></td>
+                <td>Stores details of returned stock adjustments and levels.</td>
+            </tr>
+            <tr>
+                <td>D8: returns</td>
+                <td><code>/returns/{id}</code></td>
+                <td>Logs details of returned medicines and reasons.</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+</body>
+</html>
