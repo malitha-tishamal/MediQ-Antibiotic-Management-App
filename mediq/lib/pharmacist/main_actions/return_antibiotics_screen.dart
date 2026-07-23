@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 
@@ -56,11 +56,12 @@ class _ReturnAntibioticsScreenState extends State<ReturnAntibioticsScreen> {
   final TextEditingController _wardController = TextEditingController();
   final TextEditingController _dosageController = TextEditingController();
 
-  // Suggestions controllers to programmatically close dropdowns
+  // Suggestions controllers for TypeAheadField
   final SuggestionsController<String> _antibioticSuggestionsController =
       SuggestionsController<String>();
   final SuggestionsController<String> _wardSuggestionsController =
       SuggestionsController<String>();
+
 
   // Lock flags to prevent dropdown from reopening after clear/selection
   bool _preventAntibioticDropdown = false;
