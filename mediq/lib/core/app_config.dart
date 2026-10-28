@@ -1,23 +1,27 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConfig {
-  /// Cloudinary Cloud Name
+  /// Cloudinary Cloud Name (loaded securely from .env)
   static String get cloudinaryCloudName =>
-      dotenv.env['CLOUDINARY_CLOUD_NAME']?.trim() ?? 'dqeptzlsb';
+      dotenv.env['CLOUDINARY_CLOUD_NAME']?.trim() ?? '';
 
-  /// Cloudinary Upload Preset
+  /// Cloudinary Upload Preset (loaded securely from .env)
   static String get cloudinaryUploadPreset =>
-      dotenv.env['CLOUDINARY_UPLOAD_PRESET']?.trim() ?? 'flutter_mediq_upload';
+      dotenv.env['CLOUDINARY_UPLOAD_PRESET']?.trim() ?? '';
 
   /// Default Admin Profile Image URL
   static String get defaultAdminProfileUrl =>
       dotenv.env['CLOUDINARY_ADMIN_DEFAULT_URL']?.trim() ??
-      'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/v1776579551/admin-default_rloii1.jpg';
+      (cloudinaryCloudName.isNotEmpty
+          ? 'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/v1776579551/admin-default_rloii1.jpg'
+          : '');
 
   /// Default Pharmacist Profile Image URL
   static String get defaultPharmacistProfileUrl =>
       dotenv.env['CLOUDINARY_PHARMACIST_DEFAULT_URL']?.trim() ??
-      'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/v1776579551/pharmizist-default_weoaaq.jpg';
+      (cloudinaryCloudName.isNotEmpty
+          ? 'https://res.cloudinary.com/$cloudinaryCloudName/image/upload/v1776579551/pharmizist-default_weoaaq.jpg'
+          : '');
 
   /// Cloudinary Image Upload API Endpoint
   static String get cloudinaryUploadApiUrl =>
