@@ -1,6 +1,85 @@
-# Miscellaneous
-*.class
+# ===================================================================
+# MediQ Flutter Project - Local Git Ignore
+# ===================================================================
+
+# --- Environment & Sensitive Credentials ---
+*.env
+*.env.*
+.env
+.env.*
+!.env.example
+*.key
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.cer
+*.crt
+key.properties
+local.properties
+credentials.json
+service-account*.json
+secrets.json
+
+# --- Flutter / Dart Build & Package Artifacts ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/coverage/
+
+# --- Compiled Artifacts / Binaries ---
+*.apk
+*.aab
+*.ipa
+*.app
+
+# --- Android Specific ---
+android/.gradle/
+android/.kotlin/
+android/app/build/
+android/build/
+**/android/local.properties
+**/android/key.properties
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# --- iOS / macOS Specific ---
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+
+# --- Desktop (Windows & Linux) Ephemeral ---
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+
+# --- IDEs & Code Editors ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# --- Symbolication & Obfuscation ---
+app.*.symbols
+app.*.map.json
+
+# --- System & Log Files ---
 *.log
+*.class
 *.pyc
 *.swp
 .DS_Store
@@ -11,35 +90,4 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+Thumbs.db

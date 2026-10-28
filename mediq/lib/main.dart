@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -38,6 +39,12 @@ class AppColors {
 // ------------------- Main Entry Point -------------------
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Note: .env file not loaded ($e), using AppConfig defaults.");
+  }
 
   tz_data.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Colombo'));

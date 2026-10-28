@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../main.dart';
 import 'login_page.dart';
+import '../core/app_config.dart';
 
 enum UserRole { Admin, Pharmacist }
 
@@ -60,8 +61,8 @@ class _SignUpPageState extends State<SignUpPage> {
   // Returns the asset path directly (no encoding)
   String _getDefaultProfilePicture() {
     return _selectedRole == UserRole.Admin
-        ? 'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg'
-        : 'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/pharmizist-default_weoaaq.jpg';
+        ? AppConfig.defaultAdminProfileUrl
+        : AppConfig.defaultPharmacistProfileUrl;
   }
 
   void _validatePasswordMatch() {

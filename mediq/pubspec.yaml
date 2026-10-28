@@ -60,6 +60,7 @@ dependencies:
 
   pdf: ^3.10.4
   printing: ^5.11.1
+  flutter_dotenv: ^6.0.1
 
 
 dev_dependencies:
@@ -79,6 +80,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/logo/logo.png
     - assets/logo/logo2.png
     

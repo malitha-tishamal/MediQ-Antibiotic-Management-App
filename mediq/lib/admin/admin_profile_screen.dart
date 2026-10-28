@@ -1,8 +1,8 @@
 // lib/admin_profile_screen.dart
 import 'dart:io';
 import 'dart:async';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +13,8 @@ import 'package:image_picker/image_picker.dart';
 import '../main.dart';
 import 'admin_drawer.dart';
 import '../auth/login_page.dart';
+import '../core/app_config.dart';
+import '../services/cloudinary_service.dart';
 
 class AppColors {
   static const Color primaryPurple = Color(0xFF9F7AEA);
@@ -41,12 +43,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen>
   final _imagePicker = ImagePicker();
 
   // --- Cloudinary Configuration ---
-  final String _cloudName = "dqeptzlsb";
-  final String _uploadPreset = "flutter_mediq_upload";
+  static String get _defaultProfileImageUrl => AppConfig.defaultAdminProfileUrl;
+
 
   // --- Default Profile Image (Admin) ---
-  static const String _defaultProfileImageUrl =
-      'https://res.cloudinary.com/dqeptzlsb/image/upload/v1776579551/admin-default_rloii1.jpg';
+
+
 
   // --- Controllers for Form Fields ---
   final TextEditingController _fullNameController = TextEditingController();
@@ -431,43 +433,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen>
 
   // --- Cloudinary Upload Method ---
   Future<String?> _uploadImageToCloudinary(XFile imageFile) async {
-    try {
-      final bytes = await imageFile.readAsBytes();
-      if (bytes.length > 1000000) {
-        _showSnackBar('Image is too large. Max 1MB allowed.');
-        return null;
-      }
-
-      final url =
-          Uri.parse("https://api.cloudinary.com/v1_1/$_cloudName/image/upload");
-
-      final request = http.MultipartRequest('POST', url)
-        ..fields['upload_preset'] = _uploadPreset
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ));
-
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw TimeoutException('Upload timed out'),
-      );
-
-      final response = await http.Response.fromStream(streamedResponse);
-      final responseData = json.decode(response.body);
-
-      if (response.statusCode == 200) {
-        return responseData['secure_url'];
-      } else {
-        final errorMsg = responseData['error']?['message'] ?? 'Upload failed';
-        _showSnackBar('Upload failed: $errorMsg');
-        return null;
-      }
-    } catch (e) {
-      _showSnackBar('Upload failed. Please try again.');
-      return null;
-    }
+    return CloudinaryService.uploadImage(imageFile, onMessage: _showSnackBar);
   }
 
   // --- Profile Save Logic ---
