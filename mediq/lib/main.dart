@@ -5,14 +5,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-import 'core/firebase_options.dart';
+import './core/firebase_options.dart';
 
 // Import screens
-import 'auth/firebase_load_check_screen.dart';
-import 'auth/login_page.dart';
-import 'auth/simple_preload_screen.dart';
-import 'auth/start_page.dart';   // 👈 ADD THIS
-import 'core/dashboard_wrapper.dart';
+import './views/auth/firebase_load_check_screen.dart';
+
+import './views/auth/simple_preload_screen.dart';
+import './views/auth/start_page.dart';   // 👈 ADD THIS
+
 
 // ------------------- App Colors -------------------
 class AppColors {
