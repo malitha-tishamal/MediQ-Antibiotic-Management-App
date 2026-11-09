@@ -153,6 +153,7 @@ code {
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--indigo);
+  text-wrap: balance;
 }
 
 .eyebrow .dot {
@@ -1476,6 +1477,7 @@ code {
 }
 
 @media (max-width: 560px) {
+  .eyebrow { font-size: 0.69rem; letter-spacing: 0.075em; }
   .brand-text span { display: none; }
   .brand-mark { width: 40px; height: 40px; }
   .hero-chips li { font-size: 0.72rem; }

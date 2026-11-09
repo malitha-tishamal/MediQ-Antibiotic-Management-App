@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>overflow debug</title>
+<style>body{font-family:monospace;padding:12px;font-size:12px}iframe{border:1px solid #ccc}</style>
+</head>
+<body>
+<pre id="out">measuring…</pre>
+<iframe id="f" src="/index.html" width="390" height="900" style="width:390px;height:900px"></iframe>
+<script>
+  var f = document.getElementById('f');
+  f.addEventListener('load', function () {
+    setTimeout(function () {
+      var d = f.contentDocument, w = f.contentWindow;
+      var lines = [];
+      lines.push('viewport: ' + w.innerWidth + ' | doc scrollWidth: ' + d.documentElement.scrollWidth + ' | body scrollWidth: ' + d.body.scrollWidth);
+      var all = d.querySelectorAll('body *');
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i], r = el.getBoundingClientRect();
+        if (r.width === 0) continue;
+        if (r.right > w.innerWidth + 1 || r.left < -1) {
+          lines.push('OVERFLOW ' + el.tagName.toLowerCase() + '.' + (el.className && el.className.toString ? el.className.toString().replace(/\s+/g,'.').slice(0,40) : '') +
+            ' left=' + Math.round(r.left) + ' right=' + Math.round(r.right) + ' w=' + Math.round(r.width) + ' minW=' + w.getComputedStyle(el).minWidth);
+        }
+      }
+      document.getElementById('out').textContent = lines.slice(0, 40).join('\n');
+    }, 1200);
+  });
+</script>
+</body>
+</html>
